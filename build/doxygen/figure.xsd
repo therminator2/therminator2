@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:element name="FIGURE">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="LABEL"/>
+        <xs:element ref="EVENTS"/>
+        <xs:element ref="ENTRIES"/>
+        <xs:element maxOccurs="unbounded" ref="HISTOGRAM"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LABEL" type="xs:string"/>
+  <xs:element name="EVENTS" type="xs:integer"/>
+  <xs:element name="ENTRIES" type="xs:integer"/>
+  <xs:element name="HISTOGRAM">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="PARTICLE"/>
+        <xs:element ref="BINS"/>
+        <xs:element ref="DATA"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="PARTICLE">
+    <xs:complexType mixed="true">
+      <xs:attribute name="entries" use="required" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="BINS">
+    <xs:complexType mixed="true">
+      <xs:attribute name="number" use="required" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="DATA">
+    <xs:complexType mixed="true">
+      <xs:attribute name="points" use="required" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

@@ -1,0 +1,48 @@
+/*!
+@page file_content 2.5 Contents of selected files
+
+@section file_content_ini Contents of configuration files
+<ul>
+  <li> @ref file_content_events_ini </li>
+  <li> @ref file_content_femto_ini </li>
+  <li> @ref file_content_hbtfit_ini </li>
+  <li> @ref file_content_blastwave_ini </li>
+  <li> @ref file_content_bwa_ini </li>
+  <li> @ref file_content_krakow_ini </li>
+  <li> @ref file_content_lhyquid2dbi_ini </li>
+  <li> @ref file_content_lhyquid3d_ini </li>
+</ul>
+<hr>
+
+@section file_content_data Contents of SHARE database files
+<ul>
+  <li> @ref file_content_particles_data </li>
+  <li> @ref file_content_decays_data </li>
+</ul>
+<hr>
+
+@section file_content_xml Contents of eXtensible Markup Language files
+<ul>
+  <li> <b><a href="figure.xml">fig_distpt.xml</a></b> </li>
+  <li> <b><a href="rhic.xml">RHICAuAu200c2030Ti455ti025Tf145.xml</a></b> </li>
+</ul>
+<hr>
+
+@section file_content_sh Contents of BASH shell script files
+<ul>
+  <li> @ref file_content_runall_sh </li>
+  <li> @ref file_content_runevents_sh </li>
+  <li> @ref file_content_runfigures_sh </li>
+  <li> @ref file_content_runhbt_sh </li>
+  <li> @ref file_content_runtorque_sh </li>
+</ul>
+<hr>
+
+@section file_content_make Contents of make configuration file
+<ul>
+  <li> @ref file_content_makefile </li>
+</ul>
+<hr>
+
+<em> Back to: @ref index </em>
+ */

@@ -1,0 +1,277 @@
+/*!
+@page dir_struct 2.3 Directory structure
+The <code><b>THERMINATOR 2</b></code> directory tree
+<table border="0">
+  <tr>
+    <td width="500" valign="top">
+      <ul>
+	<li> @ref dir_struct_therminator2 </li>
+	<li> @ref dir_struct_doxygen </li>
+	<li> @ref dir_struct_include </li>
+	<li> @ref dir_struct_obj </li>
+	<li> @ref dir_struct_src </li>
+	<li> @ref dir_struct_doc </li>
+	<li> @ref dir_struct_events </li>
+	<li> @ref dir_struct_fomodel </li>
+	<li> @ref dir_struct_macro </li>
+	<li> @ref dir_struct_share </li>
+      </ul>
+      <ol>
+	<li>The directories colored in <b style="color:red">RED</b> are not present in the distribution file (<code>therminator2*.tar.gz</code>), they are created upon the compilation process with the command
+@verbatim
+make
+@endverbatim
+	</li>
+	<li>The directories colored in <b style="color:green">GREEN</b> are also not present at the beginning and are the result of calling the command
+@verbatim
+make doc
+@endverbatim
+	</li>
+      </ol>
+    </td>
+    <td width="300"><img src="dirstruct.svg" width="210"/></td>
+  </tr>
+</table>
+<em> Back to: @ref index </em>
+<hr>
+
+@section dir_struct_therminator2 therminator2/
+Main directory of <code><b>THERMINATOR 2</b></code> distribution
+<table>
+  <tr>
+    <th>file</th>
+    <th>description</th>
+  </tr><tr>
+    <td>Doxygen</td>
+    <td><a href="http://www.doxygen.org">Doxygen</a> configuration</td>
+  </tr><tr>
+    <td>events.ini</td>
+    <td><code>therm2_events</code> configuration</td>
+    <td><em> see @ref file_content_events_ini </em> </td>
+  </tr><tr>
+    <td>femto.ini</td>
+    <td><code>therm2_femto</code> configuration</td>
+    <td><em> see @ref file_content_femto_ini </em> </td>
+  </tr><tr>
+    <td>hbtfit.ini</td>
+    <td><code>therm2_hbtfit</code> configuration</td>
+    <td><em> see @ref file_content_hbtfit_ini </em> </td>
+  </tr><tr>
+    <td>Makefile</td>
+    <td><code>make</code> configuration</td>
+    <td><em>see @ref file_content_makefile </em> </td>
+  </tr><tr>
+    <td style="color:green">manual.html <sup>(1)</sup></td>
+    <td>reference manual in HTML format</td>
+    <td>redirection to <code>doc/html/index.html</code></td>
+  </tr><tr>
+    <td style="color:green">manual.pdf <sup>(1)</sup></td>
+    <td>reference manual in PDF format</td>
+    <td>symbolic link to <code>doc/latex/refman.pdf</code></td>
+  </tr><tr>
+    <td>runall.sh</td>
+    <td>bash shell script</td>
+    <td><em> see @ref file_content_runall_sh </em> </td>
+  </tr><tr>
+    <td>runevents.sh</td>
+    <td>bash shell script</td>
+    <td><em> see @ref file_content_runevents_sh </em> </td>
+  </tr><tr>
+    <td>runfigures.sh</td>
+    <td>bash shell script</td>
+    <td><em> see @ref file_content_runfigures_sh </em> </td>
+  </tr><tr>
+    <td>runhbt.sh</td>
+    <td>bash shell script</td>
+    <td><em> see @ref file_content_runhbt_sh </em> </td>
+  </tr><tr>
+    <td>runtorgue.sh</td>
+    <td>bash shell script for <a href="http://www.clusterresources.com/pages/products/torque-resource-manager.php">TORQUE</a></td>
+    <td><em> see @ref file_content_runtorque_sh </em> </td>
+  </tr><tr>
+    <td style="color:red">therm2_events <sup>(2)</sup></td>
+    <td>program generating events</td>
+  </tr><tr>
+    <td style="color:red">therm2_femto <sup>(2)</sup></td>
+    <td>program calculating two-particle correlation function</td>
+  </tr><tr>
+    <td style="color:red">therm2_hbtfit <sup>(2)</sup></td>
+    <td>program to fit the two-particle correlation function</td>
+  </tr>
+</table>
+<small>
+<ol type="1">
+  <li> file created with command <code style="color:green"> make doc</code> </li>
+  <li> file created with command <code style="color:red"> make </code> </li>
+</ol>
+</small>
+<em> See also: @ref file_type_ini </em>
+<hr>
+
+@section dir_struct_doxygen therminator2/build/doxygen/
+Directory containing <a href="www.doxygen.org">Doxygen</a> input files used to generate the reference manual. See @ref dir_struct_doc.
+<table>
+  <tr><th>file</th>		<th>description</th></tr>
+  <tr><td>0_main.dox</td>	<td><code><b>THERMINATOR 2</b></code> Main page</td></tr>
+  <tr><td>1_intro.dox</td>	<td>Introduction</td></tr>
+  <tr><td>23_dirstruct.dox</td>	<td>Directory structure of <code><b>THERMINATOR 2</b></code></td></tr>
+  <tr><td>24_filetype.dox</td>	<td>File types in <code><b>THERMINATOR 2</b></code></td></tr>
+  <tr><td>25_filecont.dox</td>	<td>File contents of selected files of <code><b>THERMINATOR 2</b></code></td></tr>
+  <tr><td>3_install.dox</td>	<td>Instalation of <code><b>THERMINATOR 2</b></code></td></tr>
+  <tr><td>dirstruct.svg</td>	<td>SVG file with the direcory strucure</td></tr>
+  <tr><td>doxygen.css</td>	<td>Custom CSS file for Doxygen</td></tr>
+  <tr><td>fig_distpt.xml</td>	<td>Example XML output form figure_distpt.C macro</td></tr>
+  <tr><td>filecont.sh</td>	<td>Shell script used when <em>make doc</em> is called</td></tr>
+</table>
+<hr>
+
+@section dir_struct_include therminator2/build/include/
+Directory containing header files <br />
+  See: <a href="files.html"><b>Files</b></a> or <a href="annotated.html"><b>Classes</b></a>
+<hr>
+
+@section dir_struct_obj therminator2/build/obj/
+Directory containing compiled source files.
+<table>
+  <tr><th>file</th>		<th>description</th></tr>
+  <tr><td>*.o</td>		<td>compiled *.cxx source files</td><td><em>See @ref dir_struct_src </em></td></tr>
+  <tr><td>therm2_events</td>	<td>therm2_events main program</td></tr>
+  <tr><td>therm2_femto</td>	<td>therm2_femto main program</td></tr>
+  <tr><td>therm2_hbtfit</td>	<td>therm2_hbtfit main program</td></tr>
+</table>
+Directory is created after issuing the command
+@verbatim
+make
+@endverbatim
+<hr>
+
+@section dir_struct_src therminator2/build/src/
+Directory containing source code files <br />
+  See: <a href="files.html"><b>Files</b></a> or <a href="annotated.html"><b>Classes</b></a>
+<hr>
+
+@section dir_struct_doc therminator2/doc/
+Directory containing <a href="www.doxygen.org">Doxygen</a> reference manuals in HTML and LaTeX format.
+<table>
+  <tr><th>file</th>	<th>description</th></tr>
+  <tr><td>html/index.html</td>	<td><code><b>THERMINATOR 2</b></code> reference manual web page</td></tr>
+  <tr><td>html/*</td>		<td>other files: pages, styles, images, etc.</td></tr>
+  <tr><td>latex/Makefile</td>	<td>make configuration file to generate LaTeX documentation</td></tr>
+  <tr><td>latex/refman.tex</td>	<td><code><b>THERMINATOR 2</b></code> reference manual in LaTeX </td></tr>
+  <tr><td style="color:green">latex/refman.pdf <sup>(3)</sup></td>	<td><code><b>THERMINATOR 2</b></code> reference manual in PDF</td></tr>
+  <tr><td>latex/*</td>		<td>other LaTeX files</td></tr>
+</table>
+<small><ol type="1" start="3">
+  <li> reference manual is created by issuing the command <code style="color:green"> make </code> in the <code>therminator2/doc/latex/</code> directory. </li>
+</ol></small>
+Directory and its contents is created created after issuing the command
+@verbatim
+make doc
+@endverbatim
+<hr>
+
+@section dir_struct_events therminator2/events/
+Directory containing generated event files, figures, correlation function files, etc.
+Directory is created created after issuing the command
+@verbatim
+make
+@endverbatim
+The contents of the <code>event/</code> directory and the subdirectory structure depends on the model and its settings. The table below shows the default subdirectories for each model.
+<table>
+  <tr><th>model</th>	<th>default event subdirectory</th></tr>
+  <tr><td>Krakow Single Freeze-Out</td>		<td>therminator2/event/krakow/</td></tr>
+  <tr><td>Blast-Wave</td>			<td>therminator2/event/blastwave/</td></tr>
+  <tr><td>Blast-Wave A-class</td>		<td>therminator2/event/bwa/</td></tr>
+  <tr><td>Lhyquid 2+1D Boost-Invariant</td>	<td>therminator2/event/lhyquid2dbi-RHICAuAu200c2030Ti455ti025Tf145/ <sup>(4)</sup></td></tr>
+  <tr><td>Lhyquid 3+1D</td>			<td>therminator2/event/lhyquid3d/ <sup>(5)</sup></td></tr>
+</table>
+<small> <ol type="1" start="4">
+  <li> assuming that the user will use the default hypersurface data file <code>therminator2/fomodel/lhyquid2dbi/RHICAuAu200c2030Ti455ti025Tf145.xml</code>.<br />
+  <li> <code><b>THERMINATOR 2</b></code> distribution does not have hypersurface for that model included. They can be downloaded from <a href="http://therminator2.ifj.edu.pl">therminator2.ifj.edu.pl</a>
+</ol> </small>
+Possible files stored in the event subdirectory
+<table>
+  <tr><th>file</th>			<th>description</th></tr>
+  <tr><td>fmultiplicity_*.txt</td>	<td>file containing primordial multiplicity and max value of the Cooper-Frye integrand for each ParticleType. See Integrator class for details.</td></tr>
+  <tr><td>event*.root</td>		<td>event file, the file counter start with 000, i.e. <code>event000.root, event001.root</code>, ...</td></tr>
+  <tr><td>femto*.root</td>		<td>two-particle correlation function. Name may vary depending on the type of particles, average pair momentum and inclusion of resonances, e.g. <code>femtopipi0a.root</code> = pion-pion pairs, average kt = 200 MeV and included all resonances.</td></tr>
+  <tr><td>hbtfit*.root</td>		<td>HBT fit to correlation function. Name may vary depending on the type of particles, see <code>femto*.root</code></td></tr>
+  <tr><td>fig_*.eps</td>		<td>figure in EPS format</td></tr>
+  <tr><td>fig_*.xml</td>		<td>figure data in XML format</td></tr>
+  <tr><td>fig_*.C</td>			<td>ROOT macro to generate figure</td></tr>
+  <tr><td>events.ini</td>		<td><code>therm2_events</code> configuration file</td></tr>
+  <tr><td>femto.ini</td>		<td><code>therm2_femto</code> configuration file</td></tr>
+  <tr><td>hbtfit.ini</td>		<td><code>therm2_hbtfit</code> configuration file</td></tr>
+  <tr><td>[model_config].ini</td>	<td>freeze-out model configuration file. File name depends on the chosen model, e.g. <code>krakow.ini, lhyquid2dbi.ini</code>, etc.</td></tr>
+</table>
+<em> See also: @ref file_type_ini, @ref file_type_root, @ref file_type_xml, @ref file_content_ini and @ref file_content_xml </em>
+<hr>
+
+@section dir_struct_fomodel therminator2/fomodel/
+Directory containing freeze-out model configuration files as .ini files and freeze-out hypersurfaces data in XML format.
+<table>
+  <tr><th>file</th>		<th>description</th></tr>
+  <tr><td>blastwave.ini</td>	<td>Configuration file for Blast-Wave freeze-out model</td></tr>
+  <tr><td>bwa.ini</td>		<td>Configuration file for modified Blast-Wave freeze-out model</td></tr>
+  <tr><td>krakow.ini</td>	<td>Configuration file for Krakow Single Freeze-out model</td></tr>
+  <tr><td>lhyquid2dbi.ini</td>	<td>Configuration file for hydrodynamic 2+1 boost-invariant freeze-out model</td></tr>
+  <tr><td>lhyquid3d.ini</td>	<td>Configuration file for hydrodynamic 3+1 freeze-out model</td></tr>
+  <tr><td>lhyquid2dbi/RHICAuAu200c0005Ti500ti025Tf145.xml</td>	<td>hypersurface data for RHIC Au-Au @@ 200 GeV collisions, centrality 0-5%</td></tr>
+  <tr><td>lhyquid2dbi/RHICAuAu200c0510Ti491ti025Tf145.xml</td>	<td>hypersurface data for RHIC Au-Au @@ 200 GeV collisions, centrality 5-10%</td></tr>
+  <tr><td>lhyquid2dbi/RHICAuAu200c1020Ti476ti025Tf145.xml</td>	<td>hypersurface data for RHIC Au-Au @@ 200 GeV collisions, centrality 10-20%</td></tr>
+  <tr><td>lhyquid2dbi/RHICAuAu200c2030Ti455ti025Tf145.xml</td>	<td>hypersurface data for RHIC Au-Au @@ 200 GeV collisions, centrality 20-30%</td></tr>
+  <tr><td>lhyquid2dbi/RHICAuAu200c3040Ti429ti025Tf145.xml</td>	<td>hypersurface data for RHIC Au-Au @@ 200 GeV collisions, centrality 20-40%</td></tr>
+  <tr><td>lhyquid2dbi/RHICAuAu200c4050Ti398ti025Tf145.xml</td>	<td>hypersurface data for RHIC Au-Au @@ 200 GeV collisions, centrality 40-50%</td></tr>
+  <tr><td>lhyquid2dbi/RHICAuAu200c5060Ti354ti025Tf145.xml</td>	<td>hypersurface data for RHIC Au-Au @@ 200 GeV collisions, centrality 50-60%</td></tr>
+  <tr><td>lhyquid2dbi/RHICAuAu200c6070Ti279ti025Tf145.xml</td>	<td>hypersurface data for RHIC Au-Au @@ 200 GeV collisions, centrality 60-70%</td></tr>
+  <tr><td>lhyquid2dbi/LHCPbPb5500c0005Ti500ti100Tf145.xml</td>	<td>hypersurface data for LHC Pb-Pb @@ 5500 GeV collisions, centrality 0-5%</td></tr>
+  <tr><td>lhyquid2dbi/LHCPbPb5500c0510Ti500ti100Tf145.xml</td>	<td>hypersurface data for LHC Pb-Pb @@ 5500 GeV collisions, centrality 5-10%</td></tr>
+  <tr><td>lhyquid2dbi/LHCPbPb5500c1020Ti500ti100Tf145.xml</td>	<td>hypersurface data for LHC Pb-Pb @@ 5500 GeV collisions, centrality 10-20%</td></tr>
+  <tr><td>lhyquid2dbi/LHCPbPb5500c2030Ti500ti100Tf145.xml</td>	<td>hypersurface data for LHC Pb-Pb @@ 5500 GeV collisions, centrality 20-30%</td></tr>
+  <tr><td>lhyquid2dbi/LHCPbPb5500c3040Ti500ti100Tf145.xml</td>	<td>hypersurface data for LHC Pb-Pb @@ 5500 GeV collisions, centrality 20-40%</td></tr>
+  <tr><td>lhyquid2dbi/LHCPbPb5500c4050Ti500ti100Tf145.xml</td>	<td>hypersurface data for LHC Pb-Pb @@ 5500 GeV collisions, centrality 40-50%</td></tr>
+  <tr><td>lhyquid2dbi/LHCPbPb5500c5060Ti500ti100Tf145.xml</td>	<td>hypersurface data for LHC Pb-Pb @@ 5500 GeV collisions, centrality 50-60%</td></tr>
+  <tr><td>lhyquid2dbi/LHCPbPb5500c6070Ti500ti100Tf145.xml</td>	<td>hypersurface data for LHC Pb-Pb @@ 5500 GeV collisions, centrality 60-70%</td></tr>
+
+  <tr><td>lhyquid3d/ <sup>(6)</sup></td>	<td>directory to store hypersurface data for hydrodynamic 3+1 freeze-out model</td></tr>
+</table>
+<small> <ol type="1" start="6">
+  <li> the input files for the hydrodynamic 3+1 freeze-out model are very large (~ 300 MB) and are not included in the distribution. They can be downloaded from <a href="http://therminator2.ifj.edu.pl">therminator2.ifj.edu.pl</a> and saved in this directory. </li>
+</ol></small>
+<em> See also: @ref file_type_ini, @ref file_content_ini and @ref file_type_xml </em>
+<hr>
+
+@section dir_struct_macro therminator2/macro/
+Directory containing ROOT macro files for event analysis
+<table>
+  <tr><th>file</th>			<th>description</th></tr>
+  <tr><td>events2chain.C</td>		<td>Macro with function events2chain()</td></tr>
+  <tr><td>figure_disteta.C</td>		<td>Macro with figure figure_disteta(), particle distribution in pseudorapidity</td></tr>
+  <tr><td>figure_distmt.C</td>		<td>Macro with figure figure_distmt(), particle distribution in transverse mass</td></tr>
+  <tr><td>figure_distpt.C</td>		<td>Macro with figure figure_distpt(), particle distribution in transverse momentum</td></tr>
+  <tr><td>figure_distpt_exotic.C</td>	<td>Macro with figure figure_distpt_exotic(), exotic particles distribution in transverse momentum</td></tr>
+  <tr><td>figure_distpt_pion.C</td>	<td>Macro with figure figure_distpt_pion(), pion anatomy in transverse momentum</td></tr>
+  <tr><td>figure_distpt_proton.C</td>	<td>Macro with figure figure_distpt_proton(), proton anatomy in transverse momentum</td></tr>
+  <tr><td>figure_distrap.C</td>		<td>Macro with figure figure_distrap(), particle distribution in rapidity</td></tr>
+  <tr><td>figure_distrap_prim.C</td>	<td>Macro with figure figure_distrap_prim(), particle distribution in rapidity</td></tr>
+  <tr><td>figure_hsret.C</td>		<td>Macro with figure figure_hsret(), primordial particles in @f$ (\rho, \eta_\parallel, \tau) @f$</td></tr>
+  <tr><td>figure_hsxyt.C</td>		<td>Macro with figure figure_hsxyt(), primordial particles in @f$ (x, y, \tau) @f$</td></tr>
+  <tr><td>figure_xpx.C</td>		<td>Macro with figure figure_xpx(), position - momentum correlation, @f$ x-p_x @f$</td></tr>
+  <tr><td>hist2xml.C</td>		<td>Macro with function hist2xml()</td></tr>
+  <tr><td>model2legend.C</td>		<td>Macro with function model2legend()</td></tr>
+  <tr><td></td>		<td></td></tr>
+</table>
+<hr>
+
+@section dir_struct_share therminator2/share/
+Directory containing SHARE database files
+<table>
+  <tr><th>file</th>		<th>description</th></tr>
+  <tr><td>decays.data</td>	<td>database with particle decay channels</td></tr>
+  <tr><td>particles.data</td>	<td>database with particle properties</td></tr>
+</table>
+<em> See also: @ref file_type_data and @ref file_content_data </em>
+<hr>
+
+<em> Back to: @ref index </em>
+ */

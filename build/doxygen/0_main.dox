@@ -1,0 +1,94 @@
+/*!
+@mainpage
+
+<div>
+
+<div class="th2name">THERMINATOR 2</div>
+<center>
+  <span class="th2name1">THERM</span>
+  <span class="th2name2">al heavy </span>
+  <span class="th2name1">I</span>
+  <span class="th2name2">o</span>
+  <span class="th2name1">N </span>
+  <span class="th2name2">gener</span>
+  <span class="th2name1">ATOR </span>
+  <span class="th2name2">version </span>
+  <span class="th2name1">2</span>
+</center>
+<br />
+<center>
+  <span class="th2author">Mikołaj Chojnacki </span>
+    <sup><a class="th2author" href="http://www.ifj.edu.pl/?lang=en">a</a></sup>
+  <span class="th2author">, Adam Kisiel </span>
+    <sup><a class="th2author" href="http://ph-dep.web.cern.ch/ph-dep/">b,</a></sup>
+    <sup><a class="th2author" href="http://www.if.pw.edu.pl/www_en/">c</a></sup>
+  <span class="th2author">, Wojciech Florkowski </span>
+    <sup><a class="th2author" href="http://www.ifj.edu.pl/?lang=en/">a,</a></sup>
+    <sup><a class="th2author" href="http://www.ujk.edu.pl/ifiz/en/index.php">d</a></sup>
+  <span class="th2author">, Wojciech Broniowski </span>
+    <sup><a class="th2author" href="http://www.ifj.edu.pl/?lang=en">a,</a></sup>
+    <sup><a class="th2author" href="http://www.ujk.edu.pl/ifiz/en/index.php">d</a></sup>
+</center>
+<center>
+<table border="0">
+  <tr><td></td></tr>
+  <tr>
+    <td><a class="th2author" href="http://www.ifj.edu.pl/?lang=en">a</a></td>
+    <td class="th2aff">The H. Niewodniczański Institute of Nuclear Physics, Polish Academy of Sciences, PL-31342 Kraków, Poland</td>
+  </tr>
+  <tr>
+    <td><a class="th2author" href="http://ph-dep.web.cern.ch/ph-dep/">b</a></td>
+    <td class="th2aff">Physics Department, CERN, CH-1211 Geneve 23, Switzerland</td>
+  </tr>
+  <tr>
+    <td><a class="th2author" href="http://www.if.pw.edu.pl/www_en/">c</a></td>
+    <td class="th2aff">Faculty of Physics, Warsaw University of Technology, PL-00661 Warsaw, Poland</td>
+  </tr>
+  <tr>
+    <td><a class="th2author" href="http://www.ujk.edu.pl/ifiz/en/index.php">d</a></td>
+    <td class="th2aff">Institute of Physics, Jan Kochanowski University, PL-25406 Kielce, Poland</td>
+  </tr>
+</table>
+</center>
+
+</div>
+
+<table border="0">
+<tr>
+<td width="25%">
+
+<div>
+<ul>
+  <li><a href="http://therminator2.ifj.edu.pl/therminator2_2.0.3.tar.gz"><b style="color:red">LATEST VERSION (2.0.3)</b></a></li>
+  <li><a href="http://arxiv.org/abs/1102.0273"><b style="color:red">MANUAL at arXiv.org</b></a></li>
+</ul>
+<ul>
+  <li> @ref intro </li>
+  <li> <b>2 Structure of THERMINATOR 2</b> </li>
+    <ul>
+      <li><a href="annotated.html"><b>2.1 Classes</b></a></li>
+      <li><a href="files.html"><b>2.2 Files</b></a></li>
+      <li> @ref dir_struct </li>
+      <li> @ref file_type </li>
+      <li> @ref file_content </li>
+    </ul>
+  <li> @ref install </li>
+</ul>
+</div>
+
+</td>
+<td>
+
+<center>
+  <h2>Abstract</h2>
+</center>
+<div>
+We present an extended version of <code><b>THERMINATOR</b></code>, a Monte Carlo event generator dedicated to studies of the statistical production of particles in relativistic heavy-ion collisions. The increased functionality of the code contains the following features: The input of any shape of the freeze-out hypersurface and the expansion velocity field, including the 3+1 dimensional profiles, in particular those generated externally with various hydrodynamic codes. The hypersufraces may have variable thermal parameters, which allows for studies departing significantly from the mid-rapidity region, where the baryon chemical potential becomes large. We include a library of standard sets of hypersurfaces and velocity profiles describing the RHIC Au+Au data at @f$ \sqrt{s_{NN}} @f$ = 200 GeV for various centralities, as well as those anticipated for the LHC Pb+Pb collisions at @f$ \sqrt{s_{NN}} @f$ = 5.5 TeV. <br />
+A separate code, <code><b>FEMTO-THERMINATOR</b></code>, is provided to carry out the analysis of femtoscopic correlations which are an important source of information concerning the size and expansion of the system. We also include several useful scripts that carry out auxiliary tasks, such as obtaining an estimate of the number of elastic collisions after the freeze-out, counting of particles flowing back into the fireball and violating causality (typically very few), or visualizing various results: the particle @f$ p_T @f$ - spectra, the elliptic flow coefficients, and the HBT correlation radii. We also investigate the problem of the back-flow of particles into the hydrodynamic region, as well as estimate the elastic rescattering in terms of trajectory crossings. <br />
+The package is written in <code><b>C++</b></code> and uses the CERN <code><b>ROOT</b></code> environment.
+</div>
+
+<td>
+</tr>
+</table>
+ */

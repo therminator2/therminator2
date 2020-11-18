@@ -1,0 +1,111 @@
+/*!
+@page file_type 2.4 Type of files
+<ul>
+  <li> @ref file_type_ini </li>
+  <li> @ref file_type_data </li>
+  <li> @ref file_type_root </li>
+  <li> @ref file_type_xml </li>
+</ul>
+<em> Back to: @ref index </em>
+<hr>
+
+@section file_type_ini Type of configuration files
+<code><b>THERMINATOR 2</b></code> is controlled by <em>ini</em> files. The the two main configuration files <code>therminator.ini</code> and <code>thbt.ini</code> control the behavior of <code>therm2_events</code> and <code>therm2_hbt</code> programs respectively. The <em>ini</em> files in the <code>fomodel/</code> directory are used to control the freeze-out model properties such as: freeze-out temperature, chemical potentials, size of the fireball, hypersurface input file and many more.<br />
+The parser class ReadPar is searching the configuration file for entries in the following form
+@verbatim
+KEYWORD = VALUE
+@endverbatim
+<code>KEYWORD</code> is followed by a whitespace separated equal sign <code>" = "</code> that follows the <code>VALUE</code> of the keyword. <br />
+Both <code>KEYWORD</code> and <code>VALUE</code> are strings of characters that do not contain whitespace characters, e.g.
+@verbatim
+Vendor		= Cyberdyne_Systems_Corporation
+Product		= Advanced.Prototype.Poly-Mimetic.Alloy.Terminator
+Model		= Series-1,Model-1A,Type-1000
+TemperatureMin	= -196.0
+TemperatureMax	= 1535.0
+@endverbatim
+Files may contain empty lines or comment lines. ReadPar ignores a line that begins with the hash character <code>"#"</code>.
+@verbatim
+# Comment line followed by an empty line
+
+# Another comment line
+@endverbatim
+<em>See @ref file_content_ini </em>
+<hr>
+
+@section file_type_data Type of SHARE database files
+<code><b>THERMINATOR 2</b></code> uses the database from <code><b>SHARE</b></code> (<code><b>S</b></code>tatistical <code><b>HA</b></code>dronization with <code><b>RE</b></code>sonances) for particle types and decay channels. <br />
+The <code><b>SHARE</b></code> database is operated by the Parser class that creates entries of ParticleType to ParticleDB. Each ParticleType entry has also its own DecayTable with DecayChannel entries.
+
+<em> See also: <a href="http://www.ifj.edu.pl/dept/no4/nz41/share/share.html">SHARE</a> web page and article on arXiv.org <a href="http://arxiv.org/abs/nucl-th/0404083">nucl-th/0404083</a> </em>
+
+@subsection file_type_particles_data particles.data
+The <code>particles.data</code> is a text file with information on particle properties. Empty lines or lines beginning with the hash character <code>"#"</code> are ignored. <br />
+Each line is a PatricleType entry that consist of the thirteen columns, separated by whitespace characters.<br />
+Example file entry for K<sup>0</sup>
+@verbatim
+Ka0492zer	0.4976720	7.335e-16	0.0	0.5	-0.5	1.	0.	0.	1.	0.	0.	311
+@endverbatim
+<table>
+  <tr><th>column</th><th>value</th>	<th>description</th></tr>
+  <tr><td> 1</td><td>Ka0492zer</td>	<td>name of the particle in the database</td></tr>
+  <tr><td> 2</td><td>0.4976720</td>	<td>mass [GeV]</td></tr>
+  <tr><td> 3</td><td>7.335e-16</td>	<td>width [GeV]</td></tr>
+  <tr><td> 4</td><td>0.0</td>		<td>spin</td></tr>
+  <tr><td> 5</td><td>0.5</td>		<td>isospin</td></tr>
+  <tr><td> 6</td><td>-0.5</td>		<td>3rd component of the isospin</td></tr>
+  <tr><td> 7</td><td>1.</td>		<td>number of light quarks (u,d)</td></tr>
+  <tr><td> 8</td><td>0.</td>		<td>number of strange quarks (s)</td></tr>
+  <tr><td> 9</td><td>0.</td>		<td>number of anti-light quarks (u bar, d bar)</td></tr>
+  <tr><td>10</td><td>1.</td>		<td>number of anti-strange quarks (s bar)</td></tr>
+  <tr><td>11</td><td>0.</td>		<td>number of charm quarks (c)</td></tr>
+  <tr><td>12</td><td>0.</td>		<td>number of anti-charm quarks (c bar)</td></tr>
+  <tr><td>13</td><td>311</td>		<td>Monte-Carlo particle number form <a href="http://pdg.lbl.gov/">Particle Data Group</a></td></tr>
+</table>
+<em> See also: @ref file_content_particles_data </em>
+
+@subsection file_type_decays_data decays.data
+The <code>decays.data</code> is a text file with information on particle decay channels. Empty lines or lines beginning with the hash character <code>"#"</code> are ignored. <br />
+Each line is a DecayChannel entry that consist of the five or six columns, separated by whitespace characters.<br />
+Example file entry for two particle decay channel of K<sup>0</sup>
+@verbatim
+Ka0492zer	pi0139plu	pi0139min	0.343	0
+@endverbatim
+<table>
+  <tr><th>column</th><th>value</th><th>description</th></tr>
+  <tr><td>1</td><td>Ka0492zer</td>	<td>father particle name</td></tr>
+  <tr><td>2</td><td>pi0139plu</td>	<td>1st child particle name</td></tr>
+  <tr><td>3</td><td>pi0139min</td>	<td>2nd child particle name</td></tr>
+  <tr><td>4</td><td>0.343</td>		<td>branching ratio</td></tr>
+  <tr><td>5</td><td>0</td>		<td>Clebsh-Gordan coefficient</td></tr>
+</table>
+Example file entry for three particle decay channel of K<sup>0</sup>
+@verbatim
+Ka0492zer	pi0139plu	pi0139min	pi0135zer	0.105	0
+@endverbatim
+<table>
+  <tr><th>column</th><th>value</th><th>description</th></tr>
+  <tr><td>1</td><td>Ka0492zer</td>	<td>father particle name</td></tr>
+  <tr><td>2</td><td>pi0139plu</td>	<td>1st child particle name</td></tr>
+  <tr><td>3</td><td>pi0139min</td>	<td>2nd child particle name</td></tr>
+  <tr><td>4</td><td>pi0135zer</td>	<td>3rd child particle name</td></tr>
+  <tr><td>5</td><td>0.105</td>		<td>branching ratio</td></tr>
+  <tr><td>6</td><td>0</td>		<td>Clebsh-Gordan coefficient</td></tr>
+</table>
+<em> See also: @ref file_content_decays_data </em>
+<hr>
+
+@section file_type_root Type of ROOT files
+@subsection file_type_event_root therminator2/event/[model_subdir]/event*.root
+@subsection file_type_femto_root therminator2/event/[model_subdir]/femto*.root
+@subsection file_type_hbtfit_root therminator2/event/[model_subdir]/hbtfit*.root
+<hr>
+
+@section file_type_xml Type of eXtensible Markup Language files
+<code><b>THERMINATOR 2</b></code> generates figures with <a href="http://root.cern.ch">ROOT</a> macros. Data form the histograms is saved in the
+form of a XML version 1.0 type file.<br />
+Read more about XML (eXtensible Markup Language) files on the <a href="http://www.w3.org/XML/">W3C</a> website.<br />
+<hr>
+
+<em>Back to: @ref index </em>
+ */

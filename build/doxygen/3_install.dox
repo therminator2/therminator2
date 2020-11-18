@@ -1,0 +1,53 @@
+/*!
+@page install 3 Installation of THERMINATOR 2
+
+<code><b>THERMINATOR 2</b></code> is distributed in a form of a .tar.gz archive containing the c++ sources, scripts, configuration files, and the data files. The latest package can be downloaded from the following website:
+<ul>
+  <li><a href="http://therminator2.ifj.edu.pl"></a>http://therminator2.ifj.edu.pl</li>
+</ul>
+To compile and run <code><b>THERMINATOR 2</b></code> the user must have the following programs correctly installed on his system
+<ul>
+  <li><code><b>C++</b></code> compiler</li>
+  <li><code><b>ROOT</b></code> libraries and include files</li>
+</ul>
+The latest version of <code><b>ROOT</b></code> package is available at <a href="http://root.cern.ch">http://root.cern.ch</a>.
+<hr>
+
+@section install_download Getting the the latest distribution
+The simplest way to obtain the latest version of <code><b>THERMINATOR 2</b></code> is to follow the instruction below. This will create a directory called <code>therminator2</code> in the users home directory, save and extract the package.
+@verbatim
+cd
+mkdir therminator2
+cd therminator2/
+wget http://therminator2.ifj.edu.pl/therminator2-latest.tar.gz
+tar xzf therminator2-latest.tar.gz
+@endverbatim
+The version information of the package is in the <code>version</code> file.
+<hr>
+
+@section install_svn Getting the the latest distribution from SVN
+The <code><b>THERMINATOR 2</b></code> code is also available through Subversion. The files may differ form the ones found in the TAR file on the project website (<i>http://therminator2.ifj.edu.pl</i>). We are continuously correcting reported bugs and adding new features.
+@verbatim
+cd
+svn co https://therminator2.svn.sourceforge.net/svnroot/therminator2/trunk/ therminator2
+@endverbatim
+<hr>
+
+@section install_build Compilation
+To compile <code><b>THERMINATOR 2</b></code> the user must issue the command
+@verbatim
+make
+@endverbatim
+After successful compilation the binary files will be present in the main directory of the distribution.
+<hr>
+
+@section install_doxygen Doxygen documentation
+Source files of <code><b>THERMINATOR 2</b></code> are documented with <code><b>Doxygen</b></code> to generate the web-page and the PDF with detailed documentation on the classes and other files the user must have the Doxygen package installed on the system (latest version can be obtained form <a href="http://www.doxygen.org">www.doxygen.org</a>). Issue the command
+@verbatim
+make doc
+@endverbatim
+and the documentation will be created. In the main distribution directory two files will be created <code>manual.html</code> which redirects the web-browser to the main documentation page, and <code>manual.pdf</code> which is a symbolic link to the PDF reference manual.
+<hr>
+
+Back to: @ref index
+ */
