@@ -60,7 +60,10 @@ class Chemistry
 			double    aGammaQ,                      double    aGammaS,  double    aGammaC);
     void   SetChemistry(Vector3D* aLambdaQ, Vector3D* aLambdaI, Vector3D* aLambdaS, Vector3D* aLambdaC,
 			Vector3D* aGammaQ,                      Vector3D* aGammaS,  Vector3D* aGammaC);  
+<<<<<<< HEAD
     void   SetGammas(double    aGammaQ, double aGammaS, double aGammaC);
+=======
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
   private:
     int		mChemistryType;

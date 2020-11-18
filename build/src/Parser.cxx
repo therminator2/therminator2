@@ -113,7 +113,10 @@ void Parser::ReadSHAREParticles(ParticleDB* aDB)
     iss = new istringstream(buff);   
     (*iss) >> name >> mass >> gamma >> spin >> I >> I3 >> Nq >> Ns >> Naq >> Nas >> Nc >> Nac >> MC;
     number++;
+<<<<<<< HEAD
     cout<<'\t'<<number<<" "<<name<<" "<<mass<<" "<<gamma<<" "<<spin<<" "<<I<<" "<<I3<<" "<<Nq<<" "<<Naq<<" "<<Ns<<" - "<<static_cast<int>(Nas)<<" - "<<Nc<<" "<<Nac<<" "<<MC<<endl;
+=======
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
     PRINT_DEBUG_2('\t'<<number<<" "<<name<<" "<<mass<<" "<<gamma<<" "<<spin<<" "<<I<<" "<<I3<<" "<<Nq<<" "<<Naq<<" "<<Ns<<" "<<Nas<<" "<<Nc<<" "<<Nac<<" "<<MC);
     tPartBuf = new ParticleType();
     tPartBuf->SetNumber(number);
@@ -127,11 +130,19 @@ void Parser::ReadSHAREParticles(ParticleDB* aDB)
     tPartBuf->SetStrangeN(static_cast<int> (Nas - Ns));
     tPartBuf->SetCharmN(static_cast<int> (Nc - Nac));
     tPartBuf->SetNumberQ(static_cast<int> (Nq));
+<<<<<<< HEAD
     tPartBuf->SetNumberAQ(static_cast<int> (Naq));
     tPartBuf->SetNumberS(static_cast<int> (Ns));
     tPartBuf->SetNumberAS(static_cast<int> (Nas));
     tPartBuf->SetNumberC(static_cast<int> (Nc));
     tPartBuf->SetNumberAC(static_cast<int> (Nac));
+=======
+    tPartBuf->SetNumberQ(static_cast<int> (Naq));
+    tPartBuf->SetNumberQ(static_cast<int> (Ns));
+    tPartBuf->SetNumberQ(static_cast<int> (Nas));
+    tPartBuf->SetNumberQ(static_cast<int> (Nc));
+    tPartBuf->SetNumberQ(static_cast<int> (Nac));
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
     tPartBuf->SetPDGCode(static_cast<int> (MC));
     aDB->AddParticleType(tPartBuf);
     delete iss;

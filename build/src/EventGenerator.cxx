@@ -43,7 +43,10 @@ extern TString	sEventDIR;
 extern TString	sTimeStamp;
 extern int	sModel;
 extern int	sRandomize;
+<<<<<<< HEAD
 extern int	sSeed;
+=======
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 extern int	sIntegrateSample;
 extern int	sParentPID;
 
@@ -103,8 +106,13 @@ void EventGenerator::GenerateEvents()
       mEvent->GeneratePrimordials();
       mEvent->DecayParticles();
     } else {
+<<<<<<< HEAD
       mEvent->GeneratePrimordials(43212 + sSeed - tIter * 2);
       mEvent->DecayParticles	 (43212 + sSeed - tIter * 2);
+=======
+      mEvent->GeneratePrimordials(43212 - tIter * 2);
+      mEvent->DecayParticles	 (43212 - tIter * 2);
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
     }
     cout << "\r\tevent " << tIter+1 <<"/"<< mNumberOfEvents;
     cout.flush();

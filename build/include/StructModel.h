@@ -53,8 +53,11 @@
 #define _MODEL_T_FORMAT_BWA_		"RapPRange/F:RapSRange:RhoMax:Tau:Temp:MuB:MuI:MuS:MuC:Vt:A:Delay"
 #define _MODEL_T_FORMAT_LHYQUID2DBI_	"RapPRange/F:RapSRange:TauI:TempF:MuB:MuI:MuS:MuC:CollidingEnergy:CentralityMin:CentralityMax:ImpactParameter:TempI:DeviceName[30]/C:CollidingSystem[30]"
 #define _MODEL_T_FORMAT_LHYQUID3D_	"RapPRange/F:Lambda:TauI:TempF:MuB:MuI:MuS:MuC:CollidingEnergy:CentralityMin:CentralityMax:ImpactParameter:TempI:DeviceName[30]/C:CollidingSystem[30]"
+<<<<<<< HEAD
 //#define _MODEL_T_FORMAT_SR_	"T0/F:RMax:VR:h:A0:Temp:Chem:MuB:MuI:MuS:MuC:LambdaQ:LambdaI:LambdaS:LambdaC:GammaQ:GammaS:GammaC"
 #define _MODEL_T_FORMAT_SR_	"T0/F:R:H:A:Temp:Chem:MuB:MuI:MuS:MuC:LambdaQ:LambdaI:LambdaS:LambdaC:GammaQ:GammaS:GammaC"
+=======
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 struct Model_t
 {
@@ -96,6 +99,7 @@ struct Model_t_Lhyquid2DBI
   Char_t  DeviceName[30], CollidingSystem[30];
 };
 
+<<<<<<< HEAD
 struct Model_t_SR
 {
   Float_t T0, R, H, A;
@@ -104,6 +108,8 @@ struct Model_t_SR
   Float_t LambdaQ, LambdaI, LambdaS, LambdaC;
   Float_t GammaQ, GammaS, GammaC;
 };
+=======
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 #endif
 
 /*! @file StructModel.h

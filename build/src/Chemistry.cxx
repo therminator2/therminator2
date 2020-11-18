@@ -122,6 +122,7 @@ void Chemistry::SetChemistry(double aLambdaQ, double aLambdaI, double aLambdaS, 
 {
   mChemistryType = 2;
   mLambdaQConst = aLambdaQ; mLambdaIConst = aLambdaI; mLambdaSConst = aLambdaS; mLambdaCConst = aLambdaC; 
+<<<<<<< HEAD
   mGammaQConst  = aGammaQ;                            mGammaSConst  = aGammaS;  mGammaCConst  = aGammaC;
 
 }
@@ -129,6 +130,11 @@ void Chemistry::SetGammas(double aGammaQ, double aGammaS,  double aGammaC)
 {
   mGammaQConst  = aGammaQ;                            mGammaSConst  = aGammaS;  mGammaCConst  = aGammaC;
 }
+=======
+  mGammaQConst  = aGammaQ;                            mGammaCConst  = aGammaC;  mGammaCConst  = aGammaC;
+
+}
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 void Chemistry::SetChemistry(Vector3D* aLambdaQ, Vector3D* aLambdaI, Vector3D* aLambdaS, Vector3D* aLambdaC, Vector3D* aGammaQ, Vector3D* aGammaS, Vector3D* aGammaC)
 {
   mChemistryType = 3;

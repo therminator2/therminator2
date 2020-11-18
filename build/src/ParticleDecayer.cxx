@@ -33,11 +33,14 @@
 #include "DecayTable.h"
 #include <TMath.h>
 #include <TDatime.h>
+<<<<<<< HEAD
 #include <iostream>
 
 using namespace std;
 
 extern int sSeed;
+=======
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 ParticleDecayer::ParticleDecayer()
 : mParticles(0), mDB(0), mTypeF(0), mFather(0), mChannel(0), mRandom(0)
@@ -49,9 +52,15 @@ ParticleDecayer::ParticleDecayer(ParticleDB *aDB, std::list<Particle>* aParticle
 {
   mRandom = new TRandom2();
 #ifdef _ROOT_4_
+<<<<<<< HEAD
   mRandom->SetSeed2(60356 + sSeed, 18233);
 #else
   mRandom->SetSeed(60356 + sSeed);
+=======
+  mRandom->SetSeed2(60356, 18233);
+#else
+  mRandom->SetSeed(60356);
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 #endif
 }
 
@@ -109,6 +118,7 @@ int ParticleDecayer::TwoBodyDecay()
   double	Xt, Xx, Xy, Xz;
   double	Pe, Px, Py, Pz;
 
+<<<<<<< HEAD
   int pdg = mFather->pid;
 
 
@@ -120,15 +130,24 @@ int ParticleDecayer::TwoBodyDecay()
 
 
 
+=======
+  mFather->GetPosition(&Xt, &Xx, &Xy, &Xz);
+  mFather->GetMomentum(&Pe, &Px, &Py, &Pz);
+  
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
   tType1 = mDB->GetParticleType(mChannel->GetParticle1());
   tType2 = mDB->GetParticleType(mChannel->GetParticle2());
   tDaughter1 = new Particle(tType1);
   tDaughter2 = new Particle(tType2);
 
   double tE  = Pe;
+<<<<<<< HEAD
   double tM  = TMath::Sqrt(Pe*Pe - Px*Px - Py*Py - Pz*Pz);
 
   //double tM  = mTypeF->GetMass();
+=======
+  double tM  = mTypeF->GetMass();
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
   double tM1 = tType1->GetMass();
   double tM2 = tType2->GetMass();
   
@@ -212,9 +231,13 @@ int ParticleDecayer::ThreeBodyDecay()
   tDaughter3 = new Particle(tType3);
   
   double tE  = Pe;
+<<<<<<< HEAD
   double tM  = TMath::Sqrt(Pe*Pe - Px*Px - Py*Py - Pz*Pz);
 
   //double tM  = mTypeF->GetMass();
+=======
+  double tM  = mTypeF->GetMass();
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
   double tM1 = tType1->GetMass();
   double tM2 = tType2->GetMass();
   double tM3 = tType3->GetMass();

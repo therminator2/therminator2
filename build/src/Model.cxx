@@ -33,7 +33,10 @@
 #include "THGlobal.h"
 
 using namespace std;
+<<<<<<< HEAD
 using namespace TMath;
+=======
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 extern Configurator *sMainConfig;
 extern TString	sEventDIR;
@@ -42,12 +45,19 @@ extern int	sIntegrateSample;
 extern int	sRandomize;
 
 Model::Model()
+<<<<<<< HEAD
     : Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0),
     Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
     mHyperCube(0.0),
     mRandom(0),
     mSpectralFncs(0), mSpectralFncIntegrals(0),
     mDB(0)
+=======
+: Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0),
+  Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
+  mHyperCube(0.0),
+  mRandom(0)
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 {
   mName="";
   mHash="";
@@ -56,13 +66,20 @@ Model::Model()
 
 Model::Model(TRandom2* aRandom)
 : Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0),
+<<<<<<< HEAD
 Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
 mHyperCube(0.0),
 mRandom(aRandom)
+=======
+  Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
+  mHyperCube(0.0),
+  mRandom(aRandom)
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 {
   mName="";
   mHash="";
   mDescription="";
+<<<<<<< HEAD
   mSpectralFncs = new std::map<int, TF1*>;
   mSpectralFncIntegrals = new std::map<int, double>;
 
@@ -71,6 +88,12 @@ Model::~Model()
 {
   delete mSpectralFncs;
   delete mSpectralFncIntegrals;
+=======
+}
+
+Model::~Model()
+{
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 }
 
 void Model::AddParameterBranch(TTree* aTree)
@@ -140,6 +163,7 @@ void Model::CalculateHash(TString aPreHash) {
   mHash = tHash.GetValueHex();
   PRINT_DEBUG_1("<Model::Hash>\t"<<aPreHash.Data()<<" -> 0x"<<mHash);
 }
+<<<<<<< HEAD
 
 
 TH1F * p33() {
@@ -242,3 +266,5 @@ void Model::GetParticleMass(ParticleType *aPartType, bool finiteWidth, double &M
 }
 
 
+=======
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9

@@ -66,7 +66,11 @@ Model_KrakowSFO::~Model_KrakowSFO()
   delete mThermo;
 }
 
+<<<<<<< HEAD
 double Model_KrakowSFO::GetIntegrand(ParticleType* aPartType, bool)
+=======
+double Model_KrakowSFO::GetIntegrand(ParticleType* aPartType)
+>>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 {
   double dSigmaP, PdotU;
   double Spin, Statistics;

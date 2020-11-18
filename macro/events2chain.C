@@ -26,53 +26,47 @@
  *                                                                              *
  ********************************************************************************/
 
-#ifndef _TH2_STRUCT_EVENTS_H_
-  #define _TH2_STRUCT_EVENTS_H_
+#include <iostream>
+#include <cstdio>
+#include <TChain.h>
+#include "./../build/include/ParticleCoor.h"
+#include "./../build/include/StructEvent.h"
 
-#include <Rtypes.h>
+using namespace std;
 
-<<<<<<< HEAD
-#define _EVENTS_PER_FILE_ 50000
-=======
-#define _EVENTS_PER_FILE_ 500
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
-#define _EVENTS_TREE_   "events"
-#define _EVENTS_BRANCH_ "event"
-#define _EVENTS_FORMAT_ "eventid/i:entries:entriesprev"
-
-struct StructEvent
+TChain* events2chain(TString aEventDir, Int_t aEventFiles, ParticleCoor* aParticle, Int_t* aEvents)
 {
-  UInt_t eventID;
-  UInt_t entries;
-  UInt_t entriesprev;
-};
+// ##########################################################################
+// WHICH ROOT FILES TO READ
+// ##########################################################################
+  static StructEvent tStructEvents;
+  TChain* tChainParts = new TChain(_PARTICLES_TREE_);
+  TChain* tChainEvent = new TChain(_EVENTS_TREE_);
 
-#endif
+  tChainParts->SetBranchAddress(_PARTICLE_BRANCH_, aParticle);
+  tChainEvent->SetBranchAddress(_EVENTS_BRANCH_,   &tStructEvents);
+  
+  for(Int_t i=0; i<aEventFiles; i++) {
+    char Buff[100];
+    sprintf(Buff,"%sevent%03i.root",aEventDir.Data(),i);
+    cerr << "Adding file: " << Buff << endl;
+    tChainParts->Add(Buff);
+    tChainEvent->Add(Buff);
+  }
+  (*aEvents) = tChainEvent->GetEntries();
 
-/*! @file StructEvent.h
- * @brief Definition of StructEvent structure. Entry to the <b>events</b> TTree.
+  cerr << "Total number of events: " << (*aEvents) << endl;
+  return tChainParts;
+}
+
+/*! @file events2chain.C
+ * @brief ROOT macro with events2chain() function.
  */
-/*! @def _EVENTS_PER_FILE_
- * @brief Macro with the number of events stored per file.
- * 
- * @def _EVENTS_TREE_
- * @brief Macro with the name of the <a href="http://root.cern.ch/root/html/TTree.html">TTree</a> with event information.
- * 
- * @def _EVENTS_BRANCH_
- * @brief Macro with the name of a <a href="http://root.cern.ch/root/html/TBranch.html">TBranch</a> in the TTree with StructEvent.
- * 
- * @def _EVENTS_FORMAT_
- * @brief Macro with the format of StructEvent.
- */
-/*! @struct StructEvent
- * @brief Structure of the entry to the <b>events</b> TTree.
- * 
- * @var UInt_t StructEvent::eventID
- * @brief ID of the event, CRC-32
- * 
- * @var UInt_t StructEvent::entries
- * @brief number of particle entries in this event.
- * 
- * @var UInt_t StructEvent::entriesprev
- * @brief total number of previous particle entries.
+/*! @fn TChain* events2chain(TString aEventDir, Int_t aEventFiles, ParticleCoor* aParticle, Int_t* aEvents)
+ * @brief ROOT macro. Function adds a number of <b>eventXXX.root</b> files, links the given Particle_t object to the TChain.
+ * @param [in] aEventDir directory with event files
+ * @param [in] aEventFiles number of event files to add to TChain
+ * @param [out] aParticle pointer to ParticleCoor object  
+ * @param [out] aEvents total number of events added
+ * @retval TChain* pointer to TChain
  */
