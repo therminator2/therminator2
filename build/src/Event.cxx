@@ -37,10 +37,7 @@
 extern Configurator* sMainConfig;
 extern TString	sTimeStamp;
 extern int	sRandomize;
-<<<<<<< HEAD
 extern int	sSeed;
-=======
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 using namespace std;
 
@@ -56,15 +53,9 @@ Event::Event(ParticleDB* aDB, Integrator* aInteg)
 { 
   mRandom = new TRandom2();
 #ifdef _ROOT_4_
-<<<<<<< HEAD
   mRandom->SetSeed2(31851+sSeed, 14327);
 #else
   mRandom->SetSeed(31851+sSeed);
-=======
-  mRandom->SetSeed2(31851, 14327);
-#else
-  mRandom->SetSeed(31851);
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 #endif
   mMultiplicities.clear();
   mMultiplicities.resize(mPartDB->GetParticleTypeCount());
@@ -139,28 +130,17 @@ void Event::DecayParticles(int aSeed)
     tDecayer->Randomize();
   else
     tDecayer->SeedSet(aSeed);
-<<<<<<< HEAD
  
 
   tIter = mParticles.begin();
 // as new particles are added from decays the end() of the list moves until all particles had decayed
   while (tIter != mParticles.end()) {
-=======
-  
-  tIter = mParticles.begin();
-// as new particles are added from decays the end() of the list moves until all particles had decayed
-  do {
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
     tFatherType = tIter->GetParticleType();
     // if not stable or stable but has a decay table with at least one decay channel
     if((tFatherType->GetGamma() >= 0.0) && (tFatherType->GetTable()) && (tFatherType->GetTable()->GetChannelCount() + 1 > 0))
       tDecayer->DecayParticle( &(*tIter) );
     tIter++;
-<<<<<<< HEAD
   }
-=======
-  } while (tIter != mParticles.end());
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
   delete tDecayer;
 }
 

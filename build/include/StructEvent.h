@@ -31,11 +31,7 @@
 
 #include <Rtypes.h>
 
-<<<<<<< HEAD
 #define _EVENTS_PER_FILE_ 50000
-=======
-#define _EVENTS_PER_FILE_ 500
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 #define _EVENTS_TREE_   "events"
 #define _EVENTS_BRANCH_ "event"
 #define _EVENTS_FORMAT_ "eventid/i:entries:entriesprev"

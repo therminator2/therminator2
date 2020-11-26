@@ -35,14 +35,10 @@
 #include <TRandom2.h>
 #include "ParticleType.h"
 #include "Particle.h"
-<<<<<<< HEAD
 #include "ParticleDB.h"
 #include "StructModel.h"
 #include "TH1F.h"
 #include "TF1.h"
-=======
-#include "StructModel.h"
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 #define MODEL_PAR_DESC(_name_,_unit_)	setw(8)<<_name_<<" "<<setw(7)<<left<<_unit_<<setw(5)<<right<<"#"<<endl
 #define MODEL_NAME(_name_)		"# Model ("<<setw(2)<< sModel <<") "<<left<<setw(36)<<_name_<<right<<"#"<<endl
@@ -54,11 +50,7 @@ class Model
     Model(TRandom2* aRandom);
     virtual ~Model();
     
-<<<<<<< HEAD
     virtual double GetIntegrand(ParticleType* aPartType, bool) = 0;
-=======
-    virtual double GetIntegrand(ParticleType* aPartType) = 0; 
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
     virtual void   AddParameterBranch(TTree* aTree);
     
     void  	SetParticlePX(Particle* aParticle);
@@ -70,7 +62,6 @@ class Model
   protected:
     void	CreateEventSubDir();
     void	CalculateHash(TString aPreHash);
-<<<<<<< HEAD
 
     double CalcMass(ParticleType *, double &statWeigt);
     double CalcMassEBW(ParticleType *, double &statWeigt);
@@ -79,16 +70,12 @@ class Model
     void GetParticleMass(ParticleType *,bool finiteWidth, double &M, double &spectralFunctionWeight );
 
 
-=======
-    
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
     double	Xt, Xx, Xy, Xz;
     double	Pe, Px, Py, Pz;
     double	mHyperCube;
     TString	mHash;
     TString	mName;
     TString	mDescription;
-<<<<<<< HEAD
     TRandom2*	mRandom;
 
     std::map<int, TF1*> *mSpectralFncs;
@@ -96,9 +83,6 @@ class Model
     ParticleDB *mDB;
 
 
-=======
-    TRandom2*	mRandom;    
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 };
 
 #endif

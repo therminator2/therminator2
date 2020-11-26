@@ -66,11 +66,7 @@ Model_Example::~Model_Example()
   delete mThermo;
 }
 
-<<<<<<< HEAD
 double Model_Example::GetIntegrand(ParticleType* aPartType, bool)
-=======
-double Model_Example::GetIntegrand(ParticleType* aPartType)
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 {
   double Integrand, dSigmaP, PdotU, tStatistics;
   double Spin;

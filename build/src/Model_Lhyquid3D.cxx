@@ -57,11 +57,7 @@ Model_Lhyquid3D::~Model_Lhyquid3D()
 {
 }
 
-<<<<<<< HEAD
 double Model_Lhyquid3D::GetIntegrand(ParticleType* aPartType, bool)
-=======
-double Model_Lhyquid3D::GetIntegrand(ParticleType* aPartType)
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 {
   double dSigmaP;
   double Spin, Statistics;

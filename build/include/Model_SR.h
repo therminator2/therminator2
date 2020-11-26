@@ -44,6 +44,13 @@ class Model_SR
     void   AddParameterBranch(TTree* aTree);
     
   protected:
+      /*
+      double mRMax;
+    double mVR;  
+    double mh;
+    double mA0;
+    double mT0;
+    */
     double mR;
     double mA;  
     double mT0;

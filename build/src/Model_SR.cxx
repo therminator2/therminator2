@@ -82,9 +82,11 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
   Statistics = ( (Spin - static_cast<int>(Spin)) < 0.01 ? -1.0 : +1.0 );
   Temp	= mThermo->GetTemperature();
   Mu = mThermo->GetChemicalPotential(aPartType);
+//    mRandom->SetSeed(41321);
   
-  // generate random spatial position
+// generate random spatial position 
   R	    = mR * mRandom->Rndm();
+//  cout<<"thermonator R : "<<R<<"  mR  "<<mR<<endl;
   Phi	= 2.0 * Pi() * mRandom->Rndm();  
   Theta	= Pi() * mRandom->Rndm();  
     
@@ -92,6 +94,7 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
   {
     double Zet = mRandom->Rndm();
     P	= Zet / (1.0 - Zet);	// 0 <= p <= Infinity
+//    cout<<"Zeta : "<<Zet<<"   P  "<<P<<endl;
     dPdZet	= 1.0 / ( (1.0 - Zet) * (1.0 - Zet) );
   }
   PhiP	= 2.0 * Pi() * mRandom->Rndm(); 
@@ -104,22 +107,119 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
 //  finiteWidth = false;
   GetParticleMass(aPartType, finiteWidth,M,spectralFunctionWeight);
 
+  /*
+  // THIS IS PART OF THE CODE COPIED FROM RADEK
+  // generate invariant mass
+    double M;
+    double dMdEx;
+    double B; 
+    
+    if (strcmp(aPartType->GetName(),"Dl1232mnb")==0 ||
+    strcmp(aPartType->GetName(),"Dl1232zrb")==0 ||
+    strcmp(aPartType->GetName(),"Dl1232plb")==0 ||
+    strcmp(aPartType->GetName(),"Dl1232ppb")==0 ||
+    strcmp(aPartType->GetName(),"Dl1232min")==0 ||
+    strcmp(aPartType->GetName(),"Dl1232zer")==0 ||
+    strcmp(aPartType->GetName(),"Dl1232plu")==0 ||
+    strcmp(aPartType->GetName(),"Dl1232plp")==0){
+
+
+        // for Deltas use the phase-shift to calculate mass	
+		double Mth 		= 1.078;
+		double Alpha 	= 45.37;
+		double Mres 	= 1.2325;
+		double c1 		= 16.7;
+		double c2 		= 65.6;
+		double Mpi 		= 0.13957;
+		double Mn 		= 0.938272;
+	  
+		double  Ex = mRandom->Rndm();
+	        M	= Mth + Ex / (1.0 - Ex);        // Mth <= M <= Infinity
+	       // M = Mth + Ex*(1.73 - Mth); // to jest zeby obciac od gory
+		// i wtedy ustawic
+	       // dMdEx = 1.73;
+		   dMdEx	= 1.0 / ((1.0 - Ex) * (1.0 - Ex));
+		  // if(M > 1.73) return 0;
+
+		B   = (8*Alpha*pow(M,3)*sqrt(1 - pow(Mn - Mpi,2)/pow(M,2))*
+		 sqrt(1 - pow(Mn + Mpi,2)/pow(M,2))*
+		 (48*pow(M,4)*(pow(pow(Mn,2) - pow(Mpi,2),2) - 
+			  pow(M,2)*(pow(Mn,2) + pow(Mpi,2))) + 
+		   16*pow(M,2)*(pow(M,4) - 2*pow(pow(Mn,2) - pow(Mpi,2),2) + 
+			  pow(M,2)*(pow(Mn,2) + pow(Mpi,2)))*pow(Mres,2) + 
+		   c2*pow(M + Mn - Mpi,2)*pow(M - Mn + Mpi,2)*pow(-M + Mn + Mpi,2)*
+			pow(M + Mn + Mpi,2)*(2*pow(M,4) + 
+			  pow(pow(Mn,2) - pow(Mpi,2),2) + 
+			  (pow(Mn,2) + pow(Mpi,2))*pow(Mres,2) - 
+			  pow(M,2)*(3*(pow(Mn,2) + pow(Mpi,2)) + pow(Mres,2))) + 
+		   4*c1*(M - Mn - Mpi)*(M + Mn - Mpi)*(M - Mn + Mpi)*(M + Mn + Mpi)*
+			(pow(M,6) - 3*pow(M,4)*(pow(Mn,2) + pow(Mpi,2)) - 
+			  pow(pow(Mn,2) - pow(Mpi,2),2)*pow(Mres,2) + 
+			  pow(M,2)*(2*pow(pow(Mn,2) - pow(Mpi,2),2) + 
+				 (pow(Mn,2) + pow(Mpi,2))*pow(Mres,2)))))/
+	   (3.*pow(c2*pow(M,8) + c2*pow(pow(Mn,2) - pow(Mpi,2),4) +
+		   4*pow(M,6)*(c1 - c2*(pow(Mn,2) + pow(Mpi,2))) + 
+		   4*pow(M,2)*pow(pow(Mn,2) - pow(Mpi,2),2)*
+			(c1 - c2*(pow(Mn,2) + pow(Mpi,2))) + 
+		   pow(M,4)*(16 - 8*c1*(pow(Mn,2) + pow(Mpi,2)) + 
+			  c2*(6*pow(Mn,4) + 4*pow(Mn,2)*pow(Mpi,2) + 6*pow(Mpi,4))),
+		  2)*pow(M - Mres,2)*pow(M + Mres,2)*
+		 (1 + (pow(Alpha,2)*pow(M,4)*
+			  pow(1 - pow(Mn - Mpi,2)/pow(M,2),3)*
+			  pow(1 - pow(Mn + Mpi,2)/pow(M,2),3))/
+			(144.*pow(1 + ((M - Mn - Mpi)*(M + Mn - Mpi)*(M - Mn + Mpi)*
+				   (M + Mn + Mpi)*(4*c1*pow(M,2) + 
+					 c2*(M - Mn - Mpi)*(M + Mn - Mpi)*(M - Mn + Mpi)*
+					  (M + Mn + Mpi)))/(16.*pow(M,4)),2)*pow(M - Mres,2)*
+			 pow(M + Mres,2))));
+
+                B = B/3.14;
+  }else{
+		// use PDG pole mass otherwise
+		M  = aPartType->GetMass();
+		dMdEx = 1;
+		B  = 1;
+  }
+
+  */
+//  cout<<"aPartType : "<<aPartType<<endl;
+
 
   Ep	= Hypot(M,P);
-  kappa = Cos(Theta) * Cos(ThetaP) + Sin(Theta) * Sin(ThetaP) * Cos(Phi - PhiP);
+//     cout<<"M : "<<M<<"  P  "<<P<<"   Ep   "<<Ep<<endl;
+   kappa = Cos(Theta) * Cos(ThetaP) + Sin(Theta) * Sin(ThetaP) * Cos(Phi - PhiP); 
 
+
+//   Float_t tVR = 0.5;  // TO JEST TYLKO TO TESTU NA STALY PRZYEPLYW !!!!
+   // 0.4 to jest srednia z SR z Hubblem
+   // 0.6 to najlepsza z fitu do protonow, wtedy mamy zwis
   Float_t tVR = TanH(mH * R);
 
+  // invariants
+  // Our version for UdotP -->
+  //double  UdotP	  = 1.0 / Sqrt(1 - tVR * tVR) * (Ep - P * tVR * kappa);
   double Lgamma     = CosH(mH * R);
+  // RR version for UdotP -->
   double UdotP      = (Ep - P * tVR * kappa) * Lgamma;
-  dSIGMAdotP = R*R * Sin(Theta) * (Ep - P * mA * kappa);
-
-  // disable particle emission back to the hydro region
-  if(dSIGMAdotP < 0.0) dSIGMAdotP = 0.0;
-
-  // particle X and P coordinates - required to be initiated
+  // SZYMEK POPATRZ TUTAJ, to mA czytane jest z pliku SR.ini
+  // jego wartosc wynosci 0.5. Radek uzywa przy wyliczaniu tego dSIGMAdotP
+  // mA a my uzywalismy tVR, tak samo jak we w przypadku UdotP
+  // i nie jestem pewna ktora wersja jest poprawna
+  // no i jeszcze jedno moje pytanie, czy nasz i Radka definicja na UdotP
+  // sa rownowazne, bo czy cosH(mH*R) =  1.0 / Sqrt(1 - tVR * tVR)
+  // GG changed according to RR tVR --> mA
+    // nasza impletemncja dSIGMAdotP
+  //  dSIGMAdotP = R*R * Sin(Theta) * (Ep - P * tVR * kappa);
+    // Radka impletemncja dSIGMAdotP
+    dSIGMAdotP = R*R * Sin(Theta) * (Ep - P * mA * kappa);
+  
+// disable particle emission back to the hydro region
+  if(dSIGMAdotP < 0.0) 
+    dSIGMAdotP = 0.0;
+//  cout<<"mA0: "<<mA0<<" mh : "<<mh<<endl;
+// particle X and P coordinates - required to be initiated
   Xt = mT0 + mA * R;
-
+//  Xt = mT0 + tVR * R; /// ta linijka byla chyba zanim dodalismy Hubbla
   Xx = R * Cos(Phi) * Sin(Theta);
   Xy = R * Sin(Phi) * Sin(Theta);
   Xz = R * Cos(Theta);
@@ -143,6 +243,7 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
   Pz = Pz0;
   Pe = Ekin;
 
+
   double fugacity 
       = Power(mThermo->GetGammaQ(),  aPartType->GetNumberQ() + aPartType->GetNumberAQ())
       * Power(mThermo->GetGammaS(),  aPartType->GetNumberS() + aPartType->GetNumberAS())
@@ -150,21 +251,37 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
   double invFugacity = 1. / fugacity;
 
   int pdg = aPartType->GetPDGCode();
-  //Statistics=0; // set to 0, not to have Bose-Einstein
+  //Statistics=0; // to jest jak chcemy Bosego sie pozbyc ...
+
+
+// to sa linijki od Radka
 
   double T          = mThermo->GetTemperature();
+//  double Mu         = mThermo->GetChemicalPotential(aPartType);
   double Upsilon    = pow(mGammaS, aPartType->GetNumberS()+ aPartType->GetNumberAS()) * Exp(Mu/T);
   double DP = P * P * Sin(ThetaP) * dPdZet / Ep;
   double F  = (Gs / kTwoPi3) / (Exp(UdotP/T)/Upsilon  + Statistics);
+//  Integrand = dMdEx * B * DP * dSIGMAdotP * F;
+
+  // to jest jak mamy nasza implementacje POKEMONA
+
+//  Integrand = (Gs / (Ep * kTwoPi3)) * dSIGMAdotP / (invFugacity * Exp(UdotP/ T)  + Statistics) * P*P * dPdZet * Sin(ThetaP);
 
   Integrand = F * DP *dSIGMAdotP;
 
+
+  //  cout<<Gs <<"  "<< Ep <<"  "<< kTwoPi3<<"  "<< dSIGMAdotP <<"  "<<invFugacity <<"  "<<UdotP<<"  "<< Temp<<"  "<<  Statistics<<"  "<< P<<"  "<<P <<"  "<< dPdZet <<"  "<< Sin(ThetaP)<<endl;
+//  cout<<" integrant  "<<Integrand<< endl;
+
   if (false) {
+ // if (TString(aPartType->GetName()).Contains("Ka0492plu")) {
+ // if (TString(aPartType->GetName()).Contains("pi0139plu")) {
     cout << fugacity << "\t" << Integrand << "\t" << mThermo->GetChemicalPotential(aPartType) << "\t"
          << UdotP << "\t" << Exp(UdotP/Temp) << "\t"
          << Power(mThermo->GetGammaS(),  aPartType->GetNumberS() + aPartType->GetNumberAS()) << "\t"
          << mThermo->GetGammaS() << "\t" << aPartType->GetNumberS() << "\t" << aPartType->GetNumberAS() << endl;
   }
+// integrand
   return  Integrand;
   }
 
@@ -178,6 +295,14 @@ void Model_SR::Description()
   oss << "# - Hubble velocity        : " <<MODEL_PAR_DESC(mH,		"[c]");
   oss << "# - hypersurface slope (A) : " <<MODEL_PAR_DESC(mA,		"[1]");
   oss << "# - gamma_S                : " <<MODEL_PAR_DESC(mGammaS,		"[1]");
+  /*
+  oss << "# - freeze-out Cart. time  : " <<MODEL_PAR_DESC(mT0   * kHbarC,	"[fm]");
+  oss << "# - radial size            : " <<MODEL_PAR_DESC(mRMax   * kHbarC,	"[fm]");
+  oss << "# - radial velocity        : " <<MODEL_PAR_DESC(mVR,		"[c]");
+  oss << "# - h const for Hubble expansion : " <<MODEL_PAR_DESC(mh, "");
+  oss << "# - A const freeze-out geom : " <<MODEL_PAR_DESC(mA0, "");
+  oss << "# - radial velocity        : " <<MODEL_PAR_DESC(mVR,		"[c]");
+  */
   oss << "# - freeze-out temperature : " <<MODEL_PAR_DESC(mThermo->GetTemperature() * 1000.0,	"[MeV]");
   if ((mThermo->GetChemistryType() == 0) || (mThermo->GetChemistryType() == 1)) 
   {
@@ -207,7 +332,13 @@ void Model_SR::Description()
 void Model_SR::AddParameterBranch(TTree* aTree)  
 {
   Model_t_SR tPar;
-
+  /*
+  tPar.T0        = mT0  * kHbarC;
+  tPar.RMax      = mRMax  * kHbarC;
+  tPar.VR        = mVR;
+  tPar.h         = mh;
+  tPar.A0        = mA0;
+  */
   tPar.T0        = mT0  * kHbarC;
   tPar.R         = mR   * kHbarC;
   tPar.H         = mH;
@@ -245,6 +376,12 @@ void Model_SR::ReadParameters()
   
   try {
     mT0  	 = tModelParam->GetParameter("T0").Atof() / kHbarC;		// [GeV^-1]
+    /*
+    mRMax	 = tModelParam->GetParameter("RMax").Atof() / kHbarC;		// [GeV^-1]
+    mVR		 = tModelParam->GetParameter("VR").Atof();			// [c]
+    mh		 = tModelParam->GetParameter("h").Atof();			//
+    mA0		 = tModelParam->GetParameter("A0").Atof();
+    */
     mR    	 = tModelParam->GetParameter("R").Atof() / kHbarC;		// [GeV^-1]
     mH		 = tModelParam->GetParameter("H").Atof();			// [1]
     mA		 = tModelParam->GetParameter("A").Atof();			// [1]

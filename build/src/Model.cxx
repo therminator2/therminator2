@@ -33,10 +33,7 @@
 #include "THGlobal.h"
 
 using namespace std;
-<<<<<<< HEAD
 using namespace TMath;
-=======
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 extern Configurator *sMainConfig;
 extern TString	sEventDIR;
@@ -45,19 +42,12 @@ extern int	sIntegrateSample;
 extern int	sRandomize;
 
 Model::Model()
-<<<<<<< HEAD
     : Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0),
     Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
     mHyperCube(0.0),
     mRandom(0),
     mSpectralFncs(0), mSpectralFncIntegrals(0),
     mDB(0)
-=======
-: Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0),
-  Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
-  mHyperCube(0.0),
-  mRandom(0)
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 {
   mName="";
   mHash="";
@@ -66,20 +56,13 @@ Model::Model()
 
 Model::Model(TRandom2* aRandom)
 : Xt(0.0), Xx(0.0), Xy(0.0), Xz(0.0),
-<<<<<<< HEAD
 Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
 mHyperCube(0.0),
 mRandom(aRandom)
-=======
-  Pe(0.0), Px(0.0), Py(0.0), Pz(0.0),
-  mHyperCube(0.0),
-  mRandom(aRandom)
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 {
   mName="";
   mHash="";
   mDescription="";
-<<<<<<< HEAD
   mSpectralFncs = new std::map<int, TF1*>;
   mSpectralFncIntegrals = new std::map<int, double>;
 
@@ -88,12 +71,6 @@ Model::~Model()
 {
   delete mSpectralFncs;
   delete mSpectralFncIntegrals;
-=======
-}
-
-Model::~Model()
-{
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 }
 
 void Model::AddParameterBranch(TTree* aTree)
@@ -163,13 +140,43 @@ void Model::CalculateHash(TString aPreHash) {
   mHash = tHash.GetValueHex();
   PRINT_DEBUG_1("<Model::Hash>\t"<<aPreHash.Data()<<" -> 0x"<<mHash);
 }
-<<<<<<< HEAD
 
 
 TH1F * p33() {
 
     static bool create = true;
 
+    // this is from PML eBW (from his data33 column marked as A)
+    static Double_t y4[] = {
+
+	0.000335537, 0.00200371, 0.00464069, 0.00821601,
+	0.0127918, 0.0184775, 0.0254215, 0.0338109, 0.0438759,
+	0.0558947, 0.0702011, 0.0871924, 0.107337, 0.13118,
+	0.159347, 0.192535, 0.231494, 0.276977, 0.329664,
+	0.390015, 0.458079, 0.533225, 0.613851, 0.697139,
+	0.778991, 0.854333, 0.917805, 0.964779, 0.992344,
+	0.999881, 0.988991, 0.962874, 0.925482, 0.880741,
+	0.832059, 0.782097, 0.732765, 0.685319, 0.640506,
+	0.598705, 0.56004, 0.524474, 0.49187, 0.462039,
+	0.434765, 0.40983, 0.387017, 0.366124, 0.346964,
+	0.329365, 0.313172, 0.298246, 0.284462, 0.271709,
+	0.259888, 0.24891, 0.238697, 0.229178, 0.220292,
+	0.21198, 0.204195, 0.19689, 0.190026, 0.183567,
+	0.177479, 0.171733, 0.166303, 0.161166, 0.156298,
+	0.151681, 0.147296, 0.143128, 0.13916, 0.13538,
+	0.131776, 0.128334, 0.125046, 0.121902, 0.118892,
+	0.116009, 0.113244, 0.110591, 0.108044, 0.105596,
+	0.103243, 0.100977, 0.0987961, 0.0966944, 0.094668,
+	0.092713, 0.0908259, 0.0890032, 0.0872417, 0.0855385,
+	0.0838908, 0.0822961, 0.0807517, 0.0792555, 0.0778053,
+	0.076399, 0.0750347, 0.0737106, 0.0724249, 0.0711761,
+	0.0699626, 0.0687831, 0.067636, 0.0665201, 0.0654342,
+	0.0643771, 0.0633477, 0.062345, 0.0613679, 0.0604156,
+	0.059487, 0.0585814, 0.0576979, 0.0568357, 0.0559942,
+	0.0551725, 0.05437, 0.0535861, 0.0528202, 0.0520716,
+	0.0513397, 0.0506241, 0.0499242, 0.0492396, 0.0485696,
+	0.047914, 0.0472722, 0.0466439, 0.0460285, 0.0454259
+    } ;
     // original from PML
     static Double_t y5[] = {
         0.487868830660434  ,  0.974036309173992  ,   1.48796409314226  ,   1.88297294151952  ,   2.28387966214487  ,   2.69710433117348  ,   3.06126905224752  ,   3.48369820687455  ,   3.94681509541577  ,   4.40057706566204  ,
@@ -189,14 +196,17 @@ TH1F * p33() {
     };
 
     static TH1F *h5 = new TH1F("hBform","B(m)",134,1.078,1.743); // PML paper
+    static TH1F *h4 = new TH1F("hV","V(m)",134,1.073,1.748); // vova
 
     if (create) {
         for (int b = 1; b <= h5->GetNbinsX(); ++b) {
             h5->SetBinContent(b,y5[b-1]);
+            h4->SetBinContent(b,y4[b-1]);
         }
         create = false;
     }
 
+//    return h4;  // eBW
     return h5;   // PML
 
 }
@@ -266,5 +276,3 @@ void Model::GetParticleMass(ParticleType *aPartType, bool finiteWidth, double &M
 }
 
 
-=======
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9

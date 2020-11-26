@@ -66,11 +66,7 @@ Model_BlastWave::~Model_BlastWave()
   delete mThermo;
 }
 
-<<<<<<< HEAD
 double Model_BlastWave::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
-=======
-double Model_BlastWave::GetIntegrand(ParticleType* aPartType)
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 {
   double dSigmaP, PdotU;
   double Spin, Statistics;
@@ -94,7 +90,6 @@ double Model_BlastWave::GetIntegrand(ParticleType* aPartType)
   }
   PhiP	= 2.0 * Pi() * mRandom->Rndm();
   RapP	= mRapPRange * mRandom->Rndm() - 0.5 * mRapPRange;
-<<<<<<< HEAD
 
   double spectralFunctionWeight;
   double M;
@@ -103,9 +98,6 @@ double Model_BlastWave::GetIntegrand(ParticleType* aPartType)
 
 //  Mt	= Hypot(aPartType->GetMass(), Pt);
   Mt	= Hypot(M, Pt);
-=======
-  Mt	= Hypot(aPartType->GetMass(), Pt);
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 // Invariants
   PdotU	  = 1.0 / Sqrt(1 - mVt * mVt) * (Mt * CosH(RapS - RapP) - mVt * Pt * Cos(PhiS - PhiP));
   dSigmaP = Tau * Rho * Mt * CosH(RapS - RapP);

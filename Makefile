@@ -63,11 +63,7 @@ F_PACK      = therminator2_$(TH2_VERSION).tar.gz
 # file lists
 # THERM2_EVENTS
 BIN_EVENTS  = therm2_events
-<<<<<<< HEAD
 HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx Event.cxx Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_BlastWave.cxx Model_BWA.cxx Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Model_SR.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx Vector3D.cxx
-=======
-HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx Event.cxx Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_BlastWave.cxx Model_BWA.cxx Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx Vector3D.cxx
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 SRC_EVENTS  = $(HSRC_EVENTS:%=$(DIR_CXX)%) $(BIN_EVENTS:%=$(DIR_CXX)%.cxx)
 OBJ_EVENTS  = $(SRC_EVENTS:$(DIR_CXX)%.cxx=$(DIR_OBJ)%.o)
 # THERM2_FEMTO
@@ -101,19 +97,11 @@ ifdef DISABLE_TWO_BODY_DECAYS
   PREPROCESS  := $(PREPROCESS) -D_PARTICLE_DECAYER_DISABLE_TWO_BODY_DECAYS_=$(DISABLE_TWO_BODY_DECAYS)
 endif
 
-<<<<<<< HEAD
 # compilation 
 CXX         = g++
 LD          = g++
 CXXFLAGS    = -O3 -g -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
 LFLAGS      = -Wl,--no-as-needed -lm -lgcc -g `root-config --libs`
-=======
-# compilation
-CXX         = g++
-LD          = g++
-CXXFLAGS    = -O0 -g -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
-LFLAGS      = -lm -lgcc -g `root-config --libs`
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 #################################################################################
 # RULES                                                                         #
@@ -128,7 +116,6 @@ all: $(BIN_EVENTS:%=$(DIR_OBJ)%) $(BIN_FEMTO:%=$(DIR_OBJ)%) $(BIN_HBTFIT:%=$(DIR
 
 $(DIR_OBJ)therm2_events: $(OBJ_EVENTS)
 	echo "Linking:   $@ ($(LD))"
-<<<<<<< HEAD
 	$(LD) $^ -o $@ $(LFLAGS)
 
 $(DIR_OBJ)therm2_femto: $(OBJ_FEMTO)
@@ -138,17 +125,6 @@ $(DIR_OBJ)therm2_femto: $(OBJ_FEMTO)
 $(DIR_OBJ)therm2_hbtfit: $(OBJ_HBTFIT)
 	echo "Linking:   $@ ($(LD))"
 	$(LD) $^ -o $@ $(LFLAGS)
-=======
-	$(LD) $(LFLAGS) $^ -o $@
-
-$(DIR_OBJ)therm2_femto: $(OBJ_FEMTO)
-	echo "Linking:   $@ ($(LD))"
-	$(LD) $(LFLAGS) $^ -o $@
-
-$(DIR_OBJ)therm2_hbtfit: $(OBJ_HBTFIT)
-	echo "Linking:   $@ ($(LD))"
-	$(LD) $(LFLAGS) $^ -o $@
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 $(DIR_OBJ)%.o: %.cxx
 	@[ -d $(DIR_OBJ) ] || mkdir -p $(DIR_OBJ)
@@ -190,8 +166,4 @@ cleandoc:
 help:
 	@grep -h "^#help" $(MAKEFILE_LIST) | sed 's|\#help||'
 
-<<<<<<< HEAD
 .SILENT :
-=======
-.SILENT :
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9

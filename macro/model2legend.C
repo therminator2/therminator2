@@ -31,11 +31,7 @@
 #include <TLegend.h>
 #include <TChain.h>
 #include <TString.h>
-<<<<<<< HEAD
 #include "/u/sudol/theory/therminator2_HADES_seed//build/include/StructModel.h"
-=======
-#include "./../build/include/StructModel.h"
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 using namespace std;
 
@@ -65,7 +61,6 @@ void model2legend(TString aEventDir, Int_t aEventFiles, TLegend* aLegend)
   tChain->SetBranchAddress(_MODELDESCRIPTION_BRANCH_,	tModelDescription);
   tChain->GetEntry(0);
 
-<<<<<<< HEAD
   sprintf(Buff,"%s", tModelName);
   aLegend->SetHeader(Buff);
   switch (tModelID) {
@@ -282,10 +277,6 @@ void model2legendBatch(TString aEventDir, Int_t aEventDirs, Int_t aEventFiles, T
 
   sprintf(Buff,"%s", tModelName);
   aLegend->SetHeader(Buff);
-=======
-  sprintf(Buff,"%s", tModelName); aLegend->SetHeader(Buff);
-
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
   switch (tModelID) {
 // HYDRO INSPIRED
   case 0: {
@@ -311,7 +302,6 @@ void model2legendBatch(TString aEventDir, Int_t aEventDirs, Int_t aEventFiles, T
     }
     break;
   }
-<<<<<<< HEAD
   case 1:
   case 12:
   case 13:
@@ -325,9 +315,6 @@ void model2legendBatch(TString aEventDir, Int_t aEventDirs, Int_t aEventFiles, T
 
   //        cout<<"kuku"<<endl;
 
-=======
-  case 1: {
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
     Model_t_BlastWave tPar;
     tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
     tChain->GetEntry(0);
@@ -445,7 +432,6 @@ void model2legendBatch(TString aEventDir, Int_t aEventDirs, Int_t aEventFiles, T
     sprintf(Buff,"%s %s",	tPar.DeviceName,tPar.CollidingSystem);	aLegend->AddEntry("",Buff,""); 
     break;
   }
-<<<<<<< HEAD
   case 99: {
     Model_t_SR tPar;
     tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
@@ -469,8 +455,6 @@ void model2legendBatch(TString aEventDir, Int_t aEventDirs, Int_t aEventFiles, T
     break;
   }
 
-=======
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
   default:
     cerr << "Unable to write Model parameter - unknown model type.";
   };

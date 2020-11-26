@@ -40,29 +40,20 @@
 #include "Model_BWA.h"
 #include "Model_Lhyquid3D.h"
 #include "Model_Lhyquid2DBI.h"
-<<<<<<< HEAD
 #include "Model_SR.h"
-=======
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 /**********************************************************************************************
  * // [2] Include your Model_* class header file
  * #include "Model_Example.h"
  **********************************************************************************************/
 
 using namespace std;
-<<<<<<< HEAD
 using namespace TMath;
-=======
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 extern void     AddLogEntry(const char* aEntry);
 extern void     CopyINIFile();
 extern TString  sEventDIR;
 extern int      sModel;
-<<<<<<< HEAD
 extern int      sSeed;
-=======
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
 Integrator::Integrator()
 : mNSamples(0), mRandom(0), mFOModel(0)
@@ -74,15 +65,9 @@ Integrator::Integrator(int aNSamples)
 { 
   mRandom = new TRandom2();
 #ifdef _ROOT_4_
-<<<<<<< HEAD
   mRandom->SetSeed2(41321 + sSeed, 8457);
 #else
   mRandom->SetSeed(41321 + sSeed);
-=======
-  mRandom->SetSeed2(41321, 8457);
-#else
-  mRandom->SetSeed(41321);
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 #endif
 
   switch (sModel) {
@@ -107,13 +92,10 @@ Integrator::Integrator(int aNSamples)
     case 11:
       mFOModel = new Model_Lhyquid2DBI(mRandom);
       break;
-<<<<<<< HEAD
  // USER DEFINED
     case 99:
       mFOModel = new Model_SR(mRandom);
       break;
-=======
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 /**********************************************************************************************
  * // [3] add a case for your Model_*
  * case 99:
@@ -142,7 +124,6 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount, list
   double   tVal;
   double   tValTest;
   Particle* tParticle; 
-<<<<<<< HEAD
 
   int pdg = aPartType->GetPDGCode();
   
@@ -152,29 +133,22 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount, list
     tVal      = mFOModel->GetIntegrand(aPartType,true);
     tValTest  = mRandom->Rndm() * tFMax;
 
+ //   cout<<pdg<<"  tFMax : "<<tFMax<<"  tVal : "<<tVal<<"  tValTest : "<<tValTest<<" tIter :  "<<tIter<<"  aPartCount :  "<<aPartCount<<endl;
     if (tValTest<tVal) {
+    //    cout<<"przeszedl test !!!"<<endl;
 	tParticle = new Particle(aPartType);
 	mFOModel->SetParticlePX(tParticle);
 
+//	Float_t masa = sqrt(pow(tParticle->e,2) - pow(tParticle->px,2) - pow(tParticle->py,2) - pow(tParticle->pz,2));
+//	if (Abs(pdg) == 2224 || Abs(pdg) == 2214 || Abs(pdg) == 2114 || Abs(pdg) == 1114)  cout<<"masa delty : "<<masa<<"  ";
 	aParticles->push_back(*tParticle);
 	tIter++;
 	delete tParticle;
-=======
-  
-  PRINT_DEBUG_3("Integrator::GenerateParticles\t "<< aPartType->GetName() <<" B:"<< aPartType->GetBarionN() <<" I3:"<< aPartType->GetI3() <<" S:"<< aPartType->GetStrangeN()<<" C:"<< aPartType->GetCharmN());
-  tFMax = aPartType->GetMaxIntegrand();  
-  while (tIter < aPartCount) {
-    tVal      = mFOModel->GetIntegrand(aPartType);
-    tValTest  = mRandom->Rndm() * tFMax;
-    if (tValTest<tVal) {
-      tParticle = new Particle(aPartType);
-      mFOModel->SetParticlePX(tParticle);
-      aParticles->push_back(*tParticle);
-      tIter++;
-      delete tParticle;
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
     }
+//    cout<<"przeszedl test"<<endl;
   }
+//    cout<<"przeszedl test 2 "<<endl;
+
 }
 
 void Integrator::SetMultiplicities(ParticleDB *aDB)
@@ -261,8 +235,8 @@ double Integrator::Integrate(ParticleType* aPartType)
   
   tMaxInt = 0.0;
   tMulti  = 0.0;
-<<<<<<< HEAD
 
+//  mRandom->SetSeed(41321);
 
   if (strcmp(aPartType->GetName(),"Dl1232mnb")==0 ||
       strcmp(aPartType->GetName(),"Dl1232zrb")==0 ||
@@ -299,17 +273,6 @@ double Integrator::Integrate(ParticleType* aPartType)
       aPartType->SetMaxIntegrand(tMaxInt);
       aPartType->SetMultiplicity(tMulti);
   }
-=======
-  for (tIter = 0; tIter < mNSamples; tIter++) {
-    tVal = mFOModel->GetIntegrand(aPartType);
-    if (tVal>tMaxInt)
-      tMaxInt = tVal;
-    tMulti += tVal;
-  }
-  tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * mNSamples); 
-  aPartType->SetMaxIntegrand(tMaxInt);
-  aPartType->SetMultiplicity(tMulti);
->>>>>>> 6eef3d1fc1f3ac17aedbca11e4a34ae9c4017af9
 
   return tMulti;
 }
