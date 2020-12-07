@@ -34,37 +34,27 @@
 #include <TString.h>
 #include "ParticleDB.h"
 #include "Integrator.h"
+#include "AbstractEventSaver.h"
 #include "Event.h"
 
 class EventGenerator {
   public:
     EventGenerator();
-    EventGenerator(ParticleDB* aDB);
+    EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES);
     ~EventGenerator();
 
     void   GenerateEvents();
-    void   SetEventsTemp();
 
   private:
-    void FindPreviousEventFiles();
     void ReadParameters();  
     void SaveEvent();
-    void SaveAsRoot();
-    void SaveAsText();
 
-    ParticleDB*	mDB;
-    Integrator*	mInteg;
-    Event*	mEvent;
-    TTree*	mParameterTree;
-    TTree*	mEventTree;
-    TTree*	mParticleTree;
-    TFile*	mFile;
-    int		mFileCounter;
-    int		mEventCounter;
-    int		mNumberOfEvents;
-    int		mEventExportType;
-    
-    const int   kEventsPerFile;
+    AbstractEventSaver* mEventSaver;
+    ParticleDB*	        mDB;
+    Integrator*	        mInteg;
+    Event*      	mEvent;
+    int		        mEventCounter;
+    int		        mNumberOfEvents;
 };
 
 #endif

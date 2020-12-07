@@ -42,6 +42,8 @@ DIR_EVENTS  = $(DIR_MAIN)events/
 DIR_FOMODEL = $(DIR_MAIN)fomodel/
 DIR_MACRO   = $(DIR_MAIN)macro/
 DIR_SHARE   = $(DIR_MAIN)share/
+# DIR_UNIGEN  = ${HOME}/unigen/v2.1/
+$(info DIR_UNIGEN is $(DIR_UNIGEN))
 
 # search paths
 vpath %.h   $(DIR_H)
@@ -63,7 +65,10 @@ F_PACK      = therminator2_$(TH2_VERSION).tar.gz
 # file lists
 # THERM2_EVENTS
 BIN_EVENTS  = therm2_events
-HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx Event.cxx Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_BlastWave.cxx Model_BWA.cxx Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Model_SR.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx Vector3D.cxx
+HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx Event.cxx Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_SR.cxx Model_BlastWave.cxx Model_BWA.cxx Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx
+ifdef DIR_UNIGEN
+HSRC_EVENTS += UnigenEventSaver.cxx
+endif
 SRC_EVENTS  = $(HSRC_EVENTS:%=$(DIR_CXX)%) $(BIN_EVENTS:%=$(DIR_CXX)%.cxx)
 OBJ_EVENTS  = $(SRC_EVENTS:$(DIR_CXX)%.cxx=$(DIR_OBJ)%.o)
 # THERM2_FEMTO
@@ -97,12 +102,15 @@ ifdef DISABLE_TWO_BODY_DECAYS
   PREPROCESS  := $(PREPROCESS) -D_PARTICLE_DECAYER_DISABLE_TWO_BODY_DECAYS_=$(DISABLE_TWO_BODY_DECAYS)
 endif
 
-# compilation 
+# compilation
 CXX         = g++
 LD          = g++
-CXXFLAGS    = -O3 -g -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
-LFLAGS      = -Wl,--no-as-needed -lm -lgcc -g `root-config --libs`
-
+CXXFLAGS    = -O0 -g -std=c++11 -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
+LFLAGS      = -lm -lgcc -g `root-config --libs`
+ifdef DIR_UNIGEN
+CXXFLAGS    += -I $(DIR_UNIGEN)/base/include
+LFLAGS      += -L $(DIR_UNIGEN)/lib -lUniGen
+endif
 #################################################################################
 # RULES                                                                         #
 #################################################################################
@@ -116,15 +124,15 @@ all: $(BIN_EVENTS:%=$(DIR_OBJ)%) $(BIN_FEMTO:%=$(DIR_OBJ)%) $(BIN_HBTFIT:%=$(DIR
 
 $(DIR_OBJ)therm2_events: $(OBJ_EVENTS)
 	echo "Linking:   $@ ($(LD))"
-	$(LD) $^ -o $@ $(LFLAGS)
+	$(LD) $(LFLAGS) $^ -o $@
 
 $(DIR_OBJ)therm2_femto: $(OBJ_FEMTO)
 	echo "Linking:   $@ ($(LD))"
-	$(LD) $^ -o $@ $(LFLAGS)
+	$(LD) $(LFLAGS) $^ -o $@
 
 $(DIR_OBJ)therm2_hbtfit: $(OBJ_HBTFIT)
 	echo "Linking:   $@ ($(LD))"
-	$(LD) $^ -o $@ $(LFLAGS)
+	$(LD) $(LFLAGS) $^ -o $@
 
 $(DIR_OBJ)%.o: %.cxx
 	@[ -d $(DIR_OBJ) ] || mkdir -p $(DIR_OBJ)

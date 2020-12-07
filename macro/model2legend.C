@@ -222,11 +222,11 @@ void model2legend(TString aEventDir, Int_t aEventFiles, TLegend* aLegend)
     Model_t_SR tPar;
     tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
     tChain->GetEntry(0);
-    sprintf(Buff,"#rho_{max}= %g [fm]",	        tPar.RMax);	aLegend->AddEntry("",Buff,"");
+//    sprintf(Buff,"#rho_{max}= %g [fm]",	        tPar.RMax);	aLegend->AddEntry("",Buff,"");
     sprintf(Buff,"#tau_{C}    = %g [fm]",	tPar.T0);	aLegend->AddEntry("",Buff,"");
     sprintf(Buff,"T     = %g [MeV]",	        tPar.Temp);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"A0     = %g ",	        tPar.A0);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"v_{T}    = %g [c]",		tPar.VR);	aLegend->AddEntry("",Buff,"");
+    sprintf(Buff,"A     = %g ",	        tPar.A);	aLegend->AddEntry("",Buff,"");
+    sprintf(Buff,"H_{T}    = %g [1/fm]",	tPar.H/0.197);	aLegend->AddEntry("",Buff,"");
     if(tPar.MuB!=0.0){sprintf(Buff,"#mu_{B}    = %g [Mev]",	tPar.MuB);	aLegend->AddEntry("",Buff,"");}
     if(tPar.MuI!=0.0){sprintf(Buff,"#mu_{I_{3}}    = %g [Mev]",	tPar.MuI);	aLegend->AddEntry("",Buff,"");}
     if(tPar.MuS!=0.0){sprintf(Buff,"#mu_{S}    = %g [Mev]",	tPar.MuS);	aLegend->AddEntry("",Buff,"");}
@@ -437,8 +437,8 @@ void model2legendBatch(TString aEventDir, Int_t aEventDirs, Int_t aEventFiles, T
     tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
     tChain->GetEntry(0);
     sprintf(Buff,"#tau_{C}    = %g [fm]",	tPar.T0);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#rho_{max}= %g [fm]",	        tPar.RMax);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"v_{T}    = %g [c]",		tPar.VR);	aLegend->AddEntry("",Buff,"");
+//    sprintf(Buff,"#rho_{max}= %g [fm]",	        tPar.R);	aLegend->AddEntry("",Buff,"");
+    sprintf(Buff,"H    = %g [1/fm]",		tPar.H/0.197);	aLegend->AddEntry("",Buff,"");
 //    sprintf(Buff,"h     = %g ",	        tPar.h);	aLegend->AddEntry("",Buff,"");
 //    sprintf(Buff,"A0     = %g ",	        tPar.A0);	aLegend->AddEntry("",Buff,"");
     sprintf(Buff,"T     = %g [MeV]",	        tPar.Temp);	aLegend->AddEntry("",Buff,"");
