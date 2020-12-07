@@ -17,7 +17,7 @@ Szymon Harabasz, Wojciech Florkowski, Tetyana Galatyuk, Malgorzata Gumberidze, R
 The model is switched on by selecting `SR` (standing for Siemens-Rasmussen) in the file `events.ini`, the freeze-out parameters are set in the file `fomodel/SR.ini`.
 
 ###### New output format compatible with UNIGEN
-It is now possible to save the generated events in the (UNIGEN)[https://www.gsi.de/work/wissenschaftliche_netzwerke/helmholtz_virtuelle_institute/unigen.htm] format. This is a ROOT-based binary format, widely used for lower-energy heavy-ion collisions. The advantages:
+It is now possible to save the generated events in the [UNIGEN](https://www.gsi.de/work/wissenschaftliche_netzwerke/helmholtz_virtuelle_institute/unigen.htm) format. This is a ROOT-based binary format, widely used for lower-energy heavy-ion collisions. The advantages:
 * Thanks to the common format, the very same analysis scripts can be used as for the outputs from other models
 * In constrast to the standard THERMINATOR output format, in UNIGEN each event has direct access to the list of produced particles, which makes analysis of correlations easier.
 
