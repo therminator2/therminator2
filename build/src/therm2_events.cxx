@@ -36,7 +36,7 @@
 #include "EventGenerator.h"
 #include "RootEventSaver.h"
 #include "TextEventSaver.h"
-#ifdef DIR_UNIGEN
+#ifdef USE_UNIGEN
 #include "UnigenEventSaver.h"
 #endif
 #include "CollectionEventSaver.h"
@@ -121,7 +121,7 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
   tEventExportType = 0;
   if (tExportType.Contains("root"))   tEventExportType |= 1;
   if (tExportType.Contains("text"))   tEventExportType |= 2;
-#ifdef DIR_UNIGEN
+#ifdef USE_UNIGEN
   if (tExportType.Contains("unigen")) tEventExportType |= 4;
 #endif
 
@@ -130,14 +130,14 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
 	     break;
     case 2 : tEventSaver = new TextEventSaver; 
 	     break;
-#ifdef DIR_UNIGEN
-    case 4 : tEventSaver = new UnigenEventSaver; 
+#ifdef USE_UNIGEN
+    case 4 : tEventSaver = new UnigenEventSaver;
 	     break;
 #endif
     default : CollectionEventSaver *es = new CollectionEventSaver;
               if (tEventExportType & 1) es->Add(new RootEventSaver);
               if (tEventExportType & 2) es->Add(new TextEventSaver);
-#ifdef DIR_UNIGEN
+#ifdef USE_UNIGEN
               if (tEventExportType & 4) es->Add(new UnigenEventSaver);
 #endif
               tEventSaver = es;

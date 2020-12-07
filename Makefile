@@ -108,7 +108,7 @@ LD          = g++
 CXXFLAGS    = -O0 -g -std=c++11 -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
 LFLAGS      = -lm -lgcc -g `root-config --libs`
 ifdef DIR_UNIGEN
-CXXFLAGS    += -I $(DIR_UNIGEN)/base/include
+CXXFLAGS    += -DUSE_UNIGEN -I $(DIR_UNIGEN)/base/include
 LFLAGS      += -L $(DIR_UNIGEN)/lib -lUniGen
 endif
 #################################################################################
