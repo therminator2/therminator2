@@ -62,6 +62,8 @@ void MessageVersion();
 void CopyINIFile();
 void AddLogEntry(const char* aEntry);
 
+using namespace std;
+
 int main(int argc, char **argv)
 {
   ParticleDB*	  tPartDB; 

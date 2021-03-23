@@ -49,9 +49,9 @@ void figure_distrap_prim(TString aEventDir = "./events/", Int_t aEventFiles = 1)
 // ##########################################################################
 // HISTOGRAMS
 // ##########################################################################
-  Int_t   XBins  = 100;
-  Float_t XMin   = -1.0;
-  Float_t XMax   =  1.0;
+  Int_t   XBins  = 60;
+  Float_t XMin   = -2.0;
+  Float_t XMax   =  2.0;
   Float_t dX     = (XMax - XMin) / XBins;
   TH1D*   H1D[_N_HISTOGRAMS_];
 // Create histograms

@@ -31,7 +31,9 @@
 #include "THGlobal.h"
 #include "Configurator.h"
 #include "Parser.h"
+#include "Hypersurface_Library.h"
 #include "Model_SR.h"
+#include "Vector3D.h"
 
 using namespace TMath;
 using namespace std;
@@ -74,6 +76,7 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
   double R, Phi, Theta;
   double P, PhiP, ThetaP;
   double dPdZet, Ep, kappa;
+    double kappau, kappax;
   double Mt, Pt, RapP;
 
 // type of statistics: Bose-Einstein or Fermi-Dirac
@@ -187,7 +190,12 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
 
   Ep	= Hypot(M,P);
 //     cout<<"M : "<<M<<"  P  "<<P<<"   Ep   "<<Ep<<endl;
-   kappa = Cos(Theta) * Cos(ThetaP) + Sin(Theta) * Sin(ThetaP) * Cos(Phi - PhiP); 
+    // for spherical
+//   kappa = Cos(Theta) * Cos(ThetaP) + Sin(Theta) * Sin(ThetaP) * Cos(Phi - PhiP);
+    // for spheroidal
+     kappau = Cos(Theta) * Cos(ThetaP) * sqrt(1+mDel) + Sin(Theta) * Sin(ThetaP) * Cos(Phi - PhiP)* sqrt(1-mDel);
+     kappax = Cos(Theta) * Cos(ThetaP) + Sin(Theta) * Sin(ThetaP) * Cos(Phi - PhiP) * (sqrt(1+mEps) / sqrt(1-mEps));
+    
 
 
 //   Float_t tVR = 0.5;  // TO JEST TYLKO TO TESTU NA STALY PRZYEPLYW !!!!
@@ -198,9 +206,9 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
   // invariants
   // Our version for UdotP -->
   //double  UdotP	  = 1.0 / Sqrt(1 - tVR * tVR) * (Ep - P * tVR * kappa);
-  double Lgamma     = CosH(mH * R);
+  double Lgamma     =  1.0/sqrt(1-(1+mDel*Cos(2*Theta))*tVR*tVR);
   // RR version for UdotP -->
-  double UdotP      = (Ep - P * tVR * kappa) * Lgamma;
+  double UdotP      = (Ep - P * tVR * kappau) * Lgamma;
   // SZYMEK POPATRZ TUTAJ, to mA czytane jest z pliku SR.ini
   // jego wartosc wynosci 0.5. Radek uzywa przy wyliczaniu tego dSIGMAdotP
   // mA a my uzywalismy tVR, tak samo jak we w przypadku UdotP
@@ -211,7 +219,7 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
     // nasza impletemncja dSIGMAdotP
   //  dSIGMAdotP = R*R * Sin(Theta) * (Ep - P * tVR * kappa);
     // Radka impletemncja dSIGMAdotP
-    dSIGMAdotP = R*R * Sin(Theta) * (Ep - P * mA * kappa);
+    dSIGMAdotP = (1-mEps) * R*R * Sin(Theta) * (Ep * sqrt(1+mEps) - P * mA * kappax);
   
 // disable particle emission back to the hydro region
   if(dSIGMAdotP < 0.0) 
@@ -267,7 +275,7 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
 
 //  Integrand = (Gs / (Ep * kTwoPi3)) * dSIGMAdotP / (invFugacity * Exp(UdotP/ T)  + Statistics) * P*P * dPdZet * Sin(ThetaP);
 
-  Integrand = F * DP *dSIGMAdotP;
+  Integrand = F * DP * dSIGMAdotP;
 
 
   //  cout<<Gs <<"  "<< Ep <<"  "<< kTwoPi3<<"  "<< dSIGMAdotP <<"  "<<invFugacity <<"  "<<UdotP<<"  "<< Temp<<"  "<<  Statistics<<"  "<< P<<"  "<<P <<"  "<< dPdZet <<"  "<< Sin(ThetaP)<<endl;
@@ -294,6 +302,9 @@ void Model_SR::Description()
   oss << "# - radial size            : " <<MODEL_PAR_DESC(mR   * kHbarC,	"[fm]");
   oss << "# - Hubble velocity        : " <<MODEL_PAR_DESC(mH,		"[c]");
   oss << "# - hypersurface slope (A) : " <<MODEL_PAR_DESC(mA,		"[1]");
+    
+  oss << "# - delta                  : " <<MODEL_PAR_DESC(mDel,         "[1]");
+  oss << "# - epsilon                : " <<MODEL_PAR_DESC(mEps,         "[1]");
   oss << "# - gamma_S                : " <<MODEL_PAR_DESC(mGammaS,		"[1]");
   /*
   oss << "# - freeze-out Cart. time  : " <<MODEL_PAR_DESC(mT0   * kHbarC,	"[fm]");
@@ -366,14 +377,15 @@ void Model_SR::AddParameterBranch(TTree* aTree)
 
 void Model_SR::ReadParameters()
 {
+  Hypersurface_Library *tLib;
   Configurator*	tModelParam;
   Parser*	tParser;
-  
+
   tModelParam = new Configurator;
   tParser     = new Parser(sModelINI.Data());
   tParser->ReadINI(tModelParam);
   delete tParser;
-  
+
   try {
     mT0  	 = tModelParam->GetParameter("T0").Atof() / kHbarC;		// [GeV^-1]
     /*
@@ -383,6 +395,8 @@ void Model_SR::ReadParameters()
     mA0		 = tModelParam->GetParameter("A0").Atof();
     */
     mR    	 = tModelParam->GetParameter("R").Atof() / kHbarC;		// [GeV^-1]
+    mDel         = tModelParam->GetParameter("del").Atof();            // [1]
+    mEps         = tModelParam->GetParameter("eps").Atof();            // [1]
     mH		 = tModelParam->GetParameter("H").Atof();			// [1]
     mA		 = tModelParam->GetParameter("A").Atof();			// [1]
     mGammaS	 = tModelParam->GetParameter("GammaS").Atof();			// [1]
@@ -428,6 +442,26 @@ void Model_SR::ReadParameters()
       PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
       exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
     }
+
+    TString tRadiusXML = tModelParam->GetParameter("RadiusFile");
+    tLib    = new Hypersurface_Library;
+    tParser = new Parser(tRadiusXML.Data());
+    tParser->ReadXML(tLib);
+    delete tParser;
+    Vector3D *tVectorR = tLib->GetXMLTag("VECTOR3D", "name","R")->GetXMLVector3D();			// [GeV^-1]
+    cout << "Vector R = (" 
+        << tVectorR->GetXPts() << ":" << tVectorR->GetXMin() << ":" << tVectorR->GetXMax() << "," 
+        << tVectorR->GetYPts() << ":" << tVectorR->GetYMin() << ":" << tVectorR->GetYMax() << "," 
+        << tVectorR->GetZPts() << ":" << tVectorR->GetZMin() << ":" << tVectorR->GetZMax() << ")"
+        << endl;
+    unsigned int tI,tJ,tK;
+    if (PointInGrid(tVectorR, mH, mEps, mDel, tI, tJ, tK)) {
+      mR = tVectorR->operator()(tI, tJ, tK);
+      cout << "Found in grid R = " << mR << " for (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ")" << endl;
+    } else {
+      mR = tVectorR->Interpolate(mH, mEps, mDel);
+      cout << "Interpolated in grid R = " << mR << " for (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ")" << endl;
+    }
   } catch (TString tError) {
     PRINT_MESSAGE("<Model_SR::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
@@ -462,4 +496,35 @@ void Model_SR::ReadParameters()
   }
   
   delete tModelParam;
+}
+
+bool Model_SR::PointInGrid(Vector3D *aV, double aX, double aY, double aZ, unsigned int &aI, unsigned int &aJ, unsigned int &aK) {
+  double tSmall = 0.001;
+
+  double tStepX = (aV->GetXMax() - aV->GetXMin())/(aV->GetXPts()-1);
+  double tNX = aX / tStepX;
+  unsigned int tRoundNX = TMath::Nint(tNX);
+  double tRoundErrorX = TMath::Abs(tNX - tRoundNX);
+
+  double tStepY = (aV->GetYMax() - aV->GetYMin())/(aV->GetYPts()-1);
+  double tNY = aY / tStepY;
+  unsigned int tRoundNY = TMath::Nint(tNY);
+  double tRoundErrorY = TMath::Abs(tNY - tRoundNY);
+
+  double tStepZ = (aV->GetZMax() - aV->GetZMin())/(aV->GetZPts()-1);
+  double tNZ = aZ / tStepZ;
+  unsigned int tRoundNZ = TMath::Nint(tNZ);
+  double tRoundErrorZ = TMath::Abs(tNZ - tRoundNZ);
+
+  cout << tNX << " " << tRoundNX << " " << tRoundErrorX << " " << tSmall << endl;
+  cout << tNY << " " << tRoundNY << " " << tRoundErrorY << " " << tSmall << endl;
+  cout << tNZ << " " << tRoundNZ << " " << tRoundErrorZ << " " << tSmall << endl;
+  if (tRoundErrorX < tSmall && tRoundErrorY < tSmall && tRoundErrorZ < tSmall) {
+    aI = tRoundNX;
+    aJ = tRoundNY;
+    aK = tRoundNZ;
+    return true;
+  } else {
+    return false;
+  }
 }

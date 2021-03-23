@@ -1,5 +1,9 @@
+**/.DS_Store
 **/*~
 **/*.swp
 build/obj
 therm2_*
-
+*.log
+*.tmp
+spheroid
+*test*

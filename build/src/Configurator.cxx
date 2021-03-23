@@ -44,7 +44,7 @@ Configurator::~Configurator()
   mParameters.clear();
 }
 
-TString Configurator::GetParameter(const char* aKeyword) throw(TString)
+TString Configurator::GetParameter(const char* aKeyword) noexcept(false)
 {
   vector<Parameter>::iterator Iter;
   for (Iter = mParameters.begin(); Iter != mParameters.end(); Iter++)

@@ -31,7 +31,7 @@
 #include <TLegend.h>
 #include <TChain.h>
 #include <TString.h>
-#include "/u/sudol/theory/therminator2_HADES_seed//build/include/StructModel.h"
+#include "./../build/include/StructModel.h"
 
 using namespace std;
 
@@ -61,8 +61,8 @@ void model2legend(TString aEventDir, Int_t aEventFiles, TLegend* aLegend)
   tChain->SetBranchAddress(_MODELDESCRIPTION_BRANCH_,	tModelDescription);
   tChain->GetEntry(0);
 
-  sprintf(Buff,"%s", tModelName);
-  aLegend->SetHeader(Buff);
+  sprintf(Buff,"%s", tModelName); aLegend->SetHeader(Buff);
+
   switch (tModelID) {
 // HYDRO INSPIRED
   case 0: {
@@ -88,19 +88,7 @@ void model2legend(TString aEventDir, Int_t aEventFiles, TLegend* aLegend)
     }
     break;
   }
-  case 1:
-  case 12:
-  case 13:
-  case 14:
-  case 15:
-  case 16:
-  case 17:
-
-
-      {
-
-  //        cout<<"kuku"<<endl;
-
+  case 1: {
     Model_t_BlastWave tPar;
     tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
     tChain->GetEntry(0);
@@ -218,243 +206,6 @@ void model2legend(TString aEventDir, Int_t aEventFiles, TLegend* aLegend)
     sprintf(Buff,"%s %s",	tPar.DeviceName,tPar.CollidingSystem);	aLegend->AddEntry("",Buff,""); 
     break;
   }
-  case 99: {
-    Model_t_SR tPar;
-    tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
-    tChain->GetEntry(0);
-//    sprintf(Buff,"#rho_{max}= %g [fm]",	        tPar.RMax);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#tau_{C}    = %g [fm]",	tPar.T0);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T     = %g [MeV]",	        tPar.Temp);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"A     = %g ",	        tPar.A);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"H_{T}    = %g [1/fm]",	tPar.H/0.197);	aLegend->AddEntry("",Buff,"");
-    if(tPar.MuB!=0.0){sprintf(Buff,"#mu_{B}    = %g [Mev]",	tPar.MuB);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.MuI!=0.0){sprintf(Buff,"#mu_{I_{3}}    = %g [Mev]",	tPar.MuI);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.MuS!=0.0){sprintf(Buff,"#mu_{S}    = %g [Mev]",	tPar.MuS);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.MuC!=0.0){sprintf(Buff,"#mu_{C}    = %g [Mev]",	tPar.MuC);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.GammaS!=1.0){sprintf(Buff,"#gamma_{S} = %g ",      	tPar.GammaS);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.GammaC!=1.0){sprintf(Buff,"#gamma_{C} = %g ",      	tPar.GammaC);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.GammaQ!=1.0){sprintf(Buff,"#gamma_{Q} = %g ",      	tPar.GammaQ);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.LambdaS!=1.0){sprintf(Buff,"#Lambda_{S} = %g ",   	tPar.LambdaS);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.LambdaC!=1.0){sprintf(Buff,"#Lambda_{C} = %g ",     	tPar.LambdaC);	aLegend->AddEntry("",Buff,"");}
-	if(tPar.LambdaQ!=1.0){sprintf(Buff,"#Lambda_{Q} = %g ",     	tPar.LambdaQ);	aLegend->AddEntry("",Buff,"");}
-    break;
-  }
-
-  default:
-    cerr << "Unable to write Model parameter - unknown model type.";
-  };
-}
-void model2legendBatch(TString aEventDir, Int_t aEventDirs, Int_t aEventFiles, TLegend* aLegend)
-{
-  TChain* tChain;
-  int     tIntegrateSample;
-  int     tRandomize;
-  char    tTimeStamp[21];
-  int     tModelID;
-  char    tModelHash[9];
-  char    tModelName[30];
-  char    tModelDescription[2000];
-  char    Buff[100];
-  
-  tChain = new TChain(_PARAMETERS_TREE_);
-  for(Int_t j=1; j<1+aEventDirs; j++) {
-
-      TString tmp = aEventDir;
-      tmp.ReplaceAll("NUM",TString::Itoa(j,10));
-      for(Int_t i=0; i<aEventFiles; i++) {
-	  sprintf(Buff,"%sevent%03i.root",tmp.Data(),i);
-	  tChain->AddFile(Buff);
-      }
-  }
-  tChain->SetBranchAddress(_INTEGRATESAMPLE_BRANCH_,	&tIntegrateSample);
-  tChain->SetBranchAddress(_RANDOMIZE_BRANCH_,		&tRandomize);
-  tChain->SetBranchAddress(_TIMESTAMP_BRANCH_,		&tTimeStamp);
-  tChain->SetBranchAddress(_MODELID_BRANCH_,		&tModelID);
-  tChain->SetBranchAddress(_MODELNAME_BRANCH_,		tModelName);
-  tChain->SetBranchAddress(_MODELHASH_BRANCH_,		tModelHash);
-  tChain->SetBranchAddress(_MODELDESCRIPTION_BRANCH_,	tModelDescription);
-  tChain->GetEntry(0);
-
-  sprintf(Buff,"%s", tModelName);
-  aLegend->SetHeader(Buff);
-  switch (tModelID) {
-// HYDRO INSPIRED
-  case 0: {
-    Model_t_KrakowSFO tPar;
-    tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
-    tChain->GetEntry(0);
-    sprintf(Buff,"Y^{rng} = %g",		tPar.RapPRange); aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"Y_{S}^{rng} = %g",		tPar.RapSRange); aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#rho_{max}= %g [fm]",	tPar.RhoMax);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#tau_{C}    = %g [fm]",	tPar.TauC);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T     = %g [MeV]",	tPar.Temp);	aLegend->AddEntry("",Buff,"");
-    if(tPar.MuB!=0.0) {
-      sprintf(Buff,"#mu_{B}    = %g [Mev]",	tPar.MuB);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuI!=0.0) {
-      sprintf(Buff,"#mu_{I_{3}}    = %g [Mev]",	tPar.MuI);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuS!=0.0) {
-      sprintf(Buff,"#mu_{S}    = %g [Mev]",	tPar.MuS);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuC!=0.0) {
-      sprintf(Buff,"#mu_{C}    = %g [Mev]",	tPar.MuC);	aLegend->AddEntry("",Buff,"");
-    }
-    break;
-  }
-  case 1:
-  case 12:
-  case 13:
-  case 14:
-  case 15:
-  case 16:
-  case 17:
-
-
-      {
-
-  //        cout<<"kuku"<<endl;
-
-    Model_t_BlastWave tPar;
-    tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
-    tChain->GetEntry(0);
-    sprintf(Buff,"Y^{rng} = %g",		tPar.RapPRange); aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"Y_{S}^{rng} = %g",		tPar.RapSRange); aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#rho_{max} = %g [fm]",	tPar.RhoMax);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#tau      = %g [fm]",		tPar.Tau);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"v_{T}    = %g [c]",		tPar.Vt);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T     = %g [MeV]",	tPar.Temp);	aLegend->AddEntry("",Buff,"");
-    if(tPar.MuB!=0.0) {
-      sprintf(Buff,"#mu_{B}    = %g [Mev]",	tPar.MuB);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuI!=0.0) {
-      sprintf(Buff,"#mu_{I_{3}}    = %g [Mev]",	tPar.MuI);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuS!=0.0) {
-      sprintf(Buff,"#mu_{S}    = %g [Mev]",	tPar.MuS);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuC!=0.0) {
-      sprintf(Buff,"#mu_{C}    = %g [Mev]",	tPar.MuC);	aLegend->AddEntry("",Buff,"");
-    }
-    break;
-  }
-  case 2:
-  case 3:
-  case 4:
-  case 5:
-  case 6: {
-    Model_t_BWA tPar;
-    tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
-    tChain->GetEntry(0);
-    sprintf(Buff,"Y^{rng} = %g",		tPar.RapPRange); aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"Y_{S}^{rng} = %g",		tPar.RapSRange); aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#rho_{max} = %g [fm]",	tPar.RhoMax);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#tau      = %g [fm]",		tPar.Tau);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"v_{T}    = %g [c]",		tPar.Vt);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"A     = %g [c]",		tPar.A);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#lambda      = %g [c]",	tPar.Delay);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T    = %g [MeV]",	tPar.Temp);	aLegend->AddEntry("",Buff,"");
-    if(tPar.MuB!=0.0) {
-      sprintf(Buff,"#mu_{B}    = %g [Mev]",	tPar.MuB);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuI!=0.0) {
-      sprintf(Buff,"#mu_{I_{3}}    = %g [Mev]",	tPar.MuI);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuS!=0.0) {
-      sprintf(Buff,"#mu_{S}    = %g [Mev]",	tPar.MuS);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuC!=0.0) {
-      sprintf(Buff,"#mu_{C}    = %g [Mev]",	tPar.MuC);	aLegend->AddEntry("",Buff,"");
-    }
-    break;
-  }
-// HYDRO BASED
-  case 10:
-  {
-    Model_t_Lhyquid3D tPar;
-    tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
-    tChain->GetEntry(0);
-    sprintf(Buff,"Y^{rng} = %g",		tPar.RapPRange); aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#Lambda = %g [fm]",		tPar.Lambda);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#tau_{i}      = %g [fm]",	tPar.TauI);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T_{i}     = %g [MeV]",	tPar.TempI);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T     = %g [MeV]",		tPar.TempF);	aLegend->AddEntry("",Buff,"");
-    if(tPar.MuB!=0.0) {
-      sprintf(Buff,"#mu_{B}    = %g [Mev]",	tPar.MuB);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuI!=0.0) {
-      sprintf(Buff,"#mu_{I_{3}}    = %g [Mev]",	tPar.MuI);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuS!=0.0) {
-      sprintf(Buff,"#mu_{S}    = %g [Mev]",	tPar.MuS);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuC!=0.0) {
-      sprintf(Buff,"#mu_{C}    = %g [Mev]",	tPar.MuC);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.ImpactParameter >= 0.0) {
-      sprintf(Buff,"b   = %g [fm]",		tPar.ImpactParameter);	aLegend->AddEntry("",Buff,"");
-    }
-    if((tPar.CentralityMin >= 0.0) && (tPar.CentralityMax >= 0.0)) {
-      sprintf(Buff,"c      = %g-%g [%%]",		tPar.CentralityMin, tPar.CentralityMax);	aLegend->AddEntry("",Buff,"");
-    }
-    sprintf(Buff,"#sqrt{s_{NN}} = %g MeV",	tPar.CollidingEnergy);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"%s %s",	tPar.DeviceName,tPar.CollidingSystem);	aLegend->AddEntry("",Buff,""); 
-    break;
-  }
-  case 11: {
-    Model_t_Lhyquid2DBI tPar;
-    tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
-    tChain->GetEntry(0);
-    sprintf(Buff,"Y^{rng} = %g",		tPar.RapPRange); aLegend->AddEntry("Y_{rng}",Buff,"");
-    sprintf(Buff,"Y_{S}^{rng} = %g",		tPar.RapSRange); aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"#tau_{i}      = %g [fm]",	tPar.TauI);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T_{i}     = %g [MeV]",	tPar.TempI);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T     = %g [MeV]",	tPar.TempF);	aLegend->AddEntry("",Buff,"");
-    if(tPar.MuB!=0.0) {
-      sprintf(Buff,"#mu_{B}    = %g [Mev]",	tPar.MuB);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuI!=0.0) {
-      sprintf(Buff,"#mu_{I_{3}}    = %g [Mev]",	tPar.MuI);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuS!=0.0) {
-      sprintf(Buff,"#mu_{S}    = %g [Mev]",	tPar.MuS);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.MuC!=0.0) {
-      sprintf(Buff,"#mu_{C}    = %g [Mev]",	tPar.MuC);	aLegend->AddEntry("",Buff,"");
-    }
-    if(tPar.ImpactParameter >= 0.0) {
-      sprintf(Buff,"b   = %g [fm]",		tPar.ImpactParameter);				aLegend->AddEntry("",Buff,"");
-    }
-    if((tPar.CentralityMin >= 0.0) && (tPar.CentralityMax >= 0.0)) {
-      sprintf(Buff,"c      = %g-%g [%%]",	tPar.CentralityMin, tPar.CentralityMax);	aLegend->AddEntry("",Buff,"");
-    }
-    sprintf(Buff,"#sqrt{s_{NN}} = %g MeV",	tPar.CollidingEnergy);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"%s %s",	tPar.DeviceName,tPar.CollidingSystem);	aLegend->AddEntry("",Buff,""); 
-    break;
-  }
-  case 99: {
-    Model_t_SR tPar;
-    tChain->SetBranchAddress(_MODEL_T_BRANCH_, &tPar);
-    tChain->GetEntry(0);
-    sprintf(Buff,"#tau_{C}    = %g [fm]",	tPar.T0);	aLegend->AddEntry("",Buff,"");
-//    sprintf(Buff,"#rho_{max}= %g [fm]",	        tPar.R);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"H    = %g [1/fm]",		tPar.H/0.197);	aLegend->AddEntry("",Buff,"");
-//    sprintf(Buff,"h     = %g ",	        tPar.h);	aLegend->AddEntry("",Buff,"");
-//    sprintf(Buff,"A0     = %g ",	        tPar.A0);	aLegend->AddEntry("",Buff,"");
-    sprintf(Buff,"T     = %g [MeV]",	        tPar.Temp);	aLegend->AddEntry("",Buff,"");
-    if(tPar.MuB!=0.0){sprintf(Buff,"#mu_{B}    = %g [Mev]",	tPar.MuB);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.MuI!=0.0){sprintf(Buff,"#mu_{I_{3}}    = %g [Mev]",	tPar.MuI);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.MuS!=0.0){sprintf(Buff,"#mu_{S}    = %g [Mev]",	tPar.MuS);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.MuC!=0.0){sprintf(Buff,"#mu_{C}    = %g [Mev]",	tPar.MuC);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.GammaS!=1.0){sprintf(Buff,"#gamma_{S} = %g ",      	tPar.GammaS);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.GammaC!=1.0){sprintf(Buff,"#gamma_{C} = %g ",      	tPar.GammaC);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.GammaQ!=1.0){sprintf(Buff,"#gamma_{Q} = %g ",      	tPar.GammaQ);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.LambdaS!=1.0){sprintf(Buff,"#Lambda_{S} = %g ",   	tPar.LambdaS);	aLegend->AddEntry("",Buff,"");}
-    if(tPar.LambdaC!=1.0){sprintf(Buff,"#Lambda_{C} = %g ",     	tPar.LambdaC);	aLegend->AddEntry("",Buff,"");}
-	if(tPar.LambdaQ!=1.0){sprintf(Buff,"#Lambda_{Q} = %g ",     	tPar.LambdaQ);	aLegend->AddEntry("",Buff,"");}
-    break;
-  }
-
   default:
     cerr << "Unable to write Model parameter - unknown model type.";
   };

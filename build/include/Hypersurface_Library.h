@@ -39,8 +39,8 @@ class Hypersurface_Library
     Hypersurface_Library();
     ~Hypersurface_Library();
      
-    Hypersurface_Library* GetXMLTag(const char* aTagName, const char* aAttName, const char* aAttVal) throw(int); 
-    TString   GetXMLAttribute(const char* aAttName) throw(int);
+    Hypersurface_Library* GetXMLTag(const char* aTagName, const char* aAttName, const char* aAttVal) noexcept(false); 
+    TString   GetXMLAttribute(const char* aAttName) noexcept(false);
     TString   GetXMLContent();
     Vector3D* GetXMLVector3D();
     TString   GetXMLTagDescription();

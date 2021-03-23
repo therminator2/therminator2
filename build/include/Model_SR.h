@@ -54,7 +54,9 @@ class Model_SR
     double mR;
     double mA;  
     double mT0;
-    double mH; 
+    double mH;
+    double mDel;
+    double mEps;
     double mGammaS; 
 
     Thermodynamics* mThermo;
@@ -62,6 +64,7 @@ class Model_SR
   private:
     void Description();
     void ReadParameters();
+    bool PointInGrid(Vector3D *aV, double aX, double aY, double aZ, unsigned int &aI, unsigned int &aJ, unsigned int &aK);
 };
 
 #endif

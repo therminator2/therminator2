@@ -44,7 +44,7 @@ class Configurator {
     Configurator();
     ~Configurator();
 
-    TString GetParameter(const char* aKeyword) throw(TString);
+    TString GetParameter(const char* aKeyword) noexcept(false);
     void    AddParameter(Parameter* aPar);
     int     PrintParameters();
 

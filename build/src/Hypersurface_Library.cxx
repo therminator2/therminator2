@@ -65,7 +65,7 @@ Hypersurface_Library::~Hypersurface_Library()
   }
 }
 
-Hypersurface_Library* Hypersurface_Library::GetXMLTag(const char* aTagName, const char* aAttName, const char* aAttVal) throw(int)
+Hypersurface_Library* Hypersurface_Library::GetXMLTag(const char* aTagName, const char* aAttName, const char* aAttVal) noexcept(false)
 {
   XMLtag* Temp;
   
@@ -107,7 +107,7 @@ Hypersurface_Library* Hypersurface_Library::GetXMLTag(const char* aTagName, cons
   throw _ERROR_LIBRARY_TAG_NOT_FOUND_;
 }
 
-TString Hypersurface_Library::GetXMLAttribute(const char* aAttName) throw(int)
+TString Hypersurface_Library::GetXMLAttribute(const char* aAttName) noexcept(false)
 {
   list<XMLattribute>::iterator Iter;
   

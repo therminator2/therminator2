@@ -105,8 +105,8 @@ endif
 # compilation
 CXX         = g++
 LD          = g++
-CXXFLAGS    = -O0 -g -std=c++11 -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
-LFLAGS      = -lm -lgcc -g `root-config --libs`
+CXXFLAGS    = -std=c++11 -O0 -g -Wno-deprecated -Wno-return-type -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
+LFLAGS      = -lm -g `root-config --libs`
 ifdef DIR_UNIGEN
 CXXFLAGS    += -DUSE_UNIGEN -I $(DIR_UNIGEN)/base/include
 LFLAGS      += -L $(DIR_UNIGEN)/lib -lUniGen
@@ -124,20 +124,20 @@ all: $(BIN_EVENTS:%=$(DIR_OBJ)%) $(BIN_FEMTO:%=$(DIR_OBJ)%) $(BIN_HBTFIT:%=$(DIR
 
 $(DIR_OBJ)therm2_events: $(OBJ_EVENTS)
 	echo "Linking:   $@ ($(LD))"
-	$(LD) $(LFLAGS) $^ -o $@
+	$(LD) $^ -o $@ $(LFLAGS)
 
 $(DIR_OBJ)therm2_femto: $(OBJ_FEMTO)
 	echo "Linking:   $@ ($(LD))"
-	$(LD) $(LFLAGS) $^ -o $@
+	$(LD) $^ -o $@ $(LFLAGS)
 
 $(DIR_OBJ)therm2_hbtfit: $(OBJ_HBTFIT)
 	echo "Linking:   $@ ($(LD))"
-	$(LD) $(LFLAGS) $^ -o $@
+	$(LD) $^ -o $@ $(LFLAGS)
 
 $(DIR_OBJ)%.o: %.cxx
 	@[ -d $(DIR_OBJ) ] || mkdir -p $(DIR_OBJ)
 	echo "Compiling: $< ($(CXX))"
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
 doc:
 	$(DIR_DOXYGEN)filecont.sh $(DIR_DOXYGEN)

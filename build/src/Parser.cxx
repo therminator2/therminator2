@@ -113,7 +113,7 @@ void Parser::ReadSHAREParticles(ParticleDB* aDB)
     iss = new istringstream(buff);   
     (*iss) >> name >> mass >> gamma >> spin >> I >> I3 >> Nq >> Ns >> Naq >> Nas >> Nc >> Nac >> MC;
     number++;
-    cout<<'\t'<<number<<" "<<name<<" "<<mass<<" "<<gamma<<" "<<spin<<" "<<I<<" "<<I3<<" "<<Nq<<" "<<Naq<<" "<<Ns<<" - "<<static_cast<int>(Nas)<<" - "<<Nc<<" "<<Nac<<" "<<MC<<endl;
+    //cout<<'\t'<<number<<" "<<name<<" "<<mass<<" "<<gamma<<" "<<spin<<" "<<I<<" "<<I3<<" "<<Nq<<" "<<Naq<<" "<<Ns<<" - "<<static_cast<int>(Nas)<<" - "<<Nc<<" "<<Nac<<" "<<MC<<endl;
     PRINT_DEBUG_2('\t'<<number<<" "<<name<<" "<<mass<<" "<<gamma<<" "<<spin<<" "<<I<<" "<<I3<<" "<<Nq<<" "<<Naq<<" "<<Ns<<" "<<Nas<<" "<<Nc<<" "<<Nac<<" "<<MC);
     tPartBuf = new ParticleType();
     tPartBuf->SetNumber(number);
