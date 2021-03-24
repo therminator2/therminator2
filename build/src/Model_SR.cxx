@@ -448,18 +448,25 @@ void Model_SR::ReadParameters()
     tParser = new Parser(tRadiusXML.Data());
     tParser->ReadXML(tLib);
     delete tParser;
-    Vector3D *tVectorR = tLib->GetXMLTag("VECTOR3D", "name","R")->GetXMLVector3D();			// [GeV^-1]
-    cout << "Vector R = (" 
-        << tVectorR->GetXPts() << ":" << tVectorR->GetXMin() << ":" << tVectorR->GetXMax() << "," 
-        << tVectorR->GetYPts() << ":" << tVectorR->GetYMin() << ":" << tVectorR->GetYMax() << "," 
-        << tVectorR->GetZPts() << ":" << tVectorR->GetZMin() << ":" << tVectorR->GetZMax() << ")"
-        << endl;
+    Vector3D *tVectorR = tLib->GetXMLTag("VECTOR3D", "name","R")->GetXMLVector3D();
+    if (
+            mH < tVectorR->GetXMin() || mH > tVectorR->GetXMax() ||
+            mEps < tVectorR->GetYMin() || mEps > tVectorR->GetYMax() ||
+            mDel < tVectorR->GetZMin() || mDel > tVectorR->GetZMax()
+       ) {
+        cout << "The values of (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ") outside of the grid (" 
+            << tVectorR->GetXMin() << ":" << tVectorR->GetXMax() << "," 
+            << tVectorR->GetYMin() << ":" << tVectorR->GetYMax() << "," 
+            << tVectorR->GetZMin() << ":" << tVectorR->GetZMax() << ")"
+            << endl;
+        exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
+    }
     unsigned int tI,tJ,tK;
     if (PointInGrid(tVectorR, mH, mEps, mDel, tI, tJ, tK)) {
-      mR = tVectorR->operator()(tI, tJ, tK);
+      mR = tVectorR->operator()(tI, tJ, tK) / kHbarC;;
       cout << "Found in grid R = " << mR << " for (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ")" << endl;
     } else {
-      mR = tVectorR->Interpolate(mH, mEps, mDel);
+      mR = tVectorR->Interpolate(mH, mEps, mDel) / kHbarC;;
       cout << "Interpolated in grid R = " << mR << " for (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ")" << endl;
     }
   } catch (TString tError) {
