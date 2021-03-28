@@ -65,6 +65,7 @@ class Model_SR
     void Description();
     void ReadParameters();
     bool PointInGrid(Vector3D *aV, double aX, double aY, double aZ, unsigned int &aI, unsigned int &aJ, unsigned int &aK);
+    void GetGridAxisPoint(double aMin, double aMax, double aPts, double aVal, unsigned int &aRoundN, double &aRoundError);
 };
 
 #endif

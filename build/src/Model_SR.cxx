@@ -393,8 +393,8 @@ void Model_SR::ReadParameters()
     mVR		 = tModelParam->GetParameter("VR").Atof();			// [c]
     mh		 = tModelParam->GetParameter("h").Atof();			//
     mA0		 = tModelParam->GetParameter("A0").Atof();
-    */
     mR    	 = tModelParam->GetParameter("R").Atof() / kHbarC;		// [GeV^-1]
+    */
     mDel         = tModelParam->GetParameter("del").Atof();            // [1]
     mEps         = tModelParam->GetParameter("eps").Atof();            // [1]
     mH		 = tModelParam->GetParameter("H").Atof();			// [1]
@@ -463,11 +463,12 @@ void Model_SR::ReadParameters()
     }
     unsigned int tI,tJ,tK;
     if (PointInGrid(tVectorR, mH, mEps, mDel, tI, tJ, tK)) {
+      cout << "(i,j,k) = (" << tI << "," << tJ << "," << tK << ")" << endl;
       mR = tVectorR->operator()(tI, tJ, tK) / kHbarC;;
-      cout << "Found in grid R = " << mR << " for (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ")" << endl;
+      cout << "Found in grid R = " << mR * kHbarC << " fm for (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ")" << endl;
     } else {
       mR = tVectorR->Interpolate(mH, mEps, mDel) / kHbarC;;
-      cout << "Interpolated in grid R = " << mR << " for (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ")" << endl;
+      cout << "Interpolated in grid R = " << mR * kHbarC << " fm for (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ")" << endl;
     }
   } catch (TString tError) {
     PRINT_MESSAGE("<Model_SR::ReadParameters>\tCaught exception " << tError);
@@ -508,24 +509,14 @@ void Model_SR::ReadParameters()
 bool Model_SR::PointInGrid(Vector3D *aV, double aX, double aY, double aZ, unsigned int &aI, unsigned int &aJ, unsigned int &aK) {
   double tSmall = 0.001;
 
-  double tStepX = (aV->GetXMax() - aV->GetXMin())/(aV->GetXPts()-1);
-  double tNX = aX / tStepX;
-  unsigned int tRoundNX = TMath::Nint(tNX);
-  double tRoundErrorX = TMath::Abs(tNX - tRoundNX);
+  unsigned int tRoundNX, tRoundNY, tRoundNZ;
+  double tRoundErrorX, tRoundErrorY, tRoundErrorZ;
 
-  double tStepY = (aV->GetYMax() - aV->GetYMin())/(aV->GetYPts()-1);
-  double tNY = aY / tStepY;
-  unsigned int tRoundNY = TMath::Nint(tNY);
-  double tRoundErrorY = TMath::Abs(tNY - tRoundNY);
+  GetGridAxisPoint(aV->GetXMin(), aV->GetXMax(), aV->GetXPts(), aX, tRoundNX, tRoundErrorX);
+  GetGridAxisPoint(aV->GetYMin(), aV->GetYMax(), aV->GetYPts(), aY, tRoundNY, tRoundErrorY);
+  GetGridAxisPoint(aV->GetZMin(), aV->GetZMax(), aV->GetZPts(), aZ, tRoundNZ, tRoundErrorZ);
 
-  double tStepZ = (aV->GetZMax() - aV->GetZMin())/(aV->GetZPts()-1);
-  double tNZ = aZ / tStepZ;
-  unsigned int tRoundNZ = TMath::Nint(tNZ);
-  double tRoundErrorZ = TMath::Abs(tNZ - tRoundNZ);
-
-  cout << tNX << " " << tRoundNX << " " << tRoundErrorX << " " << tSmall << endl;
-  cout << tNY << " " << tRoundNY << " " << tRoundErrorY << " " << tSmall << endl;
-  cout << tNZ << " " << tRoundNZ << " " << tRoundErrorZ << " " << tSmall << endl;
+  cout << "tSmall = " << tSmall << endl;
   if (tRoundErrorX < tSmall && tRoundErrorY < tSmall && tRoundErrorZ < tSmall) {
     aI = tRoundNX;
     aJ = tRoundNY;
@@ -534,4 +525,12 @@ bool Model_SR::PointInGrid(Vector3D *aV, double aX, double aY, double aZ, unsign
   } else {
     return false;
   }
+}
+
+void Model_SR::GetGridAxisPoint(double aMin, double aMax, double aPts, double aVal, unsigned int &aRoundN, double &aRoundError) {
+  double tStep = (aMax - aMin)/(aPts-1);
+  double tN = (aVal - aMin) / tStep;
+  aRoundN = TMath::Nint(tN);
+  aRoundError = TMath::Abs(tN - aRoundN);
+  cout << tN << " " << aRoundN << " " << aRoundError << endl;
 }
