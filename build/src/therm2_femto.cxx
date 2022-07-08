@@ -44,6 +44,7 @@
 #include "Configurator.h"
 #include "Parser.h"
 #include "THGlobal.h"
+#include "Messages.h"
 
 #define PIPID 211
 #define KPID 321
@@ -201,37 +202,46 @@ int main(int argc, char **argv)
   int tEventFiles;
   sParentPID = 0;
 
-  if (argc > 3) {
-    nbin	= atoi(argv[1]);
-    sEventDir	= argv[2];
-    tEventFiles	= atoi(argv[3]);
-    if (argc > 4) {
-      sMainINI	= argv[4];
-      if(sMainINI.IsDigit()) {
-	sParentPID = sMainINI.Atoi();
-	sMainINI   = "./femto.ini";
-      }
-    } else
-      sMainINI	= "./femto.ini";
-    if (argc > 5)
-      sParentPID = atoi(argv[5]);
-  } else {
-    if (argc > 1) {
-      sMainINI = argv[1];
-      if(sMainINI.Contains("-h") || sMainINI.Contains("--help")) {
-        MessageHelp();
-        return 0;
-      }
-      if(sMainINI.Contains("-v") || sMainINI.Contains("--version")) {
-        MessageVersion();
-        return 0;
-      }    
+    if (argc > 3) 
+    {
+        nbin	= atoi(argv[1]);
+        sEventDir	= argv[2];
+        tEventFiles	= atoi(argv[3]);
+        if (argc > 4) 
+        {
+            sMainINI	= argv[4];
+            if(sMainINI.IsDigit()) 
+            {
+                sParentPID = sMainINI.Atoi();
+                sMainINI   = "./femto.ini";
+            }
+        } 
+        else
+            sMainINI	= "./femto.ini";
+        if (argc > 5)
+            sParentPID = atoi(argv[5]);
+    } 
+    else 
+    {
+        if (argc > 1) 
+        {
+            sMainINI = argv[1];
+            if(sMainINI.Contains("-h") || sMainINI.Contains("--help")) 
+            {
+                Messages::HelpFmt();
+                return 0;
+            }
+            if(sMainINI.Contains("-v") || sMainINI.Contains("--version")) 
+            {
+                Messages::Version();
+                return 0;
+            }    
+        }
+        Messages::HelpFmt();
+        return _ERROR_GENERAL_FILE_NOT_FOUND_;
     }
-    MessageHelp();
-    return _ERROR_GENERAL_FILE_NOT_FOUND_;
-  }
   
-  MessageIntro();
+  Messages::Intro();
 // ##############################################################
 // # Read configuration file (femto.ini)			#
 // ##############################################################
@@ -1921,43 +1931,6 @@ void PairKinematics(ParticleCoor part1, ParticleCoor part2)
     
     tRInvPRF->Fill(mRStar, 1.0/(mRStar*mRStar));
   }
-}
-
-void MessageIntro()
-{
-  PRINT_MESSAGE("  ***********************************************************************"	);
-  PRINT_MESSAGE("  *\t\tTHERMINATOR 2 FEMTO version "<<_THERMINATOR2_VERSION_<<"\t\t\t*"	);
-  PRINT_MESSAGE("  *\t\t\t\t\t\t\t\t\t*"							);
-  PRINT_MESSAGE("  * authors: M.Chojnacki, A.Kisiel, W.Florkowski, W.Broniowski\t\t*"		);
-  PRINT_MESSAGE("  * cite as: arXiv:1102.0273\t\t\t\t\t\t*"					);
-  PRINT_MESSAGE("  * webpage: http://therminator2.ifj.edu.pl/\t\t\t\t*"				);
-  PRINT_MESSAGE("  ***********************************************************************"	);
-}
-
-void MessageHelp()
-{
-  PRINT_MESSAGE("Usage: ");
-  PRINT_MESSAGE("therm2_femto <KTBIN> <EVENT_DIR> <EVENT_FILES> [FEMTO_INI] [PPID]");
-  PRINT_MESSAGE("therm2_femto [OPTION]");
-  PRINT_MESSAGE("  <KTBIN>\t\tnumber of the kT bin");
-  PRINT_MESSAGE("  <EVENT_DIR>\t\tdirectory with event*.root files");
-  PRINT_MESSAGE("  <EVENT_FILES>\t\tnumber of event*.root files to include");
-  PRINT_MESSAGE("  [FEMTO_INI]\t\tmain settings file;\t\tdefault: femto.ini");
-  PRINT_MESSAGE("  [PPID]\t\tparent's system process ID;\tdefault: 0");
-  PRINT_MESSAGE("  [OPTION]");
-  PRINT_MESSAGE("    -h | --help\t\tthis screen");
-  PRINT_MESSAGE("    -v | --version\tversion information");
-}
-
-void MessageVersion()
-{
-  PRINT_MESSAGE("version:\tTHERMINATOR 2 FEMTO version "<<_THERMINATOR2_VERSION_);
-  PRINT_MESSAGE("compiled with:\t"<<_CXX_VER_<<", ROOT("<<_ROOT_VER_<<")");
-  std::cout <<  "  preprocessor: ";
-#ifdef _DEBUG_LEVEL_
-  std::cout << "DEBUG="<<_DEBUG_LEVEL_<<" ";
-#endif
-  std::cout << std::endl;
 }
 
 void CopyINIFile()

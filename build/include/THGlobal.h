@@ -32,6 +32,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <cstdio>
+#include <TString.h>
 
 // Global static constants
 
@@ -40,10 +41,14 @@ static const double kTwoPi2 =  39.4784176043574344753379639995;
 static const double kHbarC  =   0.1973269631;
 
 static const int kFileNameMaxChar = 2000;
+static const int NoParams = 7;
+static const int projWidth[] = {0,4,10};
 
+static const TString sParNames[NoParams] = {"LambdaInv","Rinv","Norm","LambdaOSL","Rout","Rside","Rlong"};
+static const TString sProjNames[] = {"out","side","long"};
 // Define version of THERMINATOR 2
 
-#define _THERMINATOR2_VERSION_  "2.0.3"
+#define _THERMINATOR2_VERSION_  "2.1.0"
 
 // Define compilation specific variables
 
@@ -58,13 +63,15 @@ static const int kFileNameMaxChar = 2000;
 
 #define _ERROR_GENERAL_FILE_NOT_FOUND_		1
 #define _ERROR_GENERAL_MODEL_UNKNOWN_		2
-#define _ERROR_CONFIG_PARAMETER_NOT_FOUND_	3
-#define _ERROR_LIBRARY_EMPTY_			4
-#define _ERROR_LIBRARY_TAG_NOT_FOUND_		5
-#define _ERROR_LIBRARY_TAG_ATTRIB_NOT_FOUND_	6
-#define _ERROR_LIBRARY_VECTOR3D_NOT_FOUND_	7
+#define _ERROR_GENERAL_UNSUPORTED_VALUE_ 3
+#define _ERROR_CONFIG_PARAMETER_NOT_FOUND_	4
+#define _ERROR_LIBRARY_EMPTY_			5
+#define _ERROR_LIBRARY_TAG_NOT_FOUND_		6
+#define _ERROR_LIBRARY_TAG_ATTRIB_NOT_FOUND_	7
+#define _ERROR_LIBRARY_VECTOR3D_NOT_FOUND_	8
 #define _ERROR_FEMTO_UNKNOWN_PAIRTYPE_		16
-
+#define _ERROR_FEMTO_WRONG_KT_ORDER_		17
+#define _ERROR_FEMTO_GRAPH_NOT_FOUND_		18
 // Define DEBUG information
 
 #define PRINT_MESSAGE(_mes) std::cout << _mes << std::endl;
