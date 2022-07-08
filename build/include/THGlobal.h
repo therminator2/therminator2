@@ -48,7 +48,7 @@ static const TString sParNames[NoParams] = {"LambdaInv","Rinv","Norm","LambdaOSL
 static const TString sProjNames[] = {"out","side","long"};
 // Define version of THERMINATOR 2
 
-#define _THERMINATOR2_VERSION_  "2.1.0"
+#define _THERMINATOR2_VERSION_  "2.1.1"
 
 // Define compilation specific variables
 
