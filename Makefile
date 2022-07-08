@@ -65,7 +65,7 @@ F_PACK      = therminator2_$(TH2_VERSION).tar.gz
 # file lists
 # THERM2_EVENTS
 BIN_EVENTS  = therm2_events
-HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx Event.cxx Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_SR.cxx Model_BlastWave.cxx Model_BWA.cxx Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx
+HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx Event.cxx Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_SR.cxx Model_BlastWave.cxx Model_BWA.cxx Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx Messages.cxx
 ifdef DIR_UNIGEN
 HSRC_EVENTS += UnigenEventSaver.cxx
 endif
@@ -73,14 +73,19 @@ SRC_EVENTS  = $(HSRC_EVENTS:%=$(DIR_CXX)%) $(BIN_EVENTS:%=$(DIR_CXX)%.cxx)
 OBJ_EVENTS  = $(SRC_EVENTS:$(DIR_CXX)%.cxx=$(DIR_OBJ)%.o)
 # THERM2_FEMTO
 BIN_FEMTO   = therm2_femto 
-HSRC_FEMTO  = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx
+HSRC_FEMTO  = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx Messages.cxx
 SRC_FEMTO   = $(HSRC_FEMTO:%=$(DIR_CXX)%) $(BIN_FEMTO:%=$(DIR_CXX)%.cxx)
 OBJ_FEMTO   = $(SRC_FEMTO:$(DIR_CXX)%.cxx=$(DIR_OBJ)%.o)
 # THERM2_HBTFIT
 BIN_HBTFIT  = therm2_hbtfit
-HSRC_HBTFIT = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx
+HSRC_HBTFIT = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx Accessibility.cxx Compliance.cxx Messages.cxx Storage.cxx HBTFit.cxx
 SRC_HBTFIT  = $(HSRC_HBTFIT:%=$(DIR_CXX)%) $(BIN_HBTFIT:%=$(DIR_CXX)%.cxx)
 OBJ_HBTFIT  = $(SRC_HBTFIT:$(DIR_CXX)%.cxx=$(DIR_OBJ)%.o)
+
+BIN_TEST  = therm2_test
+HSRC_TEST = Accessibility.cxx Compliance.cxx Configurator.cxx Messages.cxx Parser.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx Storage.cxx
+SRC_TEST  = $(HSRC_TEST:%=$(DIR_CXX)%) $(BIN_TEST:%=$(DIR_CXX)%.cxx)
+OBJ_TEST  = $(SRC_TEST:$(DIR_CXX)%.cxx=$(DIR_OBJ)%.o)
 
 # preprocessor
 PREPROCESS  = -D_CXX_VER_="\"$(shell $(CXX) --version | grep $(CXX))\"" -D_ROOT_VER_="\"$(shell root-config --version)\""
@@ -114,12 +119,13 @@ endif
 #################################################################################
 # RULES                                                                         #
 #################################################################################
-all: $(BIN_EVENTS:%=$(DIR_OBJ)%) $(BIN_FEMTO:%=$(DIR_OBJ)%) $(BIN_HBTFIT:%=$(DIR_OBJ)%)
+all: $(BIN_EVENTS:%=$(DIR_OBJ)%) $(BIN_FEMTO:%=$(DIR_OBJ)%) $(BIN_HBTFIT:%=$(DIR_OBJ)%) $(BIN_TEST:%=$(DIR_OBJ)%)
 	cp $^ $(DIR_MAIN)
 	echo
 	echo "Type \"./therm2_events\" to generate events,"
 	echo "Type \"./therm2_femto\" to generate two-particle corelation function,"
-	echo "Type \"./therm2_hbtfit\" to fit and extract HBT radii."
+	echo "Type \"./therm2_hbtfit\" to fit and extract HBT radii,"
+	echo "Type \"./therm2_test\" to perform a compliance test."
 	echo
 
 $(DIR_OBJ)therm2_events: $(OBJ_EVENTS)
@@ -131,6 +137,10 @@ $(DIR_OBJ)therm2_femto: $(OBJ_FEMTO)
 	$(LD) $^ -o $@ $(LFLAGS)
 
 $(DIR_OBJ)therm2_hbtfit: $(OBJ_HBTFIT)
+	echo "Linking:   $@ ($(LD))"
+	$(LD) $^ -o $@ $(LFLAGS)
+
+$(DIR_OBJ)therm2_test: $(OBJ_TEST)
 	echo "Linking:   $@ ($(LD))"
 	$(LD) $^ -o $@ $(LFLAGS)
 
@@ -161,10 +171,14 @@ package: $(F_INCLUDE) $(F_SOURCE) $(F_MACRO) $(F_FOMODEL) $(F_SHARE) $(F_DOXYGEN
 
 clean:
 	rm -f $(DIR_OBJ)*.o
+	rm -f $(DIR_MACRO)*.d
+	rm -f $(DIR_MACRO)*.so
+	rm -f $(DIR_MACRO)*.pcm
 	rm -f $(DIR_OBJ)$(BIN_EVENTS) $(DIR_MAIN)$(BIN_EVENTS)
 	rm -f $(DIR_OBJ)$(BIN_FEMTO)  $(DIR_MAIN)$(BIN_FEMTO)
 	rm -f $(DIR_OBJ)$(BIN_HBTFIT) $(DIR_MAIN)$(BIN_HBTFIT)
-	echo "*.o and binary files removed."
+	rm -f $(DIR_OBJ)$(BIN_TEST) $(DIR_MAIN)$(BIN_TEST)
+	echo "*.o, *.so, *.d, *.pcm and binary files removed."
 
 cleandoc:
 	rm -rf $(DIR_DOC)
