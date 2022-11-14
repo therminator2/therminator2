@@ -7,7 +7,7 @@ using namespace std;
 
 extern TString	sEventDIR;
 
-void TextEventSaver::Save(Event *tEvent, int)
+void TextEventSaver::Save(Event *tEvent, Model *, int)
 {
   TDatime  tDate;
   ofstream tFile;

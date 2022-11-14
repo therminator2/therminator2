@@ -16,7 +16,7 @@ extern int	sRandomize;
 UnigenEventSaver::UnigenEventSaver() : mFile(0), mEventTree(0), mParameterTree(0) {
 }
 
-void UnigenEventSaver::Save(Event *tEvent, int tEventCounter)
+void UnigenEventSaver::Save(Event *tEvent, Model *, int tEventCounter)
 {
     TDatime tDate; 
 

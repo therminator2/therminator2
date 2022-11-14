@@ -58,19 +58,37 @@ F_MACRO     = $(DIR_MACRO)*.C
 F_FOMODEL   = $(DIR_FOMODEL)*.ini $(DIR_FOMODEL)lhyquid2dbi/*.xml
 F_SHARE     = $(DIR_SHARE)*.data
 F_INI       = $(DIR_MAIN)*.ini
-F_BASH      = $(DIR_MAIN)*.sh
+F_BASsages.cxx       = $(DIR_MAIN)*.sh
 F_ADDONS    = $(DIR_ADDONS)*.cxx $(DIR_ADDONS)*.mk
 F_PACK      = therminator2_$(TH2_VERSION).tar.gz
 
 # file lists
 # THERM2_EVENTS
 BIN_EVENTS  = therm2_events
-HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx Event.cxx Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_SR.cxx Model_BlastWave.cxx Model_BWA.cxx Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx Messages.cxx
+HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx EventReader.cxx Event.cxx \
+   Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_SR.cxx Model_BlastWave.cxx Model_BWA.cxx \
+   Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx \
+   Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx \
+   Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx AbstractAfterburner.cxx Messages.cxx \
+   CoulombAfterburner.cxx ListAfterburner.cxx
 ifdef DIR_UNIGEN
 HSRC_EVENTS += UnigenEventSaver.cxx
 endif
 SRC_EVENTS  = $(HSRC_EVENTS:%=$(DIR_CXX)%) $(BIN_EVENTS:%=$(DIR_CXX)%.cxx)
 OBJ_EVENTS  = $(SRC_EVENTS:$(DIR_CXX)%.cxx=$(DIR_OBJ)%.o)
+# THERM2_COULOMB
+BIN_COULOMB  = therm2_coulomb
+HSRC_COULOMB = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx EventGenerator.cxx EventReader.cxx Event.cxx \
+   Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_SR.cxx Model_BlastWave.cxx Model_BWA.cxx \
+   Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx \
+   Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx \
+   Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx AbstractAfterburner.cxx Messages.cxx \
+   CoulombAfterburner.cxx ListAfterburner.cxx
+ifdef DIR_UNIGEN
+HSRC_COULOMB += UnigenEventSaver.cxx
+endif
+SRC_COULOMB  = $(HSRC_COULOMB:%=$(DIR_CXX)%) $(BIN_COULOMB:%=$(DIR_CXX)%.cxx)
+OBJ_COULOMB  = $(SRC_COULOMB:$(DIR_CXX)%.cxx=$(DIR_OBJ)%.o)
 # THERM2_FEMTO
 BIN_FEMTO   = therm2_femto 
 HSRC_FEMTO  = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayTable.cxx DecayChannel.cxx Messages.cxx
@@ -110,7 +128,7 @@ endif
 # compilation
 CXX         = g++
 LD          = g++
-CXXFLAGS    = -std=c++11 -O0 -g -Wno-deprecated -Wno-return-type -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
+CXXFLAGS    = -std=c++11 -O0 -g -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
 LFLAGS      = -lm -g `root-config --libs`
 ifdef DIR_UNIGEN
 CXXFLAGS    += -DUSE_UNIGEN -I $(DIR_UNIGEN)/base/include
@@ -119,16 +137,21 @@ endif
 #################################################################################
 # RULES                                                                         #
 #################################################################################
-all: $(BIN_EVENTS:%=$(DIR_OBJ)%) $(BIN_FEMTO:%=$(DIR_OBJ)%) $(BIN_HBTFIT:%=$(DIR_OBJ)%) $(BIN_TEST:%=$(DIR_OBJ)%)
+all: $(BIN_EVENTS:%=$(DIR_OBJ)%) $(BIN_COULOMB:%=$(DIR_OBJ)%) $(BIN_FEMTO:%=$(DIR_OBJ)%) $(BIN_HBTFIT:%=$(DIR_OBJ)%) $(BIN_TEST:%=$(DIR_OBJ)%)
 	cp $^ $(DIR_MAIN)
 	echo
 	echo "Type \"./therm2_events\" to generate events,"
+	echo "Type \"./therm2_coulomb\" to run Coulomb afterburner,"
 	echo "Type \"./therm2_femto\" to generate two-particle corelation function,"
 	echo "Type \"./therm2_hbtfit\" to fit and extract HBT radii,"
 	echo "Type \"./therm2_test\" to perform a compliance test."
 	echo
 
 $(DIR_OBJ)therm2_events: $(OBJ_EVENTS)
+	echo "Linking:   $@ ($(LD))"
+	$(LD) $^ -o $@ $(LFLAGS)
+
+$(DIR_OBJ)therm2_coulomb: $(OBJ_COULOMB)
 	echo "Linking:   $@ ($(LD))"
 	$(LD) $^ -o $@ $(LFLAGS)
 
@@ -175,10 +198,15 @@ clean:
 	rm -f $(DIR_MACRO)*.so
 	rm -f $(DIR_MACRO)*.pcm
 	rm -f $(DIR_OBJ)$(BIN_EVENTS) $(DIR_MAIN)$(BIN_EVENTS)
+	rm -f $(DIR_OBJ)$(BIN_COULOMB) $(DIR_MAIN)$(BIN_COULOMB)
 	rm -f $(DIR_OBJ)$(BIN_FEMTO)  $(DIR_MAIN)$(BIN_FEMTO)
 	rm -f $(DIR_OBJ)$(BIN_HBTFIT) $(DIR_MAIN)$(BIN_HBTFIT)
 	rm -f $(DIR_OBJ)$(BIN_TEST) $(DIR_MAIN)$(BIN_TEST)
 	echo "*.o, *.so, *.d, *.pcm and binary files removed."
+	rm -f $(DIR_OBJ)$(BIN_EVENTS) $(DIR_MAIN)$(BIN_EVENTS)
+	rm -f $(DIR_OBJ)$(BIN_FEMTO)  $(DIR_MAIN)$(BIN_FEMTO)
+	rm -f $(DIR_OBJ)$(BIN_HBTFIT) $(DIR_MAIN)$(BIN_HBTFIT)
+	echo "*.o and binary files removed."
 
 cleandoc:
 	rm -rf $(DIR_DOC)

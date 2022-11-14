@@ -245,33 +245,84 @@ double Integrator::Integrate(ParticleType* aPartType)
       strcmp(aPartType->GetName(),"Dl1232min")==0 ||
       strcmp(aPartType->GetName(),"Dl1232zer")==0 ||
       strcmp(aPartType->GetName(),"Dl1232plu")==0 ||
-      strcmp(aPartType->GetName(),"Dl1232plp")==0){
+      strcmp(aPartType->GetName(),"Dl1232plp")==0)
+  {
 
-      int oversamp = 10;
+    int oversamp = 10;
 
-      for (tIter = 0; tIter < oversamp*mNSamples; tIter++) {
-	  tVal = mFOModel->GetIntegrand(aPartType,true);
-	  if (tVal>tMaxInt)
-	      tMaxInt = tVal;
-	  tMulti += tVal;
-      }
-      tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * oversamp * mNSamples);
-      aPartType->SetMaxIntegrand(tMaxInt);
-      aPartType->SetMultiplicity(tMulti);
-  }else{
-      /// END_HACK_RR
-      for (tIter = 0; tIter < mNSamples; tIter++) {
-	  tVal = mFOModel->GetIntegrand(aPartType,true);
-	  int pdg = aPartType->GetPDGCode();
+    for (tIter = 0; tIter < oversamp*mNSamples; tIter++) 
+    {
+      tVal = mFOModel->GetIntegrand(aPartType,true);
+      if (tVal>tMaxInt)
+        tMaxInt = tVal;
 
-	  if (tVal>tMaxInt) {
-	      tMaxInt = tVal;
-	  }
-	  tMulti += tVal;
-      }
-      tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * mNSamples);
-      aPartType->SetMaxIntegrand(tMaxInt);
-      aPartType->SetMultiplicity(tMulti);
+      tMulti += tVal;
+    }
+    tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * oversamp * mNSamples);
+    aPartType->SetMaxIntegrand(tMaxInt);
+    aPartType->SetMultiplicity(tMulti);
+  }
+  else if(strcmp(aPartType->GetName(),"Lm2350zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm2350zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm2110zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm2110zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm2100zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm2100zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1890zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1890zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1830zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1830zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1820zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1820zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1810zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1810zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1800zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1800zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1690zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1690zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1670zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1670zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1600zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1600zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1520zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1520zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1405zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1405zrb")==0 ||
+          strcmp(aPartType->GetName(),"Lm1115zer")==0 ||
+          strcmp(aPartType->GetName(),"Lm1115zrb")==0 ) //new hack - JK
+  {
+    int oversamp = 10;
+    
+    for (tIter = 0; tIter < oversamp*mNSamples; tIter++) 
+    {
+      tVal = mFOModel->GetIntegrand(aPartType,true);
+      int pdg = aPartType->GetPDGCode();
+
+      if (tVal>tMaxInt) 
+        tMaxInt = tVal;
+
+      tMulti += tVal;
+    }
+    tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * oversamp * mNSamples);
+    aPartType->SetMaxIntegrand(tMaxInt);
+    aPartType->SetMultiplicity(tMulti);
+  }
+  else
+  {
+    /// END_HACK_RR
+    for (tIter = 0; tIter < mNSamples; tIter++) 
+    {
+      tVal = mFOModel->GetIntegrand(aPartType,true);
+      int pdg = aPartType->GetPDGCode();
+
+      if (tVal>tMaxInt) 
+        tMaxInt = tVal;
+
+      tMulti += tVal;
+    }
+    tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * mNSamples);
+    aPartType->SetMaxIntegrand(tMaxInt);
+    aPartType->SetMultiplicity(tMulti);
   }
 
   return tMulti;

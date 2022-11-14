@@ -12,7 +12,7 @@ Accessibility::~Accessibility()
 {
 }
 
-int Accessibility::GetParameter(Configurator* aINI,TString aKeyword, Double_t *parval, Int_t *isfixed, Double_t *parmin, Double_t *parmax)
+void Accessibility::GetParameter(Configurator* aINI,TString aKeyword, Double_t *parval, Int_t *isfixed, Double_t *parmin, Double_t *parmax)
 {
     *parval = aINI->GetParameter(aKeyword).Atof(); 
     if (aINI->GetParameter(aKeyword+"FitType") == "fixed") 

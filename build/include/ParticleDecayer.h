@@ -42,14 +42,14 @@ class ParticleDecayer {
     ParticleDecayer(ParticleDB* aDB, std::list<Particle>* aParticles);
     ~ParticleDecayer();
 
-    int  DecayParticle(Particle* aFather);
+    void DecayParticle(Particle* aFather);
     void Randomize();
     void SeedSet(int aSeed);
 
   private:
     inline double BreitWigner(double Mass, double Gamma) const;
-    int TwoBodyDecay();
-    int ThreeBodyDecay();
+    void TwoBodyDecay();
+    void ThreeBodyDecay();
 
     std::list<Particle>* mParticles;
     ParticleDB* 	 mDB;

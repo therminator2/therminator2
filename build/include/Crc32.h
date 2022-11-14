@@ -10,7 +10,7 @@ class Crc32 {
     void	 Update(const char* aData, unsigned int aSize);
     unsigned int Finish() const;
     unsigned int GetValue() const;
-    const char*  GetValueHex() const;
+    const std::string GetValueHex() const;
 
   private:
     mutable unsigned int      mCrc32;

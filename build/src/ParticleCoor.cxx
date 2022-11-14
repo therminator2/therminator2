@@ -30,6 +30,8 @@
 #include "THGlobal.h"
 #include "ParticleCoor.h"
 
+#include <iostream>
+
 ParticleCoor& ParticleCoor::operator= (ParticleCoor& aPartCoor)
 {
   mass	= aPartCoor.mass;
@@ -48,6 +50,7 @@ ParticleCoor& ParticleCoor::operator= (ParticleCoor& aPartCoor)
   fathereid	= aPartCoor.fathereid;
   decayed	= aPartCoor.decayed;
   eventid	= aPartCoor.eventid;
+  return *this;
 }
 
 ParticleCoor& ParticleCoor::operator= (ParticleCoor* aPartCoor)
@@ -68,6 +71,7 @@ ParticleCoor& ParticleCoor::operator= (ParticleCoor* aPartCoor)
   fathereid	= aPartCoor->fathereid;
   decayed	= aPartCoor->decayed;
   eventid	= aPartCoor->eventid;
+  return *this;
 }
 
 void ParticleCoor::GetMomentum(double* aPe, double* aPx, double* aPy, double* aPz) const

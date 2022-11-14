@@ -42,6 +42,7 @@ class ParticleDB {
     int           AddParticleType(ParticleType* aPartType);
     ParticleType* GetParticleType(int aIndex);
     ParticleType* GetParticleType(TString aName);
+    ParticleType* FindByPID(int aPID);
     int           GetParticleTypeIndex(TString aName);
     int           GetParticleTypeCount();
     int           ExistsParticleType(TString aName);

@@ -132,12 +132,12 @@ unsigned int Crc32::GetValue() const
   return mCrc32;
 }
 
-const char* Crc32::GetValueHex() const
+const std::string Crc32::GetValueHex() const
 {
   ostringstream oss;
   oss.flags(std::ios::hex | std::ios::uppercase | std::ios::right);
   oss.fill('0');
   oss.width(8);
   oss << mCrc32;
-  return (oss.str().data());
+  return oss.str();
 }

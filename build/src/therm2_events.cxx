@@ -40,6 +40,8 @@
 #include "UnigenEventSaver.h"
 #endif
 #include "CollectionEventSaver.h"
+#include "CoulombAfterburner.h"
+#include "ListAfterburner.h"
 #include "Messages.h"
 
 Configurator *sMainConfig;
@@ -57,9 +59,9 @@ int	sParentPID;
 void ReadParameters();
 void ReadSHARE(ParticleDB* aPartDB);
 void CheckSHARE(ParticleDB* aPartDB);
-void MessageIntro();
-void MessageHelp();
-void MessageVersion();
+//void MessageIntro();
+//void MessageHelp();
+//void MessageVersion();
 void CopyINIFile();
 void AddLogEntry(const char* aEntry);
 
@@ -67,16 +69,16 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-    ParticleDB*	  tPartDB; 
-    AbstractEventSaver* tEventSaver;
-    EventGenerator* tEventGen;
-    TString tExportType;
-    Int_t tEventExportType;
+  ParticleDB*	  tPartDB; 
+  AbstractEventSaver* tEventSaver;
+  EventGenerator* tEventGen;
+  TString tExportType;
+  Int_t tEventExportType;
 
 
-    sMainINI   = "./events.ini";
-    sParentPID = 0;
-    sHyperXML  = "";
+  sMainINI   = "./events.ini";
+  sParentPID = 0;
+  sHyperXML  = "";
 /*
 ## ParentPID ##
 Applicable if the user runs multiple copies of therm2_events - e.g. a cluster.
@@ -115,58 +117,69 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
         }
     }
 
-    Messages::Intro();
+  Messages::Intro();
 
-    sMainConfig = new Configurator;
-    ReadParameters();
-    
-    {
-        char tBuff[2*kFileNameMaxChar];
-        std::sprintf(tBuff,"[input]\t%s\t%i",sMainINI.Data(),sParentPID); 
-        AddLogEntry(tBuff);
-        std::sprintf(tBuff,"[input]\t%s",sModelINI.Data()); 
-        AddLogEntry(tBuff);
-    }
+  sMainConfig = new Configurator;
+  ReadParameters();
+  
+  {
+    char tBuff[2*kFileNameMaxChar];
+    std::sprintf(tBuff,"[input]\t%s\t%i",sMainINI.Data(),sParentPID); 
+    AddLogEntry(tBuff);
+    std::sprintf(tBuff,"[input]\t%s",sModelINI.Data()); 
+    AddLogEntry(tBuff);
+  }
 
-    tPartDB     = new ParticleDB();
-    ReadSHARE(tPartDB);
-    //CheckSHARE(tPartDB);
-    tExportType = sMainConfig->GetParameter("EventFileType");
-    tEventExportType = 0;
-    if (tExportType.Contains("root"))   tEventExportType |= 1;
-    if (tExportType.Contains("text"))   tEventExportType |= 2;
-    #ifdef USE_UNIGEN
-    if (tExportType.Contains("unigen")) tEventExportType |= 4;
-    #endif
+  tPartDB     = new ParticleDB();
+  ReadSHARE(tPartDB);
+  //CheckSHARE(tPartDB);
+  tExportType = sMainConfig->GetParameter("EventFileType");
+  tEventExportType = 0;
+  if (tExportType.Contains("root"))   tEventExportType |= 1;
+  if (tExportType.Contains("text"))   tEventExportType |= 2;
+#ifdef USE_UNIGEN
+  if (tExportType.Contains("unigen")) tEventExportType |= 4;
+#endif
 
-    switch (tEventExportType) {
-        case 1 : tEventSaver = new RootEventSaver; 
-            break;
-        case 2 : tEventSaver = new TextEventSaver; 
-            break;
-    #ifdef USE_UNIGEN
-        case 4 : tEventSaver = new UnigenEventSaver;
-            break;
-    #endif
-        default : CollectionEventSaver *es = new CollectionEventSaver;
-                if (tEventExportType & 1) es->Add(new RootEventSaver);
-                if (tEventExportType & 2) es->Add(new TextEventSaver);
-    #ifdef USE_UNIGEN
-                if (tEventExportType & 4) es->Add(new UnigenEventSaver);
-    #endif
-                tEventSaver = es;
-            break;
-    }
-    tEventGen   = new EventGenerator(tPartDB, tEventSaver);
-    tEventGen->GenerateEvents();
-    tEventSaver->SetEventsTemp();
-    
-    delete tEventGen;
-    delete tEventSaver;
-    delete tPartDB;
-    delete sMainConfig;
+  switch (tEventExportType) {
+    case 1 : tEventSaver = new RootEventSaver; 
+	     break;
+    case 2 : tEventSaver = new TextEventSaver; 
+	     break;
+#ifdef USE_UNIGEN
+    case 4 : tEventSaver = new UnigenEventSaver;
+	     break;
+#endif
+    default : CollectionEventSaver *es = new CollectionEventSaver;
+              if (tEventExportType & 1) es->Add(new RootEventSaver);
+              if (tEventExportType & 2) es->Add(new TextEventSaver);
+#ifdef USE_UNIGEN
+              if (tEventExportType & 4) es->Add(new UnigenEventSaver);
+#endif
+              tEventSaver = es;
+	      break;
+  }
 
-    return 0;
+  ListAfterburner *tAfterburners = new ListAfterburner();
+  try {
+  int tCoulombSteps = sMainConfig->GetParameter("CoulombTimeSteps").Atoi();
+  double tCoulombStepSize = sMainConfig->GetParameter("CoulombStepSize").Atof();
+  tAfterburners->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize));
+  } catch (TString &str) {
+    cout << "Parameter " << str.Data() << " is not known" << endl;
+  }
+  tEventGen = new EventGenerator(tPartDB, tEventSaver, tAfterburners);
+  tEventGen->GenerateEvents();
+  tEventSaver->SetEventsTemp();
+ 
+ // TODO: add missing delete statements
+
+  delete tEventGen;
+  delete tEventSaver;
+  delete tPartDB;
+  delete sMainConfig;
+
+  return 0;
 }
 
 // ##############################################################
@@ -247,7 +260,7 @@ void ReadSHARE(ParticleDB* aPartDB)
   tParser->ReadSHAREDecays(aPartDB);
   delete tParser;
 }
-
+/*
 void MessageIntro()
 {
   PRINT_MESSAGE("  ***********************************************************************"	);
@@ -294,7 +307,7 @@ void MessageVersion()
 #endif
   std::cout << std::endl;
 }
-
+*/
 void CopyINIFile()
 {
   TString  tINI;
@@ -370,7 +383,8 @@ void CheckSHARE(ParticleDB* aPartDB) {
     );
       
     SumBR = 0.0;
-    if (tDecTable = tType->GetTable()) {   
+    tDecTable = tType->GetTable();
+    if (tDecTable != NULL) {   
       for (int tChanIndex = 0; tChanIndex < tDecTable->GetChannelCount() + 1; tChanIndex++) {
 	if (tDecTable->GetDecayChannel(tChanIndex)->Is3Particle()) {
           PRINT_DEBUG_2("\t\tChannel " << tChanIndex << ": "

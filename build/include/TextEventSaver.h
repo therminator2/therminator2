@@ -5,7 +5,7 @@
 
 class TextEventSaver : public AbstractEventSaver {
   public:
-    virtual void Save(Event *, int);
+    virtual void Save(Event *, Model *, int);
 };
 
 #endif

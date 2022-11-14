@@ -1444,10 +1444,10 @@ double GetQuantumCoulomb()
   dcomplex tterm = mult(expikrc2, mult(ffminus, ffplusc));
 
 
-  if (!finite(ffminus.re))
+  if (!isfinite(ffminus.re))
     cout << "FFMinus Re not a number !" << " " << ccase<< endl;
   
-  if (!finite(ffminus.im))
+  if (!isfinite(ffminus.im))
     cout << "FFMinus Im not a number !" << " " << ccase<< endl;
 
   if ((ffplus.re > 2.0) || (ffplus.re < -2.0))
@@ -1489,12 +1489,12 @@ double GetCoulomb()
   dcomplex ffplus;
   GetFFsingle(&ffplus);
 
-  if (!finite(ffplus.re)) {
+  if (!isfinite(ffplus.re)) {
     cout << "FFPlus Re not a number !" << " " << endl;
     cout << mRSt << " " << mKStarSigned << " " << mROS << " " << mRSS << " " << mRLS << endl;
   }
 
-  if (!finite(ffplus.im))
+  if (!isfinite(ffplus.im))
     cout << "FFPlus Im not a number !" << " " << endl;
 
 
@@ -1746,10 +1746,10 @@ double GetQuantumCoulombStrong()
 
   long double smult = 1+wavesign;
 
-  if (!finite(ffminus.re))
+  if (!isfinite(ffminus.re))
     cout << "FFMinus Re not a number ! " << testp << " " << testm << " " << ccase<< endl;
   
-  if (!finite(ffminus.im))
+  if (!isfinite(ffminus.im))
     cout << "FFMinus Im not a number !" << testp << " " << testm << " " << ccase<< endl;
 
   if ((ffplus.re > 2.0) || (ffplus.re < -2.0))

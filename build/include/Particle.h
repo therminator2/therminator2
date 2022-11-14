@@ -39,6 +39,7 @@ class Particle
   public:
     Particle();
     Particle(ParticleType* aType);
+    Particle(ParticleCoor*, ParticleType*);
     ~Particle();
 
     ParticleCoor& operator= (Particle& aParticle);
@@ -46,7 +47,7 @@ class Particle
     void	  SetParticlePX(double  aPe, double  aPx, double  aPy, double  aPz,
 				double  aXt, double  aXx, double  aXy, double  aXz,
 				Particle* aFather=0);
-    const char*	  MakeTEXTEntry();
+    const std::string MakeTEXTEntry();
     static void   ZeroEID();
     
   private:    

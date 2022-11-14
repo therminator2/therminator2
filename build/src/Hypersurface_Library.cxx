@@ -115,6 +115,7 @@ TString Hypersurface_Library::GetXMLAttribute(const char* aAttName) noexcept(fal
     for(Iter=mCurrTag->attributes.begin(); Iter !=mCurrTag->attributes.end(); Iter++)
       if(Iter->name == aAttName)
         return Iter->value;
+    return "";
   } else {
     PRINT_MESSAGE("<Hypersurface_Library::GetXMLAttribute>\tTag attribute "<<aAttName<<" not found");
     throw _ERROR_LIBRARY_TAG_ATTRIB_NOT_FOUND_;

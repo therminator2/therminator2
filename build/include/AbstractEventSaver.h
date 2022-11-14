@@ -7,7 +7,7 @@ class AbstractEventSaver {
   public:
     AbstractEventSaver();
     virtual ~AbstractEventSaver();
-    virtual void Save(Event *, int) = 0;
+    virtual void Save(Event *, Model *, int) = 0;
     void FindPreviousEventFiles();
     void SetEventsTemp();
 

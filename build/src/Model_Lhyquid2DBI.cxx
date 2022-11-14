@@ -103,7 +103,7 @@ double Model_Lhyquid2DBI::GetIntegrand(ParticleType* aPartType, bool)
 void Model_Lhyquid2DBI::Description()
 {
   ostringstream oss;
-  char tCentrality[10];
+  char tCentrality[32];
   sprintf(tCentrality,"%g-%g",mCentralityMin,mCentralityMax);
   
   oss << "##################################################"<< endl;

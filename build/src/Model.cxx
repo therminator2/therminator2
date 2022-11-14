@@ -253,7 +253,6 @@ double Model::CalcMass(ParticleType *aPartType, double &statWeight) {
 double Model::CalcMassDistr(ParticleType *aPartType, double &statWeight) {
 
     int pdg = aPartType->GetPDGCode();
-    
     if (Abs(pdg) == 2224 || Abs(pdg) == 2214 || Abs(pdg) == 2114 || Abs(pdg) == 1114) {
         TH1F *distr = p33();
         double m = distr->GetRandom();

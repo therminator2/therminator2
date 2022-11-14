@@ -7,7 +7,7 @@
 class CollectionEventSaver : public AbstractEventSaver {
   public:
     virtual ~CollectionEventSaver();
-    virtual void Save(Event *, int);
+    virtual void Save(Event *, Model *, int);
     void Add(AbstractEventSaver *saver);
   private:
     std::vector<AbstractEventSaver *> savers;

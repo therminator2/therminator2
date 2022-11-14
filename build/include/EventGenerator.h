@@ -35,26 +35,39 @@
 #include "ParticleDB.h"
 #include "Integrator.h"
 #include "AbstractEventSaver.h"
+#include "ListAfterburner.h"
 #include "Event.h"
 
 class EventGenerator {
   public:
     EventGenerator();
-    EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES);
+    EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLA);
     ~EventGenerator();
 
-    void   GenerateEvents();
+    void GenerateEvents();
 
   private:
+    void GeneratePrimordials(int aSeed=0);
+    void DecayParticles(int aSeed=0);
+    void GenerateMultiplicities();
+    void Randomize();
+
     void ReadParameters();  
     void SaveEvent();
 
+    std::vector<int>	mMultiplicities;
+
     AbstractEventSaver* mEventSaver;
+    ListAfterburner*    mAfterburners;
     ParticleDB*	        mDB;
     Integrator*	        mInteg;
-    Event*      	mEvent;
-    int		        mEventCounter;
-    int		        mNumberOfEvents;
+    Event*      	mEvent;    
+    TRandom2*		mRandom;
+
+    int mDistribution;	// type of multiplicity distribution: 0 = Poissonian, 1 - NegativeBinomial
+    int	mEventCounter;
+    int	mNumberOfEvents;
+    
 };
 
 #endif

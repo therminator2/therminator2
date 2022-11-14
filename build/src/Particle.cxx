@@ -50,6 +50,11 @@ Particle::Particle(ParticleType *aType)
   fathereid = -1;
 }
 
+
+Particle::Particle(ParticleCoor *aCoor, ParticleType *aType)
+: ParticleCoor(*aCoor), mPartType(aType)
+{ }
+
 Particle::~Particle()
 {
 }
@@ -72,6 +77,7 @@ ParticleCoor& Particle::operator= (Particle& aParticle)
   fathereid	= aParticle.fathereid;
   decayed	= aParticle.decayed;
   eventid	= aParticle.eventid;
+  return *this;
 }
 
 ParticleType* Particle::GetParticleType() const
@@ -93,7 +99,7 @@ void Particle::SetParticlePX(double aPe, double aPx, double aPy, double aPz,
   eid = EIDi++;
 }
 
-const char* Particle::MakeTEXTEntry()
+const std::string Particle::MakeTEXTEntry()
 {
   ostringstream oss;
 
@@ -108,7 +114,7 @@ const char* Particle::MakeTEXTEntry()
   oss << mass <<'\t';
   oss << e        <<'\t'<< px       <<'\t'<< py       <<'\t'<< pz       <<'\t';
   oss << t*kHbarC <<'\t'<< x*kHbarC <<'\t'<< y*kHbarC <<'\t'<< z*kHbarC <<'\n';
-  return oss.str().data();
+  return oss.str();
 }
 
 void Particle::ZeroEID()

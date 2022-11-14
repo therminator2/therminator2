@@ -4,8 +4,6 @@
     #include <vector>
     #include <TString.h>
 
-    using namespace std;
-
     class Messages
     {
         public:
@@ -20,7 +18,7 @@
             static void HelpTst();
             static void HelpEvnts();
             static void HelpFmt();
-            static void Summary(double low, double high, vector<TString> files, vector<Summ> su);
+            static void Summary(double low, double high, std::vector<TString> files, std::vector<Summ> su);
             static void Version();
             
     };

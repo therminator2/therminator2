@@ -13,7 +13,7 @@
 class UnigenEventSaver : public AbstractEventSaver {
     public:
         UnigenEventSaver();
-        virtual void Save(Event *, int);
+        virtual void Save(Event *, Model *, int);
     private:
         struct DecayNode {
            // DecayNode() : particle(nullptr) {}

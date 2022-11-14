@@ -57,6 +57,16 @@ ParticleType* ParticleDB::GetParticleType(TString aName)
   return &(mParticleTable[mParticleNames[aName]]);
 }
 
+ParticleType* ParticleDB::FindByPID(int aPID) {
+  auto tIter = mParticleTable.begin();
+  for ( ; tIter != mParticleTable.end(); ++tIter) {
+    if (tIter->GetPDGCode() == aPID ) {
+      return &(*tIter);
+    }
+  }
+  return NULL;
+}
+
 int ParticleDB::GetParticleTypeIndex(TString aName)
 {
   return mParticleNames[aName];

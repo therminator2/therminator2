@@ -60,7 +60,7 @@ ParticleDecayer::~ParticleDecayer()
   delete mRandom;
 }
 
-int ParticleDecayer::DecayParticle(Particle* aFather)
+void ParticleDecayer::DecayParticle(Particle* aFather)
 {
   DecayTable*	tTable;
   int		tChannelIndex;
@@ -84,7 +84,7 @@ int ParticleDecayer::DecayParticle(Particle* aFather)
 	PRINT_DEBUG_3("\tD1 "<<mDB->GetParticleType(tTable->GetDecayChannel(tIter)->GetParticle1())->GetName() << " D2 "<<mDB->GetParticleType(tTable->GetDecayChannel(tIter)->GetParticle2())->GetName() << " D3 "<<mDB->GetParticleType(tTable->GetDecayChannel(tIter)->GetParticle3())->GetName() << " BR "<<tTable->GetDecayChannel(tIter)->GetBranchingRatio());
       }     
     }
-    return 0;
+    return;
   }
 #endif
   mChannel = tTable->GetDecayChannel(tChannelIndex);
@@ -100,7 +100,7 @@ int ParticleDecayer::DecayParticle(Particle* aFather)
   }
 }
 
-int ParticleDecayer::TwoBodyDecay()
+void ParticleDecayer::TwoBodyDecay()
 {
   ParticleType*	tType1;
   ParticleType*	tType2;
@@ -190,7 +190,7 @@ int ParticleDecayer::TwoBodyDecay()
   delete tDaughter2;
 }
 
-int ParticleDecayer::ThreeBodyDecay()
+void ParticleDecayer::ThreeBodyDecay()
 {
   ParticleType*	tType1;
   ParticleType*	tType2;
