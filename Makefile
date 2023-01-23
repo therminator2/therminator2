@@ -70,7 +70,7 @@ HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayT
    Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx \
    Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx \
    Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx AbstractAfterburner.cxx Messages.cxx \
-   CoulombAfterburner.cxx ListAfterburner.cxx
+   CoulombAfterburner.cxx ListAfterburner.cxx CanonicalSuppressionAfterburner.cxx
 ifdef DIR_UNIGEN
 HSRC_EVENTS += UnigenEventSaver.cxx
 endif
