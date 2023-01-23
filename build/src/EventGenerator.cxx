@@ -99,10 +99,13 @@ void EventGenerator::GenerateEvents()
 
     int aSeed = sRandomize ? 0 : 43212 - tIter * 2;
     GeneratePrimordials(aSeed);
+    size_t sizeBefore = mEvent->GetParticleList()->size();
     mAfterburnersPreDecay->Apply(mEvent);
+    size_t sizeAfter = mEvent->GetParticleList()->size();
     DecayParticles(aSeed);
 
-    cout << "\r\tevent " << tIter+1 <<"/"<< mNumberOfEvents;
+    cout << "\r\tevent " << tIter+1 <<"/"<< mNumberOfEvents << ", size before: " << sizeBefore << ", size after: " << sizeAfter;
+  //  cout << "event " << tIter+1 <<"/"<< mNumberOfEvents << ", size before: " << sizeBefore << ", size after: " << sizeAfter << endl;
     cout.flush();
     mAfterburnersPostDecay->Apply(mEvent);
     mEventSaver->Save(mEvent,mInteg->GetModel(),mEventCounter);

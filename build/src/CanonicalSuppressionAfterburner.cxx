@@ -29,7 +29,12 @@ void CanonicalSuppressionAfterburner::Apply(Event *tEvent)
             for (const Particle &partJ : *tParticles) {
                 int nas = partJ.GetParticleType()->GetNumberAS();
                 for (int kas = 0; kas < nas; ++kas) {
-                    Float_t dist = 1;
+                    Float_t dist = kHbarC * TMath::Sqrt(
+                        TMath::Power(partI.x - partJ.x, 2) + 
+                        TMath::Power(partI.y - partJ.y, 2) + 
+                        TMath::Power(partI.z - partJ.z, 2)
+                    );
+                    std::cout << "dist = " << dist << std::endl;
                     if (dist < Rc) {
                         grid.at(i, j) = dist;
                     }
@@ -69,7 +74,10 @@ void CanonicalSuppressionAfterburner::Apply(Event *tEvent)
     }
     tParticles->remove_if([this](Particle &part) -> bool {
         Int_t eid = part.eid;
-        return !(
+        Int_t ns = part.GetParticleType()->GetNumberS();
+        Int_t nas = part.GetParticleType()->GetNumberAS();
+        Int_t netS = ns - nas;
+        return netS != 0 && !(
             std::all_of(eidToIs[eid].begin(), eidToIs[eid].end(), [this](UInt_t i) { return this->grid.hasI(i); }) &&
             std::all_of(eidToJs[eid].begin(), eidToJs[eid].end(), [this](UInt_t j) { return this->grid.hasJ(j); })
         );
