@@ -41,6 +41,7 @@
 #endif
 #include "CollectionEventSaver.h"
 #include "CoulombAfterburner.h"
+#include "CanonicalSuppressionAfterburner.h"
 #include "ListAfterburner.h"
 #include "Messages.h"
 
@@ -160,15 +161,19 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
 	      break;
   }
 
-  ListAfterburner *tAfterburners = new ListAfterburner();
+  ListAfterburner *tAfterburnersPreDecay = new ListAfterburner();
+  ListAfterburner *tAfterburnersPostDecay = new ListAfterburner();
   try {
-  int tCoulombSteps = sMainConfig->GetParameter("CoulombTimeSteps").Atoi();
-  double tCoulombStepSize = sMainConfig->GetParameter("CoulombStepSize").Atof();
-  tAfterburners->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize));
+    int tCoulombSteps = sMainConfig->GetParameter("CoulombTimeSteps").Atoi();
+    double tCoulombStepSize = sMainConfig->GetParameter("CoulombStepSize").Atof();
+    tAfterburnersPostDecay->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize));
+
+    Double_t tRc = sMainConfig->GetParameter("CoulombStepSize").Atof();
+    tAfterburnersPreDecay->Add(new CanonicalSuppressionAfterburner());
   } catch (TString &str) {
     cout << "Parameter " << str.Data() << " is not known" << endl;
   }
-  tEventGen = new EventGenerator(tPartDB, tEventSaver, tAfterburners);
+  tEventGen = new EventGenerator(tPartDB, tEventSaver, tAfterburnersPreDecay, tAfterburnersPostDecay);
   tEventGen->GenerateEvents();
   tEventSaver->SetEventsTemp();
  

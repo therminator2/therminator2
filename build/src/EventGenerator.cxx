@@ -50,14 +50,14 @@ extern int	sParentPID;
 using namespace std;
 
 EventGenerator::EventGenerator()
-: mDB(0), mEventSaver(0), mAfterburners(0), mInteg(0), mEvent(0),
+: mDB(0), mEventSaver(0), mAfterburnersPostDecay(0), mInteg(0), mEvent(0),
   mEventCounter(0), mNumberOfEvents(0), mDistribution(0)
 {
   mMultiplicities.clear();
 }
 
-EventGenerator::EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLA)
-: mDB(aDB), mEventSaver(aES), mAfterburners(aLA),
+EventGenerator::EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLAPre, ListAfterburner *aLAPost)
+: mDB(aDB), mEventSaver(aES), mAfterburnersPreDecay(aLAPre), mAfterburnersPostDecay(aLAPost),
   mEventCounter(0), mNumberOfEvents(0), mDistribution(0)
 {
   mMultiplicities.clear();
@@ -99,11 +99,12 @@ void EventGenerator::GenerateEvents()
 
     int aSeed = sRandomize ? 0 : 43212 - tIter * 2;
     GeneratePrimordials(aSeed);
+    mAfterburnersPreDecay->Apply(mEvent);
     DecayParticles(aSeed);
 
     cout << "\r\tevent " << tIter+1 <<"/"<< mNumberOfEvents;
     cout.flush();
-    mAfterburners->Apply(mEvent);
+    mAfterburnersPostDecay->Apply(mEvent);
     mEventSaver->Save(mEvent,mInteg->GetModel(),mEventCounter);
   }
 }

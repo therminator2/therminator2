@@ -10,7 +10,9 @@
 using namespace std;
 extern TString  sModelINI;
 
-CanonicalSuppressionAfterburner::CanonicalSuppressionAfterburner(Double_t Rc) : m_Rc(Rc) {}
+CanonicalSuppressionAfterburner::CanonicalSuppressionAfterburner() {
+    ReadParameters();
+}
 
 CanonicalSuppressionAfterburner::~CanonicalSuppressionAfterburner() {}
 
@@ -84,3 +86,25 @@ bool ParticleBreaksConservationLaw::operator()(Particle &part) {
     );
 }
 */
+
+void CanonicalSuppressionAfterburner::ReadParameters() {
+  Configurator*	tModelParam;
+  Parser*	tParser;
+
+  tModelParam = new Configurator;
+  tParser     = new Parser(sModelINI.Data());
+  tParser->ReadINI(tModelParam);
+  delete tParser;
+
+  try {
+    m_Rc  	 = tModelParam->GetParameter("Rc").Atof();
+
+  } catch (TString tError) {
+    PRINT_MESSAGE("<Model_SR::ReadParameters>\tCaught exception " << tError);
+    PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
+    exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
+  }
+    
+  delete tModelParam;
+
+}

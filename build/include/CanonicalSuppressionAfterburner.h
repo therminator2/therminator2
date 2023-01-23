@@ -11,7 +11,7 @@
 
 class CanonicalSuppressionAfterburner : public AbstractAfterburner {
   public:
-    CanonicalSuppressionAfterburner(Double_t);
+    CanonicalSuppressionAfterburner();
     virtual ~CanonicalSuppressionAfterburner();
     virtual void Apply(Event *);
 
