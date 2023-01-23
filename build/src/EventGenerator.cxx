@@ -96,13 +96,11 @@ void EventGenerator::GenerateEvents()
   for (int tIter=0; tIter<mNumberOfEvents; tIter++) {
     mEventCounter = tIter+1;
     mEvent->Reset(tIter);
-    if (sRandomize) {
-      GeneratePrimordials();
-      DecayParticles();
-    } else {
-      GeneratePrimordials (43212 - tIter * 2);
-      DecayParticles	  (43212 - tIter * 2);
-    }
+
+    int aSeed = sRandomize ? 0 : 43212 - tIter * 2;
+    GeneratePrimordials(aSeed);
+    DecayParticles(aSeed);
+
     cout << "\r\tevent " << tIter+1 <<"/"<< mNumberOfEvents;
     cout.flush();
     mAfterburners->Apply(mEvent);

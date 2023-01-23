@@ -10,9 +10,13 @@
 using namespace std;
 extern TString  sModelINI;
 
+CanonicalSuppressionAfterburner::CanonicalSuppressionAfterburner(Double_t Rc) : m_Rc(Rc) {}
+
+CanonicalSuppressionAfterburner::~CanonicalSuppressionAfterburner() {}
+
 void CanonicalSuppressionAfterburner::Apply(Event *tEvent)
 {
-    Float_t Rc = 2;
+    Float_t Rc = m_Rc;
     std::list<Particle>* tParticles = tEvent->GetParticleList();
     Int_t N = tParticles->size();
     int i = 0;
@@ -69,3 +73,14 @@ void CanonicalSuppressionAfterburner::Apply(Event *tEvent)
         );
     });
 }
+/*
+// Maybe still will be used if the lambda-in-lambda approach will not work, but then eidToIs and eidToJs
+// still have to be added to the predicate class:
+bool ParticleBreaksConservationLaw::operator()(Particle &part) {
+    Int_t eid = part.eid;
+    return !(
+        std::all_of(eidToIs[eid].begin(), eidToIs[eid].end(), [this](UInt_t i) { return this->grid.hasI(i); }) &&
+        std::all_of(eidToJs[eid].begin(), eidToJs[eid].end(), [this](UInt_t j) { return this->grid.hasJ(j); })
+    );
+}
+*/

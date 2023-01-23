@@ -11,12 +11,13 @@
 
 class CanonicalSuppressionAfterburner : public AbstractAfterburner {
   public:
-    CanonicalSuppressionAfterburner(int, double);
+    CanonicalSuppressionAfterburner(Double_t);
     virtual ~CanonicalSuppressionAfterburner();
     virtual void Apply(Event *);
 
   protected:
     void ReadParameters();
+    Double_t m_Rc;
 
   private:
     Utils::Grid2D<Float_t> grid;
