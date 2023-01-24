@@ -19,6 +19,7 @@ CanonicalSuppressionAfterburner::~CanonicalSuppressionAfterburner() {}
 
 void CanonicalSuppressionAfterburner::Apply(Event *tEvent)
 {
+    if (m_bSkip) return;
     Float_t Rc = m_Rc;
     std::list<Particle> *tParticles = tEvent->GetParticleList();
     Int_t N = tParticles->size();
@@ -144,13 +145,12 @@ void CanonicalSuppressionAfterburner::ReadParameters()
     {
         m_Rc = tModelParam->GetParameter("Rc").Atof();
     }
-    catch (TString tError)
+    catch (TString &str)
     {
-        PRINT_MESSAGE("<Model_SR::ReadParameters>\tCaught exception " << tError);
-        PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
-        exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
+        cout << "Parameter " << str.Data() << " is not known" << endl;
+        cout << "CanonicalSuppression afterburner will be skipped" << endl;
+        m_bSkip = true;
     }
-
     delete tModelParam;
 }
 

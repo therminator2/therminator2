@@ -12,7 +12,7 @@ extern Configurator *sMainConfig;
 extern TString	sEventDIR;
 extern int      sParentPID;                                                                                                                                                                
 
-AbstractAfterburner::AbstractAfterburner() {
+AbstractAfterburner::AbstractAfterburner() : m_bSkip(false) {
     ReadParameters();
 }
 AbstractAfterburner::~AbstractAfterburner() {}

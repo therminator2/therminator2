@@ -53,6 +53,8 @@ void CoulombAfterburner::ReadParameters()
     catch (TString &str)
     {
         cout << "Parameter " << str.Data() << " is not known" << endl;
+        cout << "Coulomb afterburner will be skipped" << endl;
+        m_bSkip = true;
     }
 
     delete tMainConfig;
@@ -157,6 +159,8 @@ double CoulombAfterburner::NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVecto
 }
 void CoulombAfterburner::Apply(Event *tEvent)
 {
+    if (m_bSkip) return;
+
     bool debug = false;
 
     Int_t tPrimaryCharge = 0.;

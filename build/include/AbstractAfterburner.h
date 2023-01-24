@@ -10,7 +10,8 @@ class AbstractAfterburner {
     virtual void Apply(Event *) = 0;
 
   protected:
-    void ReadParameters();  
+    void ReadParameters();
+    bool m_bSkip;
 
 };
 
