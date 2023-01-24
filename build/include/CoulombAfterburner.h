@@ -10,7 +10,7 @@
 
 class CoulombAfterburner : public AbstractAfterburner {
   public:
-    CoulombAfterburner(int, double);
+    CoulombAfterburner();
     virtual ~CoulombAfterburner();
     virtual void Apply(Event *);
 

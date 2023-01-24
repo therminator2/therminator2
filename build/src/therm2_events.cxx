@@ -162,16 +162,11 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
   }
 
   ListAfterburner *tAfterburnersPreDecay = new ListAfterburner();
+  tAfterburnersPreDecay->Add(new CanonicalSuppressionAfterburner());
+  
   ListAfterburner *tAfterburnersPostDecay = new ListAfterburner();
-  try {
-    int tCoulombSteps = sMainConfig->GetParameter("CoulombTimeSteps").Atoi();
-    double tCoulombStepSize = sMainConfig->GetParameter("CoulombStepSize").Atof();
-   // tAfterburnersPostDecay->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize));
+  // tAfterburnersPostDecay->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize));
 
-    tAfterburnersPreDecay->Add(new CanonicalSuppressionAfterburner());
-  } catch (TString &str) {
-    cout << "Parameter " << str.Data() << " is not known" << endl;
-  }
   tEventGen = new EventGenerator(tPartDB, tEventSaver, tAfterburnersPreDecay, tAfterburnersPostDecay);
   tEventGen->GenerateEvents();
   tEventSaver->SetEventsTemp();

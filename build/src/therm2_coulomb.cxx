@@ -148,13 +148,7 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
   }
 
   ListAfterburner *tAfterburners = new ListAfterburner();
-  try {
-  int tCoulombSteps = sMainConfig->GetParameter("CoulombTimeSteps").Atoi();
-  double tCoulombStepSize = sMainConfig->GetParameter("CoulombStepSize").Atof();
-  tAfterburners->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize));
-  } catch (TString &str) {
-    cout << "Parameter " << str.Data() << " is not known" << endl;
-  }
+  tAfterburners->Add(new CoulombAfterburner());
   tEventRead = new EventReader(tPartDB, tEventSaver, tAfterburners);
   tEventRead->ReadEvents();
   tEventSaver->SetEventsTemp();
