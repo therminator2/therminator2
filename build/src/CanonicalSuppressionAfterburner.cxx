@@ -34,7 +34,13 @@ void CanonicalSuppressionAfterburner::Apply(Event *tEvent)
                 int nas = partJ.GetParticleType()->GetNumberAS();
                 for (int kas = 0; kas < nas; ++kas)
                 {
-                    Float_t dist = kHbarC * TMath::Sqrt(
+                    Float_t rel_beta_x = partI.px / partI.e - partJ.px / partJ.e;
+                    Float_t rel_beta_y = partI.py / partI.e - partJ.py / partJ.e;
+                    Float_t rel_beta_z = partI.pz / partI.e - partJ.pz / partJ.e;
+                    Float_t rel_beta_2 = TMath::Power(rel_beta_x, 2) + TMath::Power(rel_beta_y, 2) + TMath::Power(rel_beta_z, 2);
+                    Float_t rel_gamma = 1 / TMath::Sqrt(1 - rel_beta_2);
+
+                    Float_t dist = ( kHbarC / rel_gamma) * TMath::Sqrt(
                                                 TMath::Power(partI.x - partJ.x, 2) +
                                                 TMath::Power(partI.y - partJ.y, 2) +
                                                 TMath::Power(partI.z - partJ.z, 2));
