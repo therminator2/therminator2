@@ -111,6 +111,17 @@ namespace Utils {
             }
             return false;
         }
+
+        bool canReshuffleToDiagonal() {
+            std::vector<UInt_t> rowIs = rowIs();
+            for (UInt_t rowI : rowIs) {
+                std::map<UInt_t, T> row = row(rowI);
+                if (row.size() != 1) {
+                    return false;
+                }
+            }
+            return true;
+        }
     };
 }
 #endif
