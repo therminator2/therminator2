@@ -4,6 +4,7 @@
 #include "AbstractAfterburner.h"
 #include "TLorentzVector.h"
 #include "utils/Grid2D.h"
+#include "utils/Option.h"
 
 #include "TFile.h"
 #include "TGraph.h"
@@ -23,6 +24,10 @@ class CanonicalSuppressionAfterburner : public AbstractAfterburner {
     Utils::Grid2D<Float_t> grid;
     std::map<Int_t, std::vector<UInt_t>> eidToIs;
     std::map<Int_t, std::vector<UInt_t>> eidToJs;
+
+    const Utils::Option<Particle> &&findParticleByEid(Event *tEvent, Int_t tEid);
+    bool brokenMultistrange(Event *tEvent, Int_t tEid);
+    bool brokenMultistrange(Particle &);
 };
 
 /*

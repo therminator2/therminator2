@@ -94,6 +94,22 @@ namespace Utils {
             }
         }
 
+        void clearRow(UInt_t rowI) {
+            std::map<UInt_t, Float_t> row = this->row(rowI);
+            std::map<UInt_t, Float_t>::iterator it = row.begin();
+            for ( ; it != row.end(); ++it) {
+                grid.erase(std::make_pair(rowI, (*it).first));
+            }
+        }
+
+        void clearCol(UInt_t colJ) {
+            std::map<UInt_t, Float_t> col = this->col(colJ);
+            std::map<UInt_t, Float_t>::iterator it = col.begin();
+            for ( ; it != col.end(); ++it) {
+                grid.erase(std::make_pair((*it).first, colJ));
+            }
+        }
+
         bool hasI(UInt_t i) {
             for (const auto& kv : grid) {
                 if (kv.first.first == i) {
@@ -113,10 +129,10 @@ namespace Utils {
         }
 
         bool canReshuffleToDiagonal() {
-            std::vector<UInt_t> rowIs = rowIs();
-            for (UInt_t rowI : rowIs) {
-                std::map<UInt_t, T> row = row(rowI);
-                if (row.size() != 1) {
+            std::vector<UInt_t> aRowIs = rowIs();
+            for (UInt_t aRowI : aRowIs) {
+                std::map<UInt_t, T> aRow = row(aRowI);
+                if (aRow.size() != 1) {
                     return false;
                 }
             }
