@@ -295,11 +295,17 @@ void Model_SR::ReadParameters()
     mThermo->SetTemperature(tModelParam->GetParameter("Temperature").Atof() * 0.001);	// [GeV]
     if (tModelParam->GetParameter("Chemistry") == "chemical_potential")
     {
-      mThermo->SetChemistry(
-				tModelParam->GetParameter("MuB").Atof() * 0.001,
-			    tModelParam->GetParameter("MuI").Atof() * 0.001,
-			    tModelParam->GetParameter("MuS").Atof() * 0.001,
-			    tModelParam->GetParameter("MuC").Atof() * 0.001);	// [GeV]
+      if (tModelParam->HasParameter("MuQ")) {
+        mThermo->SetChemistryQ  (tModelParam->GetParameter("MuB").Atof() * 0.001,
+			        tModelParam->GetParameter("MuQ").Atof() * 0.001,
+			        tModelParam->GetParameter("MuS").Atof() * 0.001,
+			        tModelParam->GetParameter("MuC").Atof() * 0.001);	// [GeV]
+      } else {
+        mThermo->SetChemistry  (tModelParam->GetParameter("MuB").Atof() * 0.001,
+			        tModelParam->GetParameter("MuI").Atof() * 0.001,
+			        tModelParam->GetParameter("MuS").Atof() * 0.001,
+			        tModelParam->GetParameter("MuC").Atof() * 0.001);	// [GeV]
+      }
       mThermo->SetGammas(
                             tModelParam->GetParameter("GammaQ").Atof(),
 			    tModelParam->GetParameter("GammaS").Atof(),

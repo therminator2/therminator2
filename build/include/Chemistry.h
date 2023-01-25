@@ -39,12 +39,14 @@ class Chemistry
     ~Chemistry();
 
     int    GetChemistryType() const;  
+    bool   GetUseMuQ() const;  
     double GetChemicalPotential(ParticleType* aPartType) const;
     double GetChemicalPotential(ParticleType* aPartType, double aX, double aY, double aZ) const;
     double GetFugacity(ParticleType* aPartType) const;
     double GetFugacity(ParticleType* aPartType, double aX, double aY, double aZ) const;
     double GetMuB() const;
     double GetMuI() const;
+    double GetMuQ() const;
     double GetMuS() const;
     double GetMuC() const;
     double GetLambdaQ() const;
@@ -56,6 +58,8 @@ class Chemistry
     double GetGammaC() const;
     void   SetChemistry(double    aMuB,     double    aMuI,     double    aMuS,     double    aMuC);
     void   SetChemistry(Vector3D* aMuB,     Vector3D* aMuI,     Vector3D* aMuS,     Vector3D* aMuC);
+    void   SetChemistryQ(double    aMuB,     double    aMuQ,     double    aMuS,     double    aMuC);
+    void   SetChemistryQ(Vector3D* aMuB,     Vector3D* aMuQ,     Vector3D* aMuS,     Vector3D* aMuC);
     void   SetChemistry(double    aLambdaQ, double    aLambdaI, double    aLambdaS, double    aLambdaC,
 			double    aGammaQ,                      double    aGammaS,  double    aGammaC);
     void   SetChemistry(Vector3D* aLambdaQ, Vector3D* aLambdaI, Vector3D* aLambdaS, Vector3D* aLambdaC,
@@ -64,13 +68,16 @@ class Chemistry
 
   private:
     int		mChemistryType;
+    bool  mUseMuQ;
 
     double	mMuBConst;
     double	mMuIConst;
+    double	mMuQConst;
     double	mMuSConst;
     double	mMuCConst;
     Vector3D*	mMuBVar;
     Vector3D*	mMuIVar;
+    Vector3D*	mMuQVar;
     Vector3D*	mMuSVar;
     Vector3D*	mMuCVar;
 

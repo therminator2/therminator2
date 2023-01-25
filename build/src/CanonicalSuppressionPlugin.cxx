@@ -45,7 +45,7 @@ void CanonicalSuppressionPlugin::Apply(Event *tEvent)
                                                 TMath::Power(partI.x - partJ.x, 2) +
                                                 TMath::Power(partI.y - partJ.y, 2) +
                                                 TMath::Power(partI.z - partJ.z, 2));
-                    std::cout << "dist = " << dist << std::endl;
+                    PRINT_MESSAGE("dist = " << dist);
                     if (dist < Rc)
                     {
                         grid.at(i, j) = dist;

@@ -55,6 +55,11 @@ TString Configurator::GetParameter(const char* aKeyword) noexcept(false)
   throw *(new TString(aKeyword));
 }
 
+bool Configurator::HasParameter(const char* aKeyword) noexcept
+{
+  return std::find_if(mParameters.begin(), mParameters.end(), [aKeyword](Parameter &param) { return param.keyword == aKeyword; }) != mParameters.end();
+}
+
 void Configurator::AddParameter(Parameter* aPar)
 {
   mParameters.push_back(*aPar);
