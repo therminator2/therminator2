@@ -1,17 +1,17 @@
-#ifndef COULOMB_AFTERBURNER
-#define COULOMB_AFTERBURNER
+#ifndef COULOMB_PLUGIN
+#define COULOMB_PLUGIN
 
-#include "AbstractAfterburner.h"
+#include "AbstractPlugin.h"
 #include "TLorentzVector.h"
 
 #include "TFile.h"
 #include "TGraph.h"
 #include "TProfile.h"
 
-class CoulombAfterburner : public AbstractAfterburner {
+class CoulombPlugin : public AbstractPlugin {
   public:
-    CoulombAfterburner();
-    virtual ~CoulombAfterburner();
+    CoulombPlugin();
+    virtual ~CoulombPlugin();
     virtual void Apply(Event *);
 
   protected:

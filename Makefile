@@ -69,8 +69,8 @@ HSRC_EVENTS = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx DecayT
    Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_SR.cxx Model_BlastWave.cxx Model_BWA.cxx \
    Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx \
    Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx \
-   Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx AbstractAfterburner.cxx Messages.cxx \
-   CoulombAfterburner.cxx ListAfterburner.cxx CanonicalSuppressionAfterburner.cxx
+   Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx AbstractPlugin.cxx Messages.cxx \
+   CoulombPlugin.cxx ListPlugin.cxx CanonicalSuppressionPlugin.cxx
 ifdef DIR_UNIGEN
 HSRC_EVENTS += UnigenEventSaver.cxx
 endif
@@ -82,8 +82,8 @@ HSRC_COULOMB = Parser.cxx Configurator.cxx ParticleDB.cxx ParticleType.cxx Decay
    Particle.cxx ParticleCoor.cxx Integrator.cxx ParticleDecayer.cxx Model.cxx Model_SR.cxx Model_BlastWave.cxx Model_BWA.cxx \
    Model_KrakowSFO.cxx Model_Lhyquid2DBI.cxx Model_Lhyquid3D.cxx Hypersurface_Lhyquid2D.cxx Hypersurface_Lhyquid3D.cxx Thermodynamics.cxx \
    Chemistry.cxx Energy.cxx Entropy.cxx Pressure.cxx SoundVelocity.cxx Temperature.cxx Viscosity.cxx Hypersurface_Library.cxx Crc32.cxx \
-   Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx AbstractAfterburner.cxx Messages.cxx \
-   CoulombAfterburner.cxx ListAfterburner.cxx
+   Vector3D.cxx AbstractEventSaver.cxx RootEventSaver.cxx TextEventSaver.cxx CollectionEventSaver.cxx AbstractPlugin.cxx Messages.cxx \
+   CoulombPlugin.cxx ListPlugin.cxx
 ifdef DIR_UNIGEN
 HSRC_COULOMB += UnigenEventSaver.cxx
 endif
@@ -141,7 +141,7 @@ all: $(BIN_EVENTS:%=$(DIR_OBJ)%) $(BIN_COULOMB:%=$(DIR_OBJ)%) $(BIN_FEMTO:%=$(DI
 	cp $^ $(DIR_MAIN)
 	echo
 	echo "Type \"./therm2_events\" to generate events,"
-	echo "Type \"./therm2_coulomb\" to run Coulomb afterburner,"
+	echo "Type \"./therm2_coulomb\" to run Coulomb Plugin,"
 	echo "Type \"./therm2_femto\" to generate two-particle corelation function,"
 	echo "Type \"./therm2_hbtfit\" to fit and extract HBT radii,"
 	echo "Type \"./therm2_test\" to perform a compliance test."

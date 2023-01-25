@@ -35,13 +35,13 @@
 #include "ParticleDB.h"
 #include "Integrator.h"
 #include "AbstractEventSaver.h"
-#include "ListAfterburner.h"
+#include "ListPlugin.h"
 #include "Event.h"
 
 class EventGenerator {
   public:
     EventGenerator();
-    EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLAPre, ListAfterburner *aLAPost);
+    EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES, ListPlugin *aLAPre, ListPlugin *aLAPost);
     ~EventGenerator();
 
     void GenerateEvents();
@@ -58,8 +58,8 @@ class EventGenerator {
     std::vector<int>	mMultiplicities;
 
     AbstractEventSaver* mEventSaver;
-    ListAfterburner*    mAfterburnersPreDecay;
-    ListAfterburner*    mAfterburnersPostDecay;
+    ListPlugin*    mPluginsPreDecay;
+    ListPlugin*    mPluginsPostDecay;
     ParticleDB*	        mDB;
     Integrator*	        mInteg;
     Event*      	mEvent;    

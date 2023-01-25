@@ -1,7 +1,7 @@
-#ifndef CANONICAL_SUPPRESSION_AFTERBURNER
-#define CANONICAL_SUPPRESSION_AFTERBURNER
+#ifndef CANONICAL_SUPPRESSION_PLUGIN
+#define CANONICAL_SUPPRESSION_PLUGIN
 
-#include "AbstractAfterburner.h"
+#include "AbstractPlugin.h"
 #include "TLorentzVector.h"
 #include "utils/Grid2D.h"
 #include "utils/Option.h"
@@ -10,10 +10,10 @@
 #include "TGraph.h"
 #include "TProfile.h"
 
-class CanonicalSuppressionAfterburner : public AbstractAfterburner {
+class CanonicalSuppressionPlugin : public AbstractPlugin {
   public:
-    CanonicalSuppressionAfterburner();
-    virtual ~CanonicalSuppressionAfterburner();
+    CanonicalSuppressionPlugin();
+    virtual ~CanonicalSuppressionPlugin();
     virtual void Apply(Event *);
 
   protected:

@@ -40,8 +40,8 @@
 #include "UnigenEventSaver.h"
 #endif
 #include "CollectionEventSaver.h"
-#include "CoulombAfterburner.h"
-#include "ListAfterburner.h"
+#include "CoulombPlugin.h"
+#include "ListPlugin.h"
 #include "Messages.h"
 
 #include <iostream>
@@ -147,9 +147,9 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
 	      break;
   }
 
-  ListAfterburner *tAfterburners = new ListAfterburner();
-  tAfterburners->Add(new CoulombAfterburner());
-  tEventRead = new EventReader(tPartDB, tEventSaver, tAfterburners);
+  ListPlugin *tPlugins = new ListPlugin();
+  tPlugins->Add(new CoulombPlugin());
+  tEventRead = new EventReader(tPartDB, tEventSaver, tPlugins);
   tEventRead->ReadEvents();
   tEventSaver->SetEventsTemp();
  

@@ -1,4 +1,4 @@
-#include "CanonicalSuppressionAfterburner.h"
+#include "CanonicalSuppressionPlugin.h"
 #include "Configurator.h"
 #include "Parser.h"
 #include "TVector3.h"
@@ -10,14 +10,14 @@
 using namespace std;
 extern TString sModelINI;
 
-CanonicalSuppressionAfterburner::CanonicalSuppressionAfterburner()
+CanonicalSuppressionPlugin::CanonicalSuppressionPlugin()
 {
     ReadParameters();
 }
 
-CanonicalSuppressionAfterburner::~CanonicalSuppressionAfterburner() {}
+CanonicalSuppressionPlugin::~CanonicalSuppressionPlugin() {}
 
-void CanonicalSuppressionAfterburner::Apply(Event *tEvent)
+void CanonicalSuppressionPlugin::Apply(Event *tEvent)
 {
     if (m_bSkip) return;
     Float_t Rc = m_Rc;
@@ -131,7 +131,7 @@ bool ParticleBreaksConservationLaw::operator()(Particle &part) {
 }
 */
 
-void CanonicalSuppressionAfterburner::ReadParameters()
+void CanonicalSuppressionPlugin::ReadParameters()
 {
     Configurator *tModelParam;
     Parser *tParser;
@@ -148,13 +148,13 @@ void CanonicalSuppressionAfterburner::ReadParameters()
     catch (TString &str)
     {
         cout << "Parameter " << str.Data() << " is not known" << endl;
-        cout << "CanonicalSuppression afterburner will be skipped" << endl;
+        cout << "CanonicalSuppression Plugin will be skipped" << endl;
         m_bSkip = true;
     }
     delete tModelParam;
 }
 
-const Utils::Option<Particle> &&CanonicalSuppressionAfterburner::findParticleByEid(Event *tEvent, Int_t tEid)
+const Utils::Option<Particle> &&CanonicalSuppressionPlugin::findParticleByEid(Event *tEvent, Int_t tEid)
 {
     list<Particle> *aParticles = tEvent->GetParticleList();
     auto result = std::find_if(aParticles->begin(), aParticles->end(), [tEid](Particle particle) -> bool
@@ -169,7 +169,7 @@ const Utils::Option<Particle> &&CanonicalSuppressionAfterburner::findParticleByE
     }
 }
 
-bool CanonicalSuppressionAfterburner::brokenMultistrange(Event *tEvent, Int_t tEid)
+bool CanonicalSuppressionPlugin::brokenMultistrange(Event *tEvent, Int_t tEid)
 {
     const Utils::Option<Particle> &&aMaybeParticle = findParticleByEid(tEvent, tEid);
     if (aMaybeParticle.has_value())
@@ -183,7 +183,7 @@ bool CanonicalSuppressionAfterburner::brokenMultistrange(Event *tEvent, Int_t tE
     }
 }
 
-bool CanonicalSuppressionAfterburner::brokenMultistrange(Particle &tPart)
+bool CanonicalSuppressionPlugin::brokenMultistrange(Particle &tPart)
 {
     Int_t ns = tPart.GetParticleType()->GetNumberS();
     Int_t nas = tPart.GetParticleType()->GetNumberAS();

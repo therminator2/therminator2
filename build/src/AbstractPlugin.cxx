@@ -1,7 +1,7 @@
 #include "THGlobal.h"
 #include "Configurator.h"
 #include "StructEvent.h"
-#include "AbstractAfterburner.h"
+#include "AbstractPlugin.h"
 #include "Event.h"
 #include <fstream>
 
@@ -12,10 +12,10 @@ extern Configurator *sMainConfig;
 extern TString	sEventDIR;
 extern int      sParentPID;                                                                                                                                                                
 
-AbstractAfterburner::AbstractAfterburner() : m_bSkip(false) {
+AbstractPlugin::AbstractPlugin() : m_bSkip(false) {
     ReadParameters();
 }
-AbstractAfterburner::~AbstractAfterburner() {}
+AbstractPlugin::~AbstractPlugin() {}
 
-void AbstractAfterburner::ReadParameters() {}
+void AbstractPlugin::ReadParameters() {}
 

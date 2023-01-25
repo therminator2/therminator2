@@ -36,14 +36,14 @@
 #include "ParticleDB.h"
 #include "Integrator.h"
 #include "AbstractEventSaver.h"
-#include "ListAfterburner.h"
+#include "ListPlugin.h"
 #include "Event.h"
 #include "StructEvent.h"
 
 class EventReader {
   public:
     EventReader();
-    EventReader(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLA);
+    EventReader(ParticleDB* aDB, AbstractEventSaver *aES, ListPlugin *aLA);
     ~EventReader();
 
     void   ReadEvents();
@@ -54,7 +54,7 @@ class EventReader {
     std::pair<TChain*, TChain*> GetChains(TString aEventDir, Int_t aEventFiles, ParticleCoor* aParticle, StructEvent* aStructEvent, Int_t* aEvents);
 
     AbstractEventSaver* mEventSaver;
-    ListAfterburner*    mAfterburners;
+    ListPlugin*    mPlugins;
     ParticleDB*	        mDB;
     Event*      	mEvent;
     int		        mEventCounter;

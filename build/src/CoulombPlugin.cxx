@@ -1,4 +1,4 @@
-#include "CoulombAfterburner.h"
+#include "CoulombPlugin.h"
 #include "Configurator.h"
 #include "Parser.h"
 #include "TVector3.h"
@@ -10,7 +10,7 @@
 using namespace std;
 extern TString sMainINI;
 
-CoulombAfterburner::CoulombAfterburner()
+CoulombPlugin::CoulombPlugin()
 {
     ReadParameters();
     /*
@@ -35,7 +35,7 @@ CoulombAfterburner::CoulombAfterburner()
 */
 }
 
-void CoulombAfterburner::ReadParameters()
+void CoulombPlugin::ReadParameters()
 {
     Configurator *tMainConfig;
     Parser *tParser;
@@ -53,14 +53,14 @@ void CoulombAfterburner::ReadParameters()
     catch (TString &str)
     {
         cout << "Parameter " << str.Data() << " is not known" << endl;
-        cout << "Coulomb afterburner will be skipped" << endl;
+        cout << "Coulomb Plugin will be skipped" << endl;
         m_bSkip = true;
     }
 
     delete tMainConfig;
 }
 
-CoulombAfterburner::~CoulombAfterburner()
+CoulombPlugin::~CoulombPlugin()
 {
     /*
     m_fileHistOut->cd();
@@ -82,7 +82,7 @@ CoulombAfterburner::~CoulombAfterburner()
     m_fileHistOut->Close();
 */
 }
-bool CoulombAfterburner::ParticleExists(std::list<Particle>::iterator &tPartIter, double tDecayTime, double tTime)
+bool CoulombPlugin::ParticleExists(std::list<Particle>::iterator &tPartIter, double tDecayTime, double tTime)
 {
     if (tPartIter->decayed)
     {
@@ -93,7 +93,7 @@ bool CoulombAfterburner::ParticleExists(std::list<Particle>::iterator &tPartIter
         return tPartIter->t <= tTime;
     }
 }
-int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vector<TLorentzVector> &tTrajectory, int tLastBestI, double &tBestInterval, bool debug)
+int CoulombPlugin::NearestInterval(TVector3 &tPos, double tTime, std::vector<TLorentzVector> &tTrajectory, int tLastBestI, double &tBestInterval, bool debug)
 {
     int tBestI = 0;
     double tPrevInterval = 1000000;
@@ -144,7 +144,7 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
     }
     return tBestI;
 }
-double CoulombAfterburner::NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV, double tCurrentTime)
+double CoulombPlugin::NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV, double tCurrentTime)
 {
     double tX0dotV = tX0.Dot(tV);
     double tV2 = tV.Mag2();
@@ -157,7 +157,7 @@ double CoulombAfterburner::NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVecto
     double t2 = (-tB + TMath::Sqrt(tDelta)) / (2 * tA);
     return t1 <= 0 ? t1 : t2;
 }
-void CoulombAfterburner::Apply(Event *tEvent)
+void CoulombPlugin::Apply(Event *tEvent)
 {
     if (m_bSkip) return;
 

@@ -48,13 +48,13 @@ extern int	sParentPID;
 using namespace std;
 
 EventReader::EventReader()
-: mDB(0), mEventSaver(0), mAfterburners(0), mEvent(0),
+: mDB(0), mEventSaver(0), mPlugins(0), mEvent(0),
   mEventCounter(0), mNumberOfEvents(0)
 {
 }
 
-EventReader::EventReader(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLA)
-: mDB(aDB), mEventSaver(aES), mAfterburners(aLA),
+EventReader::EventReader(ParticleDB* aDB, AbstractEventSaver *aES, ListPlugin *aLA)
+: mDB(aDB), mEventSaver(aES), mPlugins(aLA),
   mEventCounter(0), mNumberOfEvents(0)
 {
   ReadParameters();
@@ -107,7 +107,7 @@ void EventReader::ReadEvents()
 
     cout << "\r\tevent " << tEventIter+1 <<"/"<< mNumberOfEvents;
     cout.flush();
-    mAfterburners->Apply(mEvent);
+    mPlugins->Apply(mEvent);
     // TODO: FInd better solution to pass here a correct Model* parameter
     mEventSaver->Save(mEvent,NULL,mEventCounter);
   }

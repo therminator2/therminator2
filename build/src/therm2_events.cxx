@@ -40,9 +40,9 @@
 #include "UnigenEventSaver.h"
 #endif
 #include "CollectionEventSaver.h"
-#include "CoulombAfterburner.h"
-#include "CanonicalSuppressionAfterburner.h"
-#include "ListAfterburner.h"
+#include "CoulombPlugin.h"
+#include "CanonicalSuppressionPlugin.h"
+#include "ListPlugin.h"
 #include "Messages.h"
 
 Configurator *sMainConfig;
@@ -161,13 +161,13 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
 	      break;
   }
 
-  ListAfterburner *tAfterburnersPreDecay = new ListAfterburner();
-  tAfterburnersPreDecay->Add(new CanonicalSuppressionAfterburner());
+  ListPlugin *tPluginsPreDecay = new ListPlugin();
+  tPluginsPreDecay->Add(new CanonicalSuppressionPlugin());
   
-  ListAfterburner *tAfterburnersPostDecay = new ListAfterburner();
-  // tAfterburnersPostDecay->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize));
+  ListPlugin *tPluginsPostDecay = new ListPlugin();
+  // tPluginsPostDecay->Add(new CoulombPlugin(tCoulombSteps, tCoulombStepSize));
 
-  tEventGen = new EventGenerator(tPartDB, tEventSaver, tAfterburnersPreDecay, tAfterburnersPostDecay);
+  tEventGen = new EventGenerator(tPartDB, tEventSaver, tPluginsPreDecay, tPluginsPostDecay);
   tEventGen->GenerateEvents();
   tEventSaver->SetEventsTemp();
  
