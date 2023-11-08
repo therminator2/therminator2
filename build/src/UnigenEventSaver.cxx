@@ -16,7 +16,7 @@ extern int	sRandomize;
 UnigenEventSaver::UnigenEventSaver() : mFile(0), mEventTree(0), mParameterTree(0) {
 }
 
-void UnigenEventSaver::Save(Event *tEvent, Model *, int tEventCounter)
+void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
 {
     TDatime tDate; 
 
@@ -50,10 +50,10 @@ void UnigenEventSaver::Save(Event *tEvent, Model *, int tEventCounter)
         mParameterTree->Branch(_RANDOMIZE_BRANCH_,		(UInt_t*) &sRandomize,						 "i"			);
         mParameterTree->Branch(_TIMESTAMP_BRANCH_,		(Char_t*) tTimeStamp,						 _TIMESTAMP_FORMAT_	);
         mParameterTree->Branch(_MODELID_BRANCH_,		(UInt_t*) &sModel,						 "i"			);
-        mParameterTree->Branch(_MODELNAME_BRANCH_,		(Char_t*) tEvent->GetIntegrator()->GetModel()->GetName(),	 _MODELNAME_FORMAT_	);
-        mParameterTree->Branch(_MODELHASH_BRANCH_,		(Char_t*) tEvent->GetIntegrator()->GetModel()->GetHash(),	 _MODELHASH_FORMAT_	);
-        mParameterTree->Branch(_MODELDESCRIPTION_BRANCH_,	(Char_t*) tEvent->GetIntegrator()->GetModel()->GetDescription(), _MODELDESCRIPTION_FORMAT_);    
-        tEvent        ->GetIntegrator()->GetModel()->AddParameterBranch(mParameterTree);
+        mParameterTree->Branch(_MODELNAME_BRANCH_,		(Char_t*) tModel->GetName(),	 _MODELNAME_FORMAT_	);
+        mParameterTree->Branch(_MODELHASH_BRANCH_,		(Char_t*) tModel->GetHash(),	 _MODELHASH_FORMAT_	);
+        mParameterTree->Branch(_MODELDESCRIPTION_BRANCH_,	(Char_t*) tModel->GetDescription(), _MODELDESCRIPTION_FORMAT_);    
+        tModel->AddParameterBranch(mParameterTree);
         mParameterTree->Fill();    
         PRINT_DEBUG_2("<UnigenEventSaver::Save>\tCreated file "<<tTempFName);
     }
