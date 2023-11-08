@@ -2,6 +2,7 @@
 
 #include "HBTFit.h"
 #include "THGlobal.h"
+#include "TMath.h"
 
 HBTFit::HBTFit()
 {
