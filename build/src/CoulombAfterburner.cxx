@@ -241,6 +241,7 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
             }
         }
 
+        TVector3 * tTotalForcesLast = NULL;
         for (unsigned int iStep = 0; iStep < m_nSteps; ++iStep) {
 
            // cout << "Step " << iStep << " of " << m_nSteps << " particles: " << tParticles->size() << endl;
@@ -301,7 +302,7 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
             for ( ; tPartIter != tParticles->end(); ++tPartIter) {
 
                 Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-                TVector3 tForceTotal;
+               // TVector3 tForceTotal;
                 TVector3 tTermCoulTotal;
                 TVector3 tTermVeloTotal;
                 TVector3 tTermAcceTotal;
@@ -462,6 +463,7 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
                         }
                     }
                 }
+                TVector3 tForceTotal = (tQ * qe / TMath::Power(kHbarC, 2)) * (tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal); // GeV*fm / ((GeV*fm)**2) * GeV**2 = GeV / fm
                 nProtons[tPartIter->eid] = nProton;
                 nProtonsInside[tPartIter->eid] = nProtonInside;
                 nInteractions[tPartIter->eid] = n;
@@ -501,14 +503,13 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
                 TVector3 tTermVeloTotal = tTotalTermsVelo[tPartIter->eid];
                 TVector3 tTermAcceTotal = tTotalTermsAcce[tPartIter->eid];
                 TVector3 tTermMagnTotal = tTotalTermsMagn[tPartIter->eid];
-                Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-                TVector3 tForceTotal = (tQ * qe / TMath::Power(kHbarC, 2)) * (tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal); // GeV*fm / ((GeV*fm)**2) * GeV**2 = GeV / fm
+                // Int_t tQ = tPartIter->GetParticleType()->GetCharge();
+                // TVector3 tForceTotal = (tQ * qe / TMath::Power(kHbarC, 2)) * (tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal); // GeV*fm / ((GeV*fm)**2) * GeV**2 = GeV / fm
                 /**
                 if (tPartIter->pid == 211 && tPartIter->fatherpid == 211) {
-                    m_hImpulseTimeStep->Fill(iStep,(m_StepSize * kHbarC) * tForceTotal.Mag());
-                }
+
                 **/
-                // TVector3 tForceTotal = tTotalForces[tPartIter->eid];
+                TVector3 tForceTotal = tTotalForces[tPartIter->eid];
                 TVector3 tImpulse = (m_StepSize * kHbarC) * tForceTotal; // GeV/fm * (1/GeV) * GeV*fm = GeV
                 double zeff = tForceTotal.Mag() * tPartPos.Mag() * kHbarC * tPartPos.Mag() * kHbarC / (qe*qe);
                 /**
@@ -520,12 +521,15 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
 
                 if (debug && tPartIter->eid == favoriteEID) {
                     // if (tPartIter->eid == favoriteEID) {
-                    cout << tPartPos.Mag() * kHbarC << " " << tPartMom.Mag() << " " << tQ * qe * tTermCoulTotal.Mag() << " " << tQ * qe * tTermVeloTotal.Mag() << " " << tQ * qe * tTermAcceTotal.Mag() << " " << tQ * qe * tTermMagnTotal.Mag() << " " << tForceTotal.Mag() << " " << nInteractions[tPartIter->eid] << " " << zeff << " " << netCharges[tPartIter->eid] << endl;
+                    // cout << tPartPos.Mag() * kHbarC << " " << tPartMom.Mag() << " " << tQ * qe * tTermCoulTotal.Mag() << " " << tQ * qe * tTermVeloTotal.Mag() << " " << tQ * qe * tTermAcceTotal.Mag() << " " << tQ * qe * tTermMagnTotal.Mag() << " " << tForceTotal.Mag() << " " << nInteractions[tPartIter->eid] << " " << zeff << " " << netCharges[tPartIter->eid] << endl;
                 }
                 double tP2 = tPartMom.Mag2();
-                double tM2 = TMath::Power(tPartIter->GetParticleType()->GetMass(), 2);
+                double fM = tPartIter->GetParticleType()->GetMass();
+                double tM2 = TMath::Power(fM, 2);
+
                 if (tP2 > 0 && TMath::Finite(tP2)) { // guardian
-                    tPartPos += (m_StepSize / TMath::Sqrt(tM2/tP2 + 1)) * tPartMom.Unit(); // 1/GeV
+                    tPartPos += (m_StepSize / TMath::Sqrt(tM2/tP2 + 1)) * tPartMom.Unit() // 1/GeV
+                        + (0.5/fM) * TMath::Power(m_StepSize * kHbarC, 2) * tForceTotal;
                     if (debug && !TMath::Finite(tPartPos.Mag())) {
                         cout << "updating position: " << tM2 << " " << tP2 << " " << tPartMom.Mag() << endl;
                     }
@@ -551,7 +555,8 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
                 delete [] tTotalTermsVelo;
                 delete [] tTotalTermsAcce;
                 delete [] tTotalTermsMagn;
-                delete [] tTotalForces;
+                delete [] tTotalForcesLast;
+                tTotalForcesLast = tTotalForces;
                 delete [] nElses;
                 delete [] nProtonsInside;
                 delete [] nProtons;
