@@ -10,6 +10,129 @@
 using namespace std;
 extern TString  sModelINI;
 
+
+TVector3 CoulombAfterburner::CalculateTotalForce(
+        std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int ** tBestIs, double tCurrentTime,
+        std::vector<TLorentzVector> *tCoordinates, std::vector<TVector3> *tVelocities, std::vector<TVector3> *tAccelerations
+) {
+    Int_t tQ = tPartIter->GetParticleType()->GetCharge();
+    // TVector3 tForceTotal;
+    TVector3 tTermCoulTotal;
+    TVector3 tTermVeloTotal;
+    TVector3 tTermAcceTotal;
+    TVector3 tTermMagnTotal;
+    TVector3 tPartPos(tPartIter->x, tPartIter->y, tPartIter->z); // 1/GeV
+
+
+    TVector3 tPartMom(tPartIter->px, tPartIter->py, tPartIter->pz);
+    double tP2 = tPartMom.Mag2();
+    double tM2 = TMath::Power(tPartIter->GetParticleType()->GetMass(), 2);
+    TVector3 tV(0,0,0);
+    if (tP2 > 0 && TMath::Finite(tP2)) { 
+        tV = 1. / TMath::Sqrt(tM2/tP2 + 1) * tPartMom.Unit();
+    }
+    std::list<Particle>::iterator tPartOtherIter = tParticles->begin();
+    for ( ; tPartOtherIter != tParticles->end(); ++tPartOtherIter) {
+
+        if (tPartOtherIter->eid == tPartIter->eid) continue;
+
+        Int_t tOtherQ = tPartOtherIter->GetParticleType()->GetCharge();
+        if (tOtherQ == 0) continue;
+
+        double tBestInterval;
+        int tLastBestI = tBestIs[tPartIter->eid][tPartOtherIter->eid] > -1 ? tBestIs[tPartIter->eid][tPartOtherIter->eid] : 0;
+        int tBestI = NearestInterval(tPartPos, tCurrentTime, tCoordinates[tPartOtherIter->eid], tLastBestI, tBestInterval, false);
+        tBestIs[tPartIter->eid][tPartOtherIter->eid] = tBestI;
+
+        // The best interval is at the end of trajectory of other particle and it's space-like: 
+        // the particles are not causally connected
+        if ((tBestI + 1) == tCoordinates[tPartOtherIter->eid].size() && tBestInterval < 0) {
+            continue;
+        }
+
+        if (tBestI >= 0 && tBestI < tCoordinates[tPartOtherIter->eid].size()) {
+            if (false && (tBestI - 2) >= 0 && (tBestI + 2) < tCoordinates[tPartOtherIter->eid].size()) {
+                double tInterval = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI].Vect()).Mag2();
+                double tIntervalDown2 = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI-2].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI-2].Vect()).Mag2();
+                double tIntervalDown = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI-1].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI-1].Vect()).Mag2();
+                double tIntervalUp = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI+1].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI+1].Vect()).Mag2();
+                double tIntervalUp2 = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI+2].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI+2].Vect()).Mag2();
+                cout << " tBestI = " << tBestI << " " << tBestInterval << " "
+                    << "Intervals " << tIntervalUp2 << " " << tIntervalUp << " " << tInterval << " " << tIntervalDown << " " << tIntervalDown2 << " " << endl
+                    << tCurrentTime << " " << tCoordinates[tPartOtherIter->eid][tBestI].T() << " "
+                    << (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI].Vect()).Mag() << endl;
+
+                cout << "X, V, A " << tCoordinates[tPartOtherIter->eid][tBestI].Vect().Mag() << " " 
+                    << tVelocities[tPartOtherIter->eid][tBestI].Mag() << " " 
+                    << tAccelerations[tPartOtherIter->eid][tBestI].Mag() << endl;
+            }
+            TVector3 tPartOtherPos = tCoordinates[tPartOtherIter->eid][tBestI].Vect();
+            TVector3 tPartOtherVel = tVelocities[tPartOtherIter->eid][tBestI];
+            TVector3 tPartOtherAcc = tAccelerations[tPartOtherIter->eid][tBestI];
+
+            // Initial idea: True, when the null interval is NOT withing the trajectory of the particle from its creation
+            // to its decay or to the end of simulation
+            // Seems to not work, because at late times intervals jump from one point to another by more than the time step size,
+            // therefore skipping, maybe will be fully removed
+            /// if (TMath::Abs(tBestInterval) >= m_StepSize) {
+            // Particle is primary AND null interval would be before freeze-out
+            if (tPartOtherIter->pid == tPartOtherIter->fatherpid && tBestI == 0) {
+                TVector3 tX0 = tCoordinates[tPartOtherIter->eid][0].Vect() - tPartPos;
+                TVector3 tIniV = tVelocities[tPartOtherIter->eid][0];
+                double tTimePreFreeze = NearestPreFreezeoutIntervalTime(tX0, tIniV, tCurrentTime);
+                TVector3 tPosPreFreeze = tCoordinates[tPartOtherIter->eid][0].Vect() + tTimePreFreeze * tIniV;
+                tPartOtherPos = tPosPreFreeze;
+                tPartOtherVel = tIniV;
+                tPartOtherAcc = TVector3(0,0,0);
+                ///     } else {
+                ///         continue;
+                ///     }
+        }
+
+        TVector3 tPosDiff = tPartPos - tPartOtherPos;
+        TVector3 tDirection = tPosDiff.Unit();
+
+        TVector3 v = tPartOtherVel; // ()
+        TVector3 a = tPartOtherAcc; // GeV
+        TVector3 vecR = tPosDiff;   // 1/GeV
+        Double_t R = vecR.Mag();;   // 1/GeV
+        TVector3 hatR = tDirection; // ()
+        TVector3 u = hatR - v;      // ()
+        Double_t Rdotu = vecR.Dot(u); // 1/GeV
+        Double_t Rdota = vecR.Dot(a); // ()
+        Double_t v2 = v.Mag2(); // ()
+
+        if (false && !TMath::Finite(Rdotu)) {
+            cout << endl << ", Condition: " << (tBestInterval < m_StepSize) << " " << tBestInterval << " " << tBestI << " " << tCoordinates[tPartOtherIter->eid].size() << " " << tPartOtherIter->pid << " " << tPartOtherIter->eid << " " << tParticles->size() << " " << endl;
+            cout << Rdotu << " " << " " << v.X() << " " << v.Y() << " " << v.Z() << endl;
+            cout << " " << vecR.X() << " " << vecR.Y() << " " << vecR.Z() << " " << u.X() << " " << u.Y() << " " << u.Z() << endl;
+            cout << " " << tPartPos.X() << " " << tPartPos.Y() << " " << tPartPos.Z() << " " << tPartOtherPos.X() << " " << tPartOtherPos.Y() << " " << tPartOtherPos.Z() << endl;
+            return TVector3(0, 0, 0);
+        }
+        TVector3 tTermCoul = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * (1-v2)) * u; // sqrt(GeV*fm) / GeV * GeV**3 = sqrt(GeV*fm) * GeV**2
+        TVector3 tTermVelo = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * Rdota) * u;  // sqrt(GeV*fm) / GeV * GeV**3 = sqrt(GeV*fm) * GeV**2
+        TVector3 tTermAcce = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * (-Rdotu)) * a; // sqrt(GeV*fm) * GeV**2
+        if (false && (tBestI - 2) >= 0 && (tBestI + 2) < tCoordinates[tPartOtherIter->eid].size()) {
+            cout << tTermCoul.Mag() << " " 
+                << tTermVelo.Mag() << " " 
+                << tTermAcce.Mag() << endl;
+        }
+
+        TVector3 tE = tTermCoul + tTermVelo + tTermAcce;  // sqrt(GeV*fm) * GeV**2
+        // Using BAC-CAB rule for tV x tB having c * tB = tDirection x tE
+        TVector3 tVxB = hatR * tV.Dot(tE) - hatR.Dot(tV) * tE; // sqrt(GeV*fm) * GeV**2
+        tTermCoulTotal += tTermCoul;
+        tTermVeloTotal += tTermVelo;
+        tTermAcceTotal += tTermAcce;
+        tTermMagnTotal += tVxB;
+        }
+    }
+    TVector3 tForceTotal = (tQ * qe / TMath::Power(kHbarC, 2)) * (tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal); // GeV*fm / ((GeV*fm)**2) * GeV**2 = GeV / fm
+
+    return tForceTotal;
+
+}
+
 CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize) : m_nSteps(aSteps), m_StepSize(aStepSize / kHbarC) {
 /*
     m_fileHistOut = new TFile("controlHists.root","recreate");
@@ -166,8 +289,6 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
         tEvent->GetParticleList()->push_back(*tSpec1);
         tEvent->GetParticleList()->push_back(*tSpec2);
 */
-        static const double qe = TMath::Sqrt(1.4399764e-3); // sqrt(GeV * fm)
-
         std::list<Particle>* tParticles = tEvent->GetParticleList();
         Int_t N = tParticles->size();
         TVector3 *tInitialVelocities = new TVector3[N];;
@@ -249,16 +370,6 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
             double tCurrentTime = tEarliestTime + iStep * m_StepSize;
 
             TVector3 * tTotalForces = new TVector3[N];
-            TVector3 * tTotalTermsCoul = new TVector3[N];
-            TVector3 * tTotalTermsVelo = new TVector3[N];
-            TVector3 * tTotalTermsAcce = new TVector3[N];
-            TVector3 * tTotalTermsMagn = new TVector3[N];
-            int * nProtons = new int[N];
-            int * nProtonsInside = new int[N];
-            int * nInteractions = new int[N];
-            int * nElses = new int[N];
-            int * nContinues = new int[N];
-            double * netCharges = new double[N];
             std::list<Particle>::iterator tPartIter = tParticles->begin();
             for ( ; tPartIter != tParticles->end(); ++tPartIter) {
                 Int_t tQ = tPartIter->GetParticleType()->GetCharge();
@@ -301,228 +412,25 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
             tPartIter = tParticles->begin();
             for ( ; tPartIter != tParticles->end(); ++tPartIter) {
 
+                TVector3 tForceTotal;
                 Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-               // TVector3 tForceTotal;
-                TVector3 tTermCoulTotal;
-                TVector3 tTermVeloTotal;
-                TVector3 tTermAcceTotal;
-                TVector3 tTermMagnTotal;
-                TVector3 tPartPos(tPartIter->x, tPartIter->y, tPartIter->z); // 1/GeV
-
-                int nProton = 0;
-                int nProtonInside = 0;
-                int n = 0;
-                int nElse = 0;
-                int nElseBestIneg = 0;
-                int nElseBestIltSize = 0;
-                int nContinue = 0;
-                double netCharge = 0.;
-                if (tQ != 0 && iStep >= tFirstStepExists[tPartIter->eid] && iStep <= tLastStepExists[tPartIter->eid]) {   
-
-                    TVector3 tPartMom(tPartIter->px, tPartIter->py, tPartIter->pz);
-                    double tP2 = tPartMom.Mag2();
-                    double tM2 = TMath::Power(tPartIter->GetParticleType()->GetMass(), 2);
-                    TVector3 tV(0,0,0);
-                    if (tP2 > 0 && TMath::Finite(tP2)) { 
-                        tV = 1. / TMath::Sqrt(tM2/tP2 + 1) * tPartMom.Unit();
-                    }
-                    std::list<Particle>::iterator tPartOtherIter = tParticles->begin();
-                    for ( ; tPartOtherIter != tParticles->end(); ++tPartOtherIter) {
-
-                        if (tPartOtherIter->eid == tPartIter->eid) continue;
-
-                        Int_t tOtherQ = tPartOtherIter->GetParticleType()->GetCharge();
-                        if (tOtherQ == 0) continue;
-                        if (false) {
-                            if (tFirstStepExists[tPartOtherIter->eid] <= iStep && tLastStepExists[tPartOtherIter->eid] > iStep) {
-                                TVector3 tPartOtherPos(tPartOtherIter->x, tPartOtherIter->y, tPartOtherIter->z); // 1/GeV
-                                TVector3 tPosDiff = tPartPos - tPartOtherPos;
-                                TVector3 vecR = tPosDiff;   // 1/GeV
-                                Double_t R = vecR.Mag();;   // 1/GeV
-                                TVector3 tTermCoul = (tOtherQ * qe / TMath::Power(R, 3)) * vecR; // sqrt(GeV*fm) / GeV * GeV**3 = sqrt(GeV*fm) * GeV**2
-                                tTermCoulTotal += tTermCoul;
-                                ++n;
-                                netCharge += tOtherQ;
-                                if (tPartOtherIter->pid == 2212) {
-                                    ++nProton;
-                                    if (tPartOtherPos.Mag() < tPartPos.Mag()) {
-                                        ++nProtonInside;
-                                    }
-                                }
-                            }
-                        } else {
-
-                            double tBestInterval;
-                            int tLastBestI = tBestIs[tPartIter->eid][tPartOtherIter->eid] > -1 ? tBestIs[tPartIter->eid][tPartOtherIter->eid] : 0;
-                            if (debug && tPartIter->eid == favoriteEID) {
-                                cout << "Before calling NearestInterval, tPartPos.Mag() = " << tPartPos.Mag() << endl;
-                            }
-                            int tBestI = NearestInterval(tPartPos, tCurrentTime, tCoordinates[tPartOtherIter->eid], tLastBestI, tBestInterval, false && debug && tPartIter->eid == favoriteEID);
-                            tBestIs[tPartIter->eid][tPartOtherIter->eid] = tBestI;
-
-                            // The best interval is at the end of trajectory of other particle and it's space-like: 
-                            // the particles are not causally connected
-                            if ((tBestI + 1) == tCoordinates[tPartOtherIter->eid].size() && tBestInterval < 0) {
-                                ++nContinue;
-                                continue;
-                            }
-
-                            if (tBestI >= 0 && tBestI < tCoordinates[tPartOtherIter->eid].size()) {
-                                if (debug && (tBestI - 2) >= 0 && (tBestI + 2) < tCoordinates[tPartOtherIter->eid].size()) {
-                                    double tInterval = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI].Vect()).Mag2();
-                                    double tIntervalDown2 = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI-2].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI-2].Vect()).Mag2();
-                                    double tIntervalDown = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI-1].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI-1].Vect()).Mag2();
-                                    double tIntervalUp = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI+1].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI+1].Vect()).Mag2();
-                                    double tIntervalUp2 = TMath::Power(tCurrentTime - tCoordinates[tPartOtherIter->eid][tBestI+2].T(), 2) - (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI+2].Vect()).Mag2();
-                                    cout << "In step " << iStep << " tBestI = " << tBestI << " " << tBestInterval << " "
-                                        << "Intervals " << tIntervalUp2 << " " << tIntervalUp << " " << tInterval << " " << tIntervalDown << " " << tIntervalDown2 << " " << endl
-                                        << tCurrentTime << " " << tCoordinates[tPartOtherIter->eid][tBestI].T() << " "
-                                        << (tPartPos  - tCoordinates[tPartOtherIter->eid][tBestI].Vect()).Mag() << endl;
-
-                                    cout << "X, V, A " << tCoordinates[tPartOtherIter->eid][tBestI].Vect().Mag() << " " 
-                                        << tVelocities[tPartOtherIter->eid][tBestI].Mag() << " " 
-                                        << tAccelerations[tPartOtherIter->eid][tBestI].Mag() << endl;
-                                }
-                                TVector3 tPartOtherPos = tCoordinates[tPartOtherIter->eid][tBestI].Vect();
-                                TVector3 tPartOtherVel = tVelocities[tPartOtherIter->eid][tBestI];
-                                TVector3 tPartOtherAcc = tAccelerations[tPartOtherIter->eid][tBestI];
-
-                                // Initial idea: True, when the null interval is NOT withing the trajectory of the particle from its creation
-                                // to its decay or to the end of simulation
-                                // Seems to not work, because at late times intervals jump from one point to another by more than the time step size,
-                                // therefore skipping, maybe will be fully removed
-                                /// if (TMath::Abs(tBestInterval) >= m_StepSize) {
-                                // Particle is primary AND null interval would be before freeze-out
-                                if (tPartOtherIter->pid == tPartOtherIter->fatherpid && tBestI == 0) {
-                                    TVector3 tX0 = tCoordinates[tPartOtherIter->eid][0].Vect() - tPartPos;
-                                    TVector3 tIniV = tVelocities[tPartOtherIter->eid][0];
-                                    double tTimePreFreeze = NearestPreFreezeoutIntervalTime(tX0, tIniV, tCurrentTime);
-                                    TVector3 tPosPreFreeze = tCoordinates[tPartOtherIter->eid][0].Vect() + tTimePreFreeze * tIniV;
-                                    tPartOtherPos = tPosPreFreeze;
-                                    tPartOtherVel = tIniV;
-                                    tPartOtherAcc = TVector3(0,0,0);
-                                    ///     } else {
-                                    ///         continue;
-                                    ///     }
-                            }
-
-                            TVector3 tPosDiff = tPartPos - tPartOtherPos;
-                            TVector3 tDirection = tPosDiff.Unit();
-
-                            TVector3 v = tPartOtherVel; // ()
-                            TVector3 a = tPartOtherAcc; // GeV
-                            TVector3 vecR = tPosDiff;   // 1/GeV
-                            Double_t R = vecR.Mag();;   // 1/GeV
-                            TVector3 hatR = tDirection; // ()
-                            TVector3 u = hatR - v;      // ()
-                            Double_t Rdotu = vecR.Dot(u); // 1/GeV
-                            Double_t Rdota = vecR.Dot(a); // ()
-                            Double_t v2 = v.Mag2(); // ()
-
-                            if (debug && !TMath::Finite(Rdotu)) {
-                                cout << endl << "Step " << iStep << ", Condition: " << (tBestInterval < m_StepSize) << " " << tBestInterval << " " << tBestI << " " << tCoordinates[tPartOtherIter->eid].size() << " " << tPartOtherIter->pid << " " << tPartOtherIter->eid << " " << tParticles->size() << " " << tEvent->GetEventID() << endl;
-                                cout << Rdotu << " " << " " << v.X() << " " << v.Y() << " " << v.Z() << endl;
-                                cout << " " << vecR.X() << " " << vecR.Y() << " " << vecR.Z() << " " << u.X() << " " << u.Y() << " " << u.Z() << endl;
-                                cout << " " << tPartPos.X() << " " << tPartPos.Y() << " " << tPartPos.Z() << " " << tPartOtherPos.X() << " " << tPartOtherPos.Y() << " " << tPartOtherPos.Z() << endl;
-                                return;
-                            }
-                            TVector3 tTermCoul = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * (1-v2)) * u; // sqrt(GeV*fm) / GeV * GeV**3 = sqrt(GeV*fm) * GeV**2
-                            TVector3 tTermVelo = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * Rdota) * u;  // sqrt(GeV*fm) / GeV * GeV**3 = sqrt(GeV*fm) * GeV**2
-                            TVector3 tTermAcce = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * (-Rdotu)) * a; // sqrt(GeV*fm) * GeV**2
-                            if (debug && (tBestI - 2) >= 0 && (tBestI + 2) < tCoordinates[tPartOtherIter->eid].size()) {
-                                cout << tTermCoul.Mag() << " " 
-                                    << tTermVelo.Mag() << " " 
-                                    << tTermAcce.Mag() << endl;
-                            }
-
-                            TVector3 tE = tTermCoul + tTermVelo + tTermAcce;  // sqrt(GeV*fm) * GeV**2
-                            // Using BAC-CAB rule for tV x tB having c * tB = tDirection x tE
-                            TVector3 tVxB = hatR * tV.Dot(tE) - hatR.Dot(tV) * tE; // sqrt(GeV*fm) * GeV**2
-                            tTermCoulTotal += tTermCoul;
-                            tTermVeloTotal += tTermVelo;
-                            tTermAcceTotal += tTermAcce;
-                            tTermMagnTotal += tVxB;
-                            ++n;
-                            netCharge += tOtherQ;
-                            if (tPartOtherIter->pid == 2212) {
-                                ++nProton;
-                                if (tPartOtherPos.Mag() < tPartPos.Mag()) {
-                                    ++nProtonInside;
-                                }
-                            }
-                            } else {
-                                ++nElse;
-                                if (!(tBestI >= 0 )) {
-                                    ++nElseBestIneg;
-                                }
-                                if (tPartIter->eid == favoriteEID && !(tBestI < tCoordinates[tPartOtherIter->eid].size())) {
-                                    // cout << iStep << " " << favoriteEID << " " << tPartOtherIter->eid << " " << tPartOtherIter->pid << " " << tPartOtherIter->fatherpid << " " << tBestI << " " << tCoordinates[tPartOtherIter->eid].size() << endl;
-                                    ++nElseBestIltSize;
-                                }
-                            }
-                        }
-                    }
+                if (tQ != 0 && iStep >= tFirstStepExists[tPartIter->eid] && iStep <= tLastStepExists[tPartIter->eid]) {
+                    tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime,
+                            tCoordinates, tVelocities, tAccelerations
+                            );
                 }
-                TVector3 tForceTotal = (tQ * qe / TMath::Power(kHbarC, 2)) * (tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal); // GeV*fm / ((GeV*fm)**2) * GeV**2 = GeV / fm
-                nProtons[tPartIter->eid] = nProton;
-                nProtonsInside[tPartIter->eid] = nProtonInside;
-                nInteractions[tPartIter->eid] = n;
-                nElses[tPartIter->eid] = nElse;
-                nContinues[tPartIter->eid] = nContinue;
-                netCharges[tPartIter->eid] = netCharge;
                 tTotalForces[tPartIter->eid] = tForceTotal;
-                tTotalTermsCoul[tPartIter->eid] = tTermCoulTotal;
-                tTotalTermsVelo[tPartIter->eid] = tTermVeloTotal;
-                tTotalTermsAcce[tPartIter->eid] = tTermAcceTotal;
-                tTotalTermsMagn[tPartIter->eid] = tTermMagnTotal;
-                if (tPartIter->pid == 211 && tPartIter->fatherpid == 211) {
-                    /**
-                    m_hProtonsTimeStep->Fill(iStep,nProton);
-                    m_hProtonsInsideTimeStep->Fill(iStep,nProtonInside);
-                    m_hInteractionsTimeStep->Fill(iStep,n);
-                    m_hElseTimeStep->Fill(iStep,nElse);
-                    m_hElseBestInegTimeStep->Fill(iStep,nElseBestIneg);
-                    m_hElseBestIltSizeTimeStep->Fill(iStep,nElseBestIltSize);
-                    m_hContinueTimeStep->Fill(iStep,nContinue);
-                    m_hNetChargeTimeStep->Fill(iStep,netCharge);
-                    **/
-                }
-                /**
-                if (tPartIter->GetParticleType()->GetCharge() >= 0) {
-                    m_gPositionTimeStep_1->SetPoint(iStep,tPartPos.Z()*kHbarC,iStep*m_StepSize*kHbarC);
-                } else {
-                    m_gPositionTimeStep_2->SetPoint(iStep,tPartPos.Z()*kHbarC,iStep*m_StepSize*kHbarC);
-                }
-                **/
+
             }
             tPartIter = tParticles->begin();
             for ( ; tPartIter != tParticles->end(); ++tPartIter) {
                 TVector3 tPartPos(tPartIter->x, tPartIter->y, tPartIter->z);
                 TVector3 tPartMom(tPartIter->px, tPartIter->py, tPartIter->pz);
-                TVector3 tTermCoulTotal = tTotalTermsCoul[tPartIter->eid];
-                TVector3 tTermVeloTotal = tTotalTermsVelo[tPartIter->eid];
-                TVector3 tTermAcceTotal = tTotalTermsAcce[tPartIter->eid];
-                TVector3 tTermMagnTotal = tTotalTermsMagn[tPartIter->eid];
-                // Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-                // TVector3 tForceTotal = (tQ * qe / TMath::Power(kHbarC, 2)) * (tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal); // GeV*fm / ((GeV*fm)**2) * GeV**2 = GeV / fm
-                /**
-                if (tPartIter->pid == 211 && tPartIter->fatherpid == 211) {
 
-                **/
                 TVector3 tForceTotal = tTotalForces[tPartIter->eid];
                 TVector3 tImpulse = (m_StepSize * kHbarC) * tForceTotal; // GeV/fm * (1/GeV) * GeV*fm = GeV
                 double zeff = tForceTotal.Mag() * tPartPos.Mag() * kHbarC * tPartPos.Mag() * kHbarC / (qe*qe);
-                /**
-                if (tPartIter->pid == 211 && tPartIter->fatherpid==211) {
-                    m_hZeffTimeStep->Fill(iStep,zeff);
-                    m_hZeffR->Fill(tPartPos.Mag()*kHbarC,zeff);
-                }
-                **/
 
-                if (debug && tPartIter->eid == favoriteEID) {
-                    // if (tPartIter->eid == favoriteEID) {
-                    // cout << tPartPos.Mag() * kHbarC << " " << tPartMom.Mag() << " " << tQ * qe * tTermCoulTotal.Mag() << " " << tQ * qe * tTermVeloTotal.Mag() << " " << tQ * qe * tTermAcceTotal.Mag() << " " << tQ * qe * tTermMagnTotal.Mag() << " " << tForceTotal.Mag() << " " << nInteractions[tPartIter->eid] << " " << zeff << " " << netCharges[tPartIter->eid] << endl;
-                }
                 double tP2 = tPartMom.Mag2();
                 double fM = tPartIter->GetParticleType()->GetMass();
                 double tM2 = TMath::Power(fM, 2);
@@ -551,17 +459,8 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
                 tPartIter->py = tPartMom.Y();
                 tPartIter->pz = tPartMom.Z();
                 }
-                delete [] tTotalTermsCoul;
-                delete [] tTotalTermsVelo;
-                delete [] tTotalTermsAcce;
-                delete [] tTotalTermsMagn;
                 delete [] tTotalForcesLast;
                 tTotalForcesLast = tTotalForces;
-                delete [] nElses;
-                delete [] nProtonsInside;
-                delete [] nProtons;
-                delete [] nInteractions;
-                delete [] netCharges;
             }
             // Writing back to particles' objects original position, to not change HBT radii
             tPartIter = tParticles->begin();

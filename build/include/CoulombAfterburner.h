@@ -23,6 +23,9 @@ class CoulombAfterburner : public AbstractAfterburner {
     bool ParticleExists(std::list<Particle>::iterator &tPartIter, double tDecayTime, double tTime);
     int NearestInterval(TVector3 &tPos, double tTime, std::vector<TLorentzVector> &tTrajectory, int tLastBestI, double &tInterval, bool debug = false);
     double NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV, double tTime0);
+    TVector3 CalculateTotalForce(std::list<Particle>::iterator &, std::list<Particle> *, int ** tBestIs, double tCurrentTime,
+            std::vector<TLorentzVector> *tCoordinates, std::vector<TVector3> *tVelocities, std::vector<TVector3> *tAccelerations
+            );
 
     TFile *m_fileHistOut;
     TProfile *m_hDistPresentRetarded;
@@ -40,6 +43,8 @@ class CoulombAfterburner : public AbstractAfterburner {
     TProfile *m_hZeffR;
     TGraph *m_gPositionTimeStep_1;
     TGraph *m_gPositionTimeStep_2;
+
+    static constexpr double qe = sqrt(1.4399764e-3); // sqrt(GeV * fm)                                                                  
 
 };
 
