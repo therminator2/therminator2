@@ -134,47 +134,8 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
 }
 
 CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize) : m_nSteps(aSteps), m_StepSize(aStepSize / kHbarC) {
-/*
-    m_fileHistOut = new TFile("controlHists.root","recreate");
-    m_hDistPresentRetarded = new TProfile("hDistPresentRetarded","hDistPresentRetarded",400,0,400);
-    m_hImpulseTimeStep = new TProfile("hImpulseTimeStep","hImpulseTimeStep",4000,0,4000);
-    m_hWorkTimeStep = new TProfile("hWorkTimeStep","hWorkTimeStep",4000,0,4000);
-    m_hProtonsTimeStep = new TProfile("hProtonsTimeStep","hProtonsTimeStep",4000,0,4000);
-    m_hProtonsInsideTimeStep = new TProfile("hProtonsInsideTimeStep","hProtonsInsideTimeStep",4000,0,4000);
-    m_hInteractionsTimeStep = new TProfile("hInteractionsTimeStep","hInteractionsTimeStep",4000,0,4000);
-    m_hElseTimeStep = new TProfile("hElseTimeStep","hElseTimeStep",4000,0,4000);
-    m_hElseBestInegTimeStep = new TProfile("hElseBestInegTimeStep","hElseBestInegTimeStep",4000,0,4000);
-    m_hElseBestIltSizeTimeStep = new TProfile("hElseBestIltSizeTimeStep","hElseBestIltSizeTimeStep",4000,0,4000);
-    m_hContinueTimeStep = new TProfile("hContinueTimeStep","hContinueTimeStep",4000,0,4000);
-    m_hNetChargeTimeStep = new TProfile("hNetChargeTimeStep","hNetChargeTimeStep",4000,0,4000);
-    m_hZeffTimeStep = new TProfile("hZeffTimeStep","hZeffTimeStep",4000,0,4000);
-    m_hZeffR = new TProfile("hZeffR","hZeffR",400,0,400);
-    m_gPositionTimeStep_1 = new TGraph(aSteps);
-    m_gPositionTimeStep_1->SetName("gPositionTimeStep_1");
-    m_gPositionTimeStep_2 = new TGraph(aSteps);
-    m_gPositionTimeStep_2->SetName("gPositionTimeStep_2");
-*/
 }
 CoulombAfterburner::~CoulombAfterburner() {
-/*
-    m_fileHistOut->cd();
-    m_hDistPresentRetarded->Write();
-    m_hImpulseTimeStep->Write();
-    m_hWorkTimeStep->Write();
-    m_hProtonsTimeStep->Write();
-    m_hProtonsInsideTimeStep->Write();
-    m_hInteractionsTimeStep->Write();
-    m_hElseTimeStep->Write();
-    m_hElseBestInegTimeStep->Write();
-    m_hElseBestIltSizeTimeStep->Write();
-    m_hContinueTimeStep->Write();
-    m_hNetChargeTimeStep->Write();
-    m_hZeffTimeStep->Write();
-    m_hZeffR->Write();
-    m_gPositionTimeStep_1->Write();
-    m_gPositionTimeStep_2->Write();
-    m_fileHistOut->Close();
-*/
 }
 bool CoulombAfterburner::ParticleExists(std::list<Particle>::iterator &tPartIter, double tDecayTime, double tTime) {
     if (tPartIter->decayed) {
@@ -245,50 +206,6 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
                 tPrimaryCharge += tPartIter->GetParticleType()->GetCharge();
             }
         }
-/*
-        int tMissingCharge = 2*79 - tPrimaryCharge;
-        int tMissingBarionN = int(1.0 * tMissingCharge * 197 / 79);
-        double tMissingI3 = tMissingCharge - tMissingBarionN / 2;
-        double tMp = 9.382e-01;
-        double tMn = 9.395e-01;
-        double tMissingM = tMp * tMissingCharge + tMn * (tMissingBarionN - tMissingCharge);
-
-        ParticleType *tSpecType = new ParticleType;
-        double tSpecM = tMissingM / 2;
-        tSpecType->SetMass(tSpecM);
-        tSpecType->SetBarionN(tMissingBarionN / 2);
-        tSpecType->SetI3(tMissingI3 / 2);
-        double tSpecV = 0.63;
-        double tSpecGamma = 1/TMath::Sqrt(1-tSpecV*tSpecV);
-
-        Configurator* tModelParam;
-        Parser*       tParser;
-
-        tModelParam = new Configurator;
-        tParser     = new Parser(sModelINI.Data());                                                                                                                                  
-        tParser->ReadINI(tModelParam);
-        delete tParser;
-
-        double tSpecT;
-        try {
-            tSpecT          = tModelParam->GetParameter("T0").Atof() / kHbarC;
-        }
-        catch (TString tError) {
-            PRINT_MESSAGE("<Model_SR::ReadParameters>\tCaught exception " << tError);
-            PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
-            exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
-        }
-        delete tModelParam;
-
-        double tSpecE = tSpecGamma * tSpecM;
-        double tSpecP = TMath::Sqrt(tSpecE*tSpecE - tSpecM*tSpecM);
-        Particle *tSpec1 = new Particle(tSpecType);
-        Particle *tSpec2 = new Particle(tSpecType);
-        tSpec1->SetParticlePX(tSpecE, 0, 0, +tSpecP, tSpecT, 0, 0, +tSpecT*tSpecV);
-        tSpec2->SetParticlePX(tSpecE, 0, 0, -tSpecP, tSpecT, 0, 0, -tSpecT*tSpecV);
-        tEvent->GetParticleList()->push_back(*tSpec1);
-        tEvent->GetParticleList()->push_back(*tSpec2);
-*/
         std::list<Particle>* tParticles = tEvent->GetParticleList();
         Int_t N = tParticles->size();
         TVector3 *tInitialVelocities = new TVector3[N];;
@@ -336,22 +253,6 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
                     favoriteE0 = tPartIter->e;
                 }
             }
-/*
-            TVector3 tPartPos(tPartIter->x, tPartIter->y, tPartIter->z); // 1/GeV
-            TVector3 tPartMom(tPartIter->px, tPartIter->py, tPartIter->pz);
-            double tP2 = tPartMom.Mag2();
-            double tM2 = TMath::Power(tPartIter->GetParticleType()->GetMass(), 2);
-            double tDeltaE = 0.016;
-            double tDeltaP = TMath::Sqrt(TMath::Power(tPartIter->e + tDeltaE, 2) + tM2);
-            TVector3 tImpulse = tDeltaP*tPartPos.Unit()*tPartIter->GetParticleType()->GetCharge();
-            tPartMom += tImpulse; // GeV
-
-            double tE = TMath::Sqrt( tM2 + tP2 );
-            tPartIter->e  = tE;
-            tPartIter->px = tPartMom.X();
-            tPartIter->py = tPartMom.Y();
-            tPartIter->pz = tPartMom.Z();
-*/
         }
 
         int ** tBestIs = new int*[N];
@@ -446,11 +347,6 @@ int CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vecto
                 //// cout << tPartIter->pid << " " << tImpulse.X() << " " << tImpulse.Y() << " " << tImpulse.Z() << " " << tPartMom.X() << " " << tPartMom.Y() << " " << tPartMom.Z() << endl;
 
                 double tE = TMath::Sqrt( tM2 + tP2 );
-                /**
-                if (tPartIter->pid == 211 && tPartIter->fatherpid == 211) {
-                    m_hWorkTimeStep->Fill(iStep,tE-tPartIter->e);
-                }
-                **/
                 tPartIter->x  = tPartPos.X();
                 tPartIter->y  = tPartPos.Y();
                 tPartIter->z  = tPartPos.Z();
