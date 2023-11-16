@@ -4,10 +4,10 @@ import os
 from shutil import copytree, copy
 
 #----------------set input/output dirs here--------------#
-
-scriptdir = "/lustre/hades/user/kjedrzej/defallRoot6Hydra2-5.0.sh"
-submissiondir="/lustre/hades/user/kjedrzej/submit/HubbDeltLowT"
-outputdir="/lustre/hades/user/kjedrzej/HubbDeltLowT"
+unigendir="/lustre/hades/user/harabasz/unigen_new/UniGen-2.3/set.sh"
+scriptdir = "/cvmfs/hadessoft.gsi.de/install/debian10/root-6.24.02/bin/thisroot.sh"
+submissiondir="/lustre/hades/user/harabasz/submit/HubbDeltHigT_200steps05"
+outputdir="/lustre/hades/user/harabasz/HubbDeltHigT_200steps05"
 jobarrayfile="jobarray.dat"
 
 #--------------------------------------------------------#
@@ -74,9 +74,9 @@ file = open(jobarrayfile,"w")
 
 #--------------change parameters here-------------------#
 
-HubbList = [0.008]
-epsilonList = [0.0,-0.1,-0.2,-0.3]
-deltalist = [0.0]
+HubbList = [0.0225]
+epsilonList = [0.0]
+deltalist = [0.4]
 
 NoFiles = 1000
 
@@ -108,7 +108,7 @@ for Hubb in HubbList:
                     copy("fomodel/SR.ini",dir + "/fomodel")
                     copy("share/particles.data",dir + "/share")
                     copy("share/decays.data",dir + "/share")
-                    file.write(dir+"\n")
+                    file.write(f"{unigendir} {scriptdir} {dir}\n")
                 except Exception as e:
                     print(e)
                 
@@ -122,7 +122,8 @@ os.system(chmod_command)
 
 arrElem = NoFiles * len(HubbList) * len(epsilonList) * len(deltalist)
 
-command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/wrap.sh {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
+#command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/wrap.sh {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
+command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
 print(command)
 os.system(command)
 

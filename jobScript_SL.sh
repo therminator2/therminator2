@@ -152,8 +152,10 @@ esac
 ###################################################################
 #   EDIT THIS PART TO EXECUTE YOUR JOB!
 
-  cd $par1
+  cd $par3
   pwd
+  . $par1
+  . $par2
   ldd therm2_events
   ./therm2_events
   cd ..
