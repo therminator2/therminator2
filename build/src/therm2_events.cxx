@@ -173,44 +173,6 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
   tEventGen->GenerateEvents();
   tEventSaver->SetEventsTemp();
  
- // TODO: add missing delete statements
-    tPartDB     = new ParticleDB();
-    ReadSHARE(tPartDB);
-    //CheckSHARE(tPartDB);
-    tExportType = sMainConfig->GetParameter("EventFileType");
-    tEventExportType = 0;
-    if (tExportType.Contains("root"))   tEventExportType |= 1;
-    if (tExportType.Contains("text"))   tEventExportType |= 2;
-    if (tExportType.Contains("geant"))   tEventExportType |= 3;
-    #ifdef USE_UNIGEN
-    if (tExportType.Contains("unigen")) tEventExportType |= 4;
-    #endif
-
-    switch (tEventExportType) {
-        case 1 : tEventSaver = new RootEventSaver; 
-            break;
-        case 2 : tEventSaver = new TextEventSaver; 
-            break;
-        case 3: tEventSaver = new HGeantEventSaver;
-            break;
-    #ifdef USE_UNIGEN
-        case 4 : tEventSaver = new UnigenEventSaver;
-            break;
-    #endif
-        default : CollectionEventSaver *es = new CollectionEventSaver;
-                if (tEventExportType & 1) es->Add(new RootEventSaver);
-                if (tEventExportType & 2) es->Add(new TextEventSaver);
-                if (tEventExportType & 3) es->Add(new HGeantEventSaver);
-    #ifdef USE_UNIGEN
-                if (tEventExportType & 4) es->Add(new UnigenEventSaver);
-    #endif
-                tEventSaver = es;
-            break;
-    }
-    tEventGen   = new EventGenerator(tPartDB, tEventSaver, tAfterburners);
-    tEventGen->GenerateEvents();
-    tEventSaver->SetEventsTemp();
-
   delete tEventGen;
   delete tEventSaver;
   delete tPartDB;
