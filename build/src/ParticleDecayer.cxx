@@ -31,6 +31,7 @@
 #include "ParticleDecayer.h"
 #include "DecayChannel.h"
 #include "DecayTable.h"
+#include "Model.h"
 #include <TMath.h>
 #include <TDatime.h>
 #include <iostream>
@@ -44,8 +45,8 @@ ParticleDecayer::ParticleDecayer()
 {
 }
 
-ParticleDecayer::ParticleDecayer(ParticleDB *aDB, std::list<Particle>* aParticles)
-: mDB(aDB), mParticles(aParticles)
+ParticleDecayer::ParticleDecayer(ParticleDB *aDB, std::list<Particle>* aParticles, Model *aFOModel)
+: mDB(aDB), mParticles(aParticles),mFOModel(aFOModel)
 {
   mRandom = new TRandom2();
 #ifdef _ROOT_4_
@@ -69,12 +70,13 @@ void ParticleDecayer::DecayParticle(Particle* aFather)
   mFather = aFather;
   mTypeF  = mFather->GetParticleType();
   tTable  = mTypeF->GetTable();
-  
+ 
+  Float_t mass = sqrt(pow(mFather->e,2) - pow(mFather->px,2) - pow(mFather->py,2) - pow(mFather->pz,2));
   tProb = mRandom->Rndm();
 #ifdef _PARTICLE_DECAYER_RESCALE_CHANNELS_
-  tChannelIndex = tTable->ChooseDecayChannel(tProb);
+  tChannelIndex = tTable->ChooseDecayChannel(tProb,mass);
 #else
-  tChannelIndex = tTable->ChooseDecayChannelOrNot(tProb);
+  tChannelIndex = tTable->ChooseDecayChannelOrNot(tProb,mass);
   if (tChannelIndex == -1) {
     PRINT_DEBUG_3("<ParticleDecayer::DecayParticle>\tNot decaying " << mTypeF->GetName() << " for prob " << tProb);
     for (int tIter=0; tIter<=tTable->GetChannelCount(); tIter++) {
@@ -115,9 +117,8 @@ void ParticleDecayer::TwoBodyDecay()
   mFather->GetPosition(&Xt, &Xx, &Xy, &Xz);
   mFather->GetMomentum(&Pe, &Px, &Py, &Pz);
 
-//  Float_t masa = sqrt(pow(mFather->e,2) - pow(mFather->px,2) - pow(mFather->py,2) - pow(mFather->pz,2));
-//  if (abs(pdg) == 2224 || abs(pdg) == 2214 || abs(pdg) == 2114 || abs(pdg) == 1114)  cout<<"masa delty : "<<masa<<"  ";
-
+   //Float_t masa = sqrt(pow(mFather->e,2) - pow(mFather->px,2) - pow(mFather->py,2) - pow(mFather->pz,2));
+  //if (abs(pdg) == 2224 || abs(pdg) == 2214 || abs(pdg) == 2114 || abs(pdg) == 1114)  cout<<"masa delty : "<<masa<<endl;
 
 
   tType1 = mDB->GetParticleType(mChannel->GetParticle1());
@@ -129,14 +130,18 @@ void ParticleDecayer::TwoBodyDecay()
   double tM  = TMath::Sqrt(Pe*Pe - Px*Px - Py*Py - Pz*Pz);
 
   //double tM  = mTypeF->GetMass();
-  double tM1 = tType1->GetMass();
-  double tM2 = tType2->GetMass();
+  //double tM1 = tType1->GetMass();
+  //double tM2 = tType2->GetMass();
+  double statWeight1, statWeight2; 
+  double tM1, tM2;
+  mFOModel->GetParticleMass(tType1,true,tM1,statWeight1);
+  mFOModel->GetParticleMass(tType2,true,tM2,statWeight2);
   
   double tTime;
   if (mTypeF->GetGamma() == 0.0)
     tTime = 1.0e10;
   else {
-    double tTau0 = tE / (mTypeF->GetMass() * mTypeF->GetGamma());
+    double tTau0 = tE / (mTypeF->GetMass() * mTypeF->GetGamma()); //to do 
     // When it decays
     tTime = -tTau0 * TMath::Log(mRandom->Rndm());
   }
@@ -215,9 +220,15 @@ void ParticleDecayer::ThreeBodyDecay()
   double tM  = TMath::Sqrt(Pe*Pe - Px*Px - Py*Py - Pz*Pz);
 
   //double tM  = mTypeF->GetMass();
-  double tM1 = tType1->GetMass();
-  double tM2 = tType2->GetMass();
-  double tM3 = tType3->GetMass();
+  //double tM1 = tType1->GetMass();
+  //double tM2 = tType2->GetMass();
+  //double tM3 = tType3->GetMass();
+
+  double statWeight1, statWeight2, statWeight3; 
+  double tM1, tM2, tM3;
+  mFOModel->GetParticleMass(tType1,true,tM1,statWeight1);
+  mFOModel->GetParticleMass(tType2,true,tM2,statWeight2);
+  mFOModel->GetParticleMass(tType3,true,tM3,statWeight3);
 
   double tES1, tES2, tP1, tP2, tCos12, tZ;
   do {
@@ -360,3 +371,4 @@ inline double ParticleDecayer::BreitWigner(double Mass, double Gamma) const
 
   return x;
 }
+

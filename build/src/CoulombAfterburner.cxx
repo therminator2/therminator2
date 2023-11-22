@@ -402,7 +402,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
 
             if (tP2 > 0 && TMath::Finite(tP2))
             {                                                                           // guardian
-                tPartPos += (m_StepSize / TMath::Sqrt(tM2 / tP2 + 1)) * tPartMom.Unit() // 1/GeV
+                tPartPos += (m_StepSize / TMath::Sqrt(tM2 / tP2 + 1)) * tPartMom.Unit(); // 1/GeV
                             + (0.5 / fM) * TMath::Power(m_StepSize * kHbarC, 2) * tForceTotal;
                 if (debug && !TMath::Finite(tPartPos.Mag()))
                 {
@@ -443,7 +443,8 @@ void CoulombAfterburner::Apply(Event *tEvent)
             TVector3 tPartPos(tPartIter->x, tPartIter->y, tPartIter->z);
             TVector3 tPartMom(tPartIter->px, tPartIter->py, tPartIter->pz);
 
-            TVector3 tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesLast[tPartIter->eid]);
+            TVector3 tForceTotal = tTotalForces[tPartIter->eid];
+           // TVector3 tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesLast[tPartIter->eid]);
             TVector3 tImpulse = (m_StepSize * kHbarC) * tForceTotal; // GeV/fm * (1/GeV) * GeV*fm = GeV
             double zeff = tForceTotal.Mag() * tPartPos.Mag() * kHbarC * tPartPos.Mag() * kHbarC / (qe * qe);
 

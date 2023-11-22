@@ -27,6 +27,8 @@
  ********************************************************************************/
 
 #include "DecayTable.h"
+#include <iostream>
+using namespace std;
 
 DecayTable::DecayTable()
 {
@@ -71,6 +73,28 @@ void DecayTable::RecalculateBranchingRatios()
   }
 }
 
+void DecayTable::RecalculateBranchingRatiosForMass(Float_t aM) {
+  for (int tIter=0; tIter<mDecayChannels.size(); tIter++) 
+    mBranchingRatios[tIter] = mDecayChannels[tIter].GetBranchingRatioFunc()->Interpolate(aM);
+
+
+  float tSumRatio = 0.0;
+  float tCurRatio = 0.0;
+
+  for (int tIter=0; tIter<mDecayChannels.size(); tIter++)
+    tSumRatio += mBranchingRatios[tIter];
+
+  for (int tIter=0; tIter<mDecayChannels.size(); tIter++) {
+    tCurRatio += mBranchingRatios[tIter] / tSumRatio;
+    if (mBranchingRatios.size() <= tIter)
+      mBranchingRatios.push_back(tCurRatio);
+    else
+      mBranchingRatios[tIter] = tCurRatio;
+  }
+    
+
+}
+
 int DecayTable::GetChannelCount() const
 {
   return mDecayChannels.size() - 1;
@@ -87,23 +111,48 @@ float DecayTable::GetDecayStep(int aIndex)
   return mBranchingRatios[aIndex];
 }
 
-int DecayTable::ChooseDecayChannel(double aProb)
+int DecayTable::ChooseDecayChannel(double aProb,Float_t aM)
 {
+  std::vector<float> branchingRatiosCopy;
+  if(mDecayChannels[0].IsBRFunc()) {
+    branchingRatiosCopy = mBranchingRatios;
+    RecalculateBranchingRatiosForMass(aM);
+  }
+
   int tChanIndex = 0;
   while ((mBranchingRatios[tChanIndex] < aProb) && (tChanIndex < mDecayChannels.size()))
     tChanIndex++;
 
+  if(mDecayChannels[0].IsBRFunc())
+    mBranchingRatios = branchingRatiosCopy;
+  
+
   return tChanIndex;
 }
 
-int DecayTable::ChooseDecayChannelOrNot(double aProb)
+int DecayTable::ChooseDecayChannelOrNot(double aProb,Float_t aM)
 {
+
+  std::vector<float> branchingRatiosCopy;
+  if(mDecayChannels[0].IsBRFunc()) {
+    branchingRatiosCopy = mBranchingRatios;
+    RecalculateBranchingRatiosForMass(aM);
+  }
+
   float tSumRatio = 0.0;
 
   for (int tIter=0; tIter<mDecayChannels.size(); tIter++) {
-    if ((aProb > tSumRatio) && (aProb <= tSumRatio+mDecayChannels[tIter].GetBranchingRatio()))
+    if ((aProb > tSumRatio) && (aProb <= tSumRatio+mDecayChannels[tIter].GetBranchingRatio())){
+      if(mDecayChannels[0].IsBRFunc()) {
+        mBranchingRatios = branchingRatiosCopy;
       return tIter;
+      }
+    }
     tSumRatio += mDecayChannels[tIter].GetBranchingRatio();
   }
+
+  if(mDecayChannels[0].IsBRFunc())
+    mBranchingRatios = branchingRatiosCopy;
+
   return -1;
 }

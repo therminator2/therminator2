@@ -28,6 +28,7 @@
 
 #ifndef _TH2_DECAY_CHANNEL_H_
   #define _TH2_DECAY_CHANNEL_H_
+#include "TH1D.h"
 
 class DecayChannel {
   public:
@@ -40,18 +41,24 @@ class DecayChannel {
     int    GetParticle2() const;
     int    GetParticle3() const;
     double GetBranchingRatio() const;
+    TH1D* GetBranchingRatioFunc() const;
     int    Is3Particle() const;
+    bool    IsBRFunc() const;
 
     void   SetParticle1(int aPartType1);
     void   SetParticle2(int aPartType2);
     void   SetParticle3(int aPartType3);
     void   SetBranchingRatio(double aRatio);
+    void   SetBranchingRatioFunc(TH1D* aHist);
+    
 
   private:
     int    mParticleType1;
     int    mParticleType2;
     int    mParticleType3;
     double mBranchRatio;
+    TH1D *mBRFunc;
+    bool  mHasBRFunc;
 };
 
 #endif

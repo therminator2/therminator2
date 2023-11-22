@@ -31,6 +31,7 @@
 
 #include <vector>
 #include "DecayChannel.h"
+#include "TCanvas.h"
 
 class DecayTable {
   public:
@@ -42,8 +43,9 @@ class DecayTable {
     int			GetChannelCount() const;
     const DecayChannel*	GetDecayChannel(int aIndex) const;
     float		GetDecayStep(int aIndex);
-    int			ChooseDecayChannel(double aProb);
-    int			ChooseDecayChannelOrNot(double aProb);
+    int			ChooseDecayChannel(double aProb,Float_t aM);
+    int			ChooseDecayChannelOrNot(double aProb,Float_t aM);
+    void RecalculateBranchingRatiosForMass(Float_t aM);
 
   private:  
     void RecalculateBranchingRatios();

@@ -39,6 +39,7 @@
 #include "StructModel.h"
 #include "TH1F.h"
 #include "TF1.h"
+#include "TCanvas.h"
 
 #define MODEL_PAR_DESC(_name_,_unit_)	setw(8)<<_name_<<" "<<setw(7)<<left<<_unit_<<setw(5)<<right<<"#"<<endl
 #define MODEL_NAME(_name_)		"# Model ("<<setw(2)<< sModel <<") "<<left<<setw(36)<<_name_<<right<<"#"<<endl
@@ -54,10 +55,15 @@ class Model
     virtual void   AddParameterBranch(TTree* aTree);
     
     void  	SetParticlePX(Particle* aParticle);
+    void SetBreitWignerMap();
+    void SetBranchingMap();
     double	GetHyperCubeVolume();
     const char*	GetHash();
     const char*	GetName();
     const char*	GetDescription();
+    bool HasBW(TString);
+    void GetParticleMass(ParticleType *,bool finiteWidth, double &M, double &spectralFunctionWeight );
+    
 
   protected:
     void	CreateEventSubDir();
@@ -66,8 +72,6 @@ class Model
     double CalcMass(ParticleType *, double &statWeigt);
     double CalcMassEBW(ParticleType *, double &statWeigt);
     double CalcMassDistr(ParticleType *, double &statWeigt);
-
-    void GetParticleMass(ParticleType *,bool finiteWidth, double &M, double &spectralFunctionWeight );
 
 
     double	Xt, Xx, Xy, Xz;
@@ -81,6 +85,8 @@ class Model
     std::map<int, TF1*> *mSpectralFncs;
     std::map<int, double> *mSpectralFncIntegrals;
     ParticleDB *mDB;
+    std::map<TString,TH1D*> *mBreitWigner;
+    
 
 
 };

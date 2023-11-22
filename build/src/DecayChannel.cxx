@@ -29,8 +29,9 @@
 #include "DecayChannel.h"
 
 DecayChannel::DecayChannel()
-: mParticleType1(0), mParticleType2(0), mParticleType3(-1), mBranchRatio(0.0)
+: mParticleType1(0), mParticleType2(0), mParticleType3(-1), mBranchRatio(0.0),mHasBRFunc(false)
 {
+ // mBRFunc = 0;
 }
 
 DecayChannel::DecayChannel(const DecayChannel& aChannel) 
@@ -39,11 +40,17 @@ DecayChannel::DecayChannel(const DecayChannel& aChannel)
   mParticleType1 = aChannel.GetParticle1();
   mParticleType2 = aChannel.GetParticle2();
   mParticleType3 = aChannel.GetParticle3();
+  if(aChannel.IsBRFunc())
+    mBRFunc = aChannel.GetBranchingRatioFunc();
+  else
+    mBRFunc = 0;
+  mHasBRFunc = aChannel.IsBRFunc();
 }
 
 DecayChannel::DecayChannel(double aBranchRatio, int aPartType1, int aPartType2, int aPartType3)
 : mParticleType1(aPartType1), mParticleType2(aPartType2), mParticleType3(aPartType3), mBranchRatio(aBranchRatio)
 {
+  mHasBRFunc = false;
 }
 
 DecayChannel::~DecayChannel()
@@ -70,9 +77,22 @@ double DecayChannel::GetBranchingRatio() const
   return mBranchRatio;
 }
 
+TH1D* DecayChannel::GetBranchingRatioFunc() const
+{
+  if(mHasBRFunc)
+    return mBRFunc;
+  else
+    return 0;
+}
+
 int DecayChannel::Is3Particle() const
 {
   return (mParticleType3 != -1);
+}
+
+bool DecayChannel::IsBRFunc() const 
+{
+  return mHasBRFunc;
 }
 
 void DecayChannel::SetParticle1(int aPartType1)
@@ -93,4 +113,10 @@ void DecayChannel::SetParticle3(int aPartType3)
 void DecayChannel::SetBranchingRatio(double aRatio)
 {
   mBranchRatio = aRatio;
+}
+
+void DecayChannel::SetBranchingRatioFunc(TH1D* hist)
+{
+  mBRFunc=hist;
+  mHasBRFunc=true;
 }

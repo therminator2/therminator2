@@ -30,7 +30,16 @@
 #include "Configurator.h"
 #include "Model.h"
 #include "Crc32.h"
+#include "TFile.h"
+#include "TKey.h"
+#include "TCanvas.h"
+#include <TSystem.h>
+#include "TH1F.h"
+//#include <sstream>
 #include "THGlobal.h"
+#include <map>
+#include <vector>
+#include <typeinfo>
 
 using namespace std;
 using namespace TMath;
@@ -52,6 +61,9 @@ Model::Model()
   mName="";
   mHash="";
   mDescription="";
+  mBreitWigner = new std::map<TString,TH1D*>;
+  SetBreitWignerMap();
+
 }
 
 Model::Model(TRandom2* aRandom)
@@ -65,12 +77,16 @@ mRandom(aRandom)
   mDescription="";
   mSpectralFncs = new std::map<int, TF1*>;
   mSpectralFncIntegrals = new std::map<int, double>;
+  mBreitWigner = new std::map<TString,TH1D*>;
+  SetBreitWignerMap();
+
 
 }
 Model::~Model()
 {
   delete mSpectralFncs;
   delete mSpectralFncIntegrals;
+  delete mBreitWigner;
 }
 
 void Model::AddParameterBranch(TTree* aTree)
@@ -106,6 +122,14 @@ const char* Model::GetDescription()
   return mDescription.Data();
 }
 
+bool Model::HasBW(TString name) {
+	if(mBreitWigner->find(name) != mBreitWigner->end())
+		return true;
+	else	
+		return false;
+
+
+}
 void Model::CreateEventSubDir()
 {
   struct stat tStatus;
@@ -206,9 +230,21 @@ TH1F * p33() {
         create = false;
     }
 
-//    return h4;  // eBW
+    //    return h4;  // eBW
     return h5;   // PML
 
+}
+
+void Model::SetBreitWignerMap() {
+
+  if(!gSystem->AccessPathName("share/BW.root")&&!gSystem->AccessPathName("share/branchingRatios.root")) {
+    TFile *BWFile = new TFile("share/BW.root");
+    TIter next(BWFile->GetListOfKeys());
+    TKey *key;
+    while ((key = (TKey*)next()))
+      (*mBreitWigner)[(TString)key->GetName()] = (TH1D*)key->ReadObj();
+
+  }
 }
 
 
@@ -253,19 +289,30 @@ double Model::CalcMass(ParticleType *aPartType, double &statWeight) {
 double Model::CalcMassDistr(ParticleType *aPartType, double &statWeight) {
 
     int pdg = aPartType->GetPDGCode();
-    if (Abs(pdg) == 2224 || Abs(pdg) == 2214 || Abs(pdg) == 2114 || Abs(pdg) == 1114) {
+
+	if(mBreitWigner->find((TString)aPartType->GetName()) != mBreitWigner->end()) {
+		TH1D *distr = (*mBreitWigner)[(TString)aPartType->GetName()];
+		double m = distr->GetRandom();
+        statWeight = 1;
+        return m;
+
+	}
+    else if (Abs(pdg) == 2224 || Abs(pdg) == 2214 || Abs(pdg) == 2114 || Abs(pdg) == 1114) {
         TH1F *distr = p33();
         double m = distr->GetRandom();
         statWeight = distr->Interpolate(m);
         return m;
-    } else {
-	statWeight = 1;
+    } 
+    else {
+	      statWeight = 1;
         return aPartType->GetMass();
        // return CalcMass(aPartType, statWeight);
     }
+
+
 }
 
-void Model::GetParticleMass(ParticleType *aPartType, bool finiteWidth, double &M, double &spectralFunctionWeight ){
+void Model::GetParticleMass(ParticleType *aPartType, bool finiteWidth, double &M, double &spectralFunctionWeight ) {
     if (finiteWidth) {
 	M = CalcMassDistr(aPartType, spectralFunctionWeight);
     } else {
@@ -273,5 +320,4 @@ void Model::GetParticleMass(ParticleType *aPartType, bool finiteWidth, double &M
 	spectralFunctionWeight = 1.0;
     }
 }
-
 

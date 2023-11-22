@@ -35,16 +35,20 @@
 #include "ParticleType.h"
 #include "DecayChannel.h"
 #include "Particle.h"
+#include "Model.h"
+#include "TFile.h"
+#include "TKey.h"
 
 class ParticleDecayer {
   public:
     ParticleDecayer();
-    ParticleDecayer(ParticleDB* aDB, std::list<Particle>* aParticles);
+    ParticleDecayer(ParticleDB* aDB, std::list<Particle>* aParticles, Model *aFOModel);
     ~ParticleDecayer();
 
     void DecayParticle(Particle* aFather);
     void Randomize();
     void SeedSet(int aSeed);
+    void SetBranchingMap();
 
   private:
     inline double BreitWigner(double Mass, double Gamma) const;
@@ -57,6 +61,7 @@ class ParticleDecayer {
     Particle*		 mFather;
     const DecayChannel*	 mChannel;
     TRandom2*		 mRandom;
+    Model* mFOModel;
 };
 
 #endif

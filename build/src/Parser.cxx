@@ -32,6 +32,11 @@
 #include <TMath.h>
 #include "THGlobal.h"
 #include "Parser.h"
+#include "TFile.h"
+#include "TKey.h"
+#include "TSystem.h"
+#include "TH1F.h"
+#include <map>
 
 using namespace std;
 
@@ -146,6 +151,17 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB)
   double tBRatio, tRatio;
   int    CGcoeff; // complete branching ratio by Clebsch-Gordan coefficient: 0-no 1-yes
 
+  std::map<TString,TCanvas*> *mBranchingRatios = new std::map<TString,TCanvas*>;
+  if(!gSystem->AccessPathName("share/branchingRatios.root")&&!gSystem->AccessPathName("share/BW.root")) {
+    TFile *branchingFile = new TFile("share/branchingRatios.root");
+    TIter next(branchingFile->GetListOfKeys());
+    TKey *key;
+    while ((key = (TKey*)next())) 
+      (*mBranchingRatios)[(TString)key->GetName()] = (TCanvas*)key->ReadObj();
+  }
+  else 
+    PRINT_MESSAGE("<Parser::ReadSHAREDecays>\tBreit-Wigner functions and/or branching ratios not found, pole masses will be used");
+
   while (!mFile.eof()) {
     mFile.getline(buff,200);
     if (!(*buff) || (*buff == '#'))
@@ -183,6 +199,9 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB)
       PRINT_DEBUG_2("\t\tBR ("<< tBRatio <<")");
       if (aDB->GetParticleType(tDaughter1)->GetMass() + aDB->GetParticleType(tDaughter2)->GetMass() + aDB->GetParticleType(tDaughter3)->GetMass() < aDB->GetParticleType(tFather)->GetMass()) {
 	DecayChannel* newChannel = new DecayChannel(tBRatio, aDB->GetParticleTypeIndex(tDaughter1), aDB->GetParticleTypeIndex(tDaughter2), aDB->GetParticleTypeIndex(tDaughter3));
+ if(mBranchingRatios->find((TString)aDB->GetParticleType(tFather)->GetName()) != mBranchingRatios->end()) 
+    newChannel->SetBranchingRatioFunc((TH1D*)(*mBranchingRatios)[(TString)aDB->GetParticleType(tFather)->GetName()]->GetPrimitive(Form("%s+%s+%s",aDB->GetParticleType(tDaughter1)->GetName(),aDB->GetParticleType(tDaughter2)->GetName(),aDB->GetParticleType(tDaughter3)->GetName())));
+ 
 	aDB->GetParticleType(tFather)->AddDecayChannel(*newChannel);
 	aDB->GetParticleType(tFather)->SetDecayChannelCount3( aDB->GetParticleType(tFather)->GetDecayChannelCount3() + 1 );
 	PRINT_DEBUG_2("\t\tAdding 3-body decay channel:     "<< tDaughter1 <<" + "<< tDaughter2 <<" + "<< tDaughter3);
@@ -223,6 +242,8 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB)
       }
       if (aDB->GetParticleType(tDaughter1)->GetMass() + aDB->GetParticleType(tDaughter2)->GetMass() < aDB->GetParticleType(tFather)->GetMass()) {
 	DecayChannel *newChannel = new DecayChannel(tRatio, aDB->GetParticleTypeIndex(tDaughter1), aDB->GetParticleTypeIndex(tDaughter2), -1);
+   if(mBranchingRatios->find((TString)aDB->GetParticleType(tFather)->GetName()) != mBranchingRatios->end()) 
+    newChannel->SetBranchingRatioFunc((TH1D*)(*mBranchingRatios)[(TString)aDB->GetParticleType(tFather)->GetName()]->GetPrimitive(Form("%s+%s",aDB->GetParticleType(tDaughter1)->GetName(),aDB->GetParticleType(tDaughter2)->GetName()))->Clone());
         aDB->GetParticleType(tFather)->AddDecayChannel(*newChannel);
         aDB->GetParticleType(tFather)->SetDecayChannelCount2( aDB->GetParticleType(tFather)->GetDecayChannelCount2() + 1 );
         PRINT_DEBUG_2("\t\tAdding 2-body decay channel:     "<< tDaughter1 <<" + "<< tDaughter2);
@@ -231,6 +252,8 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB)
     }
     delete iss;
   }
+  delete mBranchingRatios;
+
 }
 
 double Parser::SHAREClebschGordan(double aJot,  double aEm,

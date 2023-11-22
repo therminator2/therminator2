@@ -144,7 +144,7 @@ void EventGenerator::DecayParticles(int aSeed)
   ParticleType*    tFatherType;
   ParticleDecayer* tDecayer;
   
-  tDecayer = new ParticleDecayer(mDB, mEvent->GetParticleList());
+  tDecayer = new ParticleDecayer(mDB, mEvent->GetParticleList(),mInteg->GetModel());
 
   if (sRandomize)
     tDecayer->Randomize();
