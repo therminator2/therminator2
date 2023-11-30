@@ -1,13 +1,13 @@
 #!python
 
 import os
-from shutil import copytree, copy
+from shutil import copytree, copy, rmtree
 
 #----------------set input/output dirs here--------------#
 unigendir="/lustre/hades/user/harabasz/unigen_new/UniGen-2.3/set.sh"
 scriptdir = "/cvmfs/hadessoft.gsi.de/install/debian10/root-6.24.02/bin/thisroot.sh"
-submissiondir="/lustre/hades/user/harabasz/submit/HubbDeltHigT_200steps05"
-outputdir="/lustre/hades/user/harabasz/HubbDeltHigT_200steps05"
+submissiondir="/lustre/hades/user/harabasz/submit/HubbDeltHigT_200steps05_noDoubleMomUpdate"
+outputdir="/lustre/hades/user/harabasz/HubbDeltHigT_200steps05_noDoubleMomUpdate"
 jobarrayfile="jobarray.dat"
 
 #--------------------------------------------------------#
@@ -61,9 +61,9 @@ def replaceEV(sVal):
     fout.close()
 
 try:
+    rmtree(submissiondir)
     os.mkdir(submissiondir)
-    os.mkdir(outputdir)
-    os.mkdir(outputdir+"/out")
+    os.makedirs(outputdir+"/out", exist_ok=True)
     os.remove(jobarrayfile)
 except Exception as e:
     print(e)
@@ -78,7 +78,7 @@ HubbList = [0.0225]
 epsilonList = [0.0]
 deltalist = [0.4]
 
-NoFiles = 1000
+NoFiles = 200
 
 #-------------------------------------------------------#
 
