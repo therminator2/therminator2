@@ -2,6 +2,7 @@
 #define COULOMB_AFTERBURNER
 
 #include "AbstractAfterburner.h"
+#include "AbstractEventSaver.h"
 #include "TLorentzVector.h"
 
 #include "TFile.h"
@@ -10,9 +11,10 @@
 
 class CoulombAfterburner : public AbstractAfterburner {
   public:
-    CoulombAfterburner(int, double);
+    CoulombAfterburner(int, double, double, AbstractEventSaver *);
     virtual ~CoulombAfterburner();
     virtual void Apply(Event *);
+    static ParticleType *SpectatorType(std::list<Particle> *, Float_t &tSpectatorX);
 
   protected:
     void ReadParameters();
@@ -20,12 +22,21 @@ class CoulombAfterburner : public AbstractAfterburner {
     Double_t m_StepSize;
 
   private:
+    static Int_t TotalCharge(std::list<Particle> *);
+    static TGraph *m_gImpBNPart;
+
     bool ParticleExists(std::list<Particle>::iterator &tPartIter, double tDecayTime, double tTime);
-    int NearestInterval(TVector3 &tPos, double tTime, std::vector<TLorentzVector> &tTrajectory, int tLastBestI, double &tInterval, bool debug = false);
-    double NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV, double tTime0);
+    unsigned long NearestInterval(TVector3 &tPos, double tTime, std::vector<TLorentzVector> &tTrajectory, unsigned long tLastBestI, double &tInterval, bool debug = false);
+    double NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV,TVector3 &tY,  double tT0, double tU, bool debug = false);
     TVector3 CalculateTotalForce(std::list<Particle>::iterator &, std::list<Particle> *, int ** tBestIs, double tCurrentTime,
             std::vector<TLorentzVector> *tCoordinates, std::vector<TVector3> *tVelocities, std::vector<TVector3> *tAccelerations
             );
+    double Interval(TVector3, double, TVector3, double, bool debug = false);
+    double Interval(TVector3, double, TLorentzVector, bool debug = false);
+    double Interval(TLorentzVector, TLorentzVector, bool debug = false);
+    ParticleType *AddSpectators(std::list<Particle> *, Float_t tEarliestTime);
+    Double_t mR;
+    AbstractEventSaver *mEventSaver;
 
     TFile *m_fileHistOut;
     TProfile *m_hDistPresentRetarded;

@@ -28,6 +28,7 @@
 
 #include <sstream>
 #include "THGlobal.h"
+#include "TMath.h"
 #include "Particle.h"
 
 using namespace std;
@@ -50,7 +51,7 @@ Particle::Particle(ParticleType *aType)
   fathereid = -1;
 }
 
-
+// TODO: Understand if and why the vatiables are not initialized like in the above contructor
 Particle::Particle(ParticleCoor *aCoor, ParticleType *aType)
 : ParticleCoor(*aCoor), mPartType(aType)
 { }
@@ -85,6 +86,16 @@ ParticleType* Particle::GetParticleType() const
   return mPartType;
 }
 
+void Particle::SetParticleType(ParticleType *aPartType) {
+  mPartType = aPartType;
+  mass      = mPartType->GetMass();
+  pid       = mPartType->GetPDGCode();
+  fatherpid = pid;  
+  rootpid   = pid;    
+  eid       = EIDi;
+  fathereid = -1;
+}
+
 void Particle::SetParticlePX(double aPe, double aPx, double aPy, double aPz,
 			     double aXt, double aXx, double aXy, double aXz,
 			     Particle* aFather)
@@ -115,6 +126,21 @@ const std::string Particle::MakeTEXTEntry()
   oss << e        <<'\t'<< px       <<'\t'<< py       <<'\t'<< pz       <<'\t';
   oss << t*kHbarC <<'\t'<< x*kHbarC <<'\t'<< y*kHbarC <<'\t'<< z*kHbarC <<'\n';
   return oss.str();
+}
+
+const std::string Particle::MakeUrQMDEntry()
+{
+  float tProperTime = t*TMath::Sqrt(1-(px*px + py*py + pz*pz)/(e*e));
+  char buff[256];
+  // UrQMD format:
+  // 210  format(9e16.8,i11,2i3,i9,i5,i10,3e16.8,i8)                                                                                                
+  sprintf(buff, "%16.8E%16.8E%16.8E%16.8E%16.8E%16.8E%16.8E%16.8E%16.8E%11i%3i%3i%9i%5i%10i%16.8E%16.8E%16.8E%8i",
+    t*kHbarC, x*kHbarC, y*kHbarC, z*kHbarC, e, px, py, pz, mass, 
+    this->GetParticleType()->GetUrQMDCode(), (int)(2*this->GetParticleType()->GetI3()), this->GetParticleType()->GetCharge(),
+    fathereid == eid ? 0 : 1, fathereid == eid ? 0 : 20,
+    //eid*10000+fathereid, 1e34, tProperTime, 1.0, eid);
+    fathereid, 1e34, tProperTime, 1.0, eid);
+  return buff;
 }
 
 void Particle::ZeroEID()

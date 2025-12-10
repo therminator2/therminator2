@@ -55,13 +55,13 @@ extern TString  sEventDIR;
 extern int      sModel;
 extern int      sSeed;
 
-Integrator::Integrator()
-: mNSamples(0), mRandom(0), mFOModel(0)
+Integrator::Integrator(ParticleDB *mDB)
+: mNSamples(0), mRandom(0), mFOModel(0), mDB(mDB)
 {
 }
 
-Integrator::Integrator(int aNSamples)
-: mNSamples(aNSamples)
+Integrator::Integrator(int aNSamples, ParticleDB *mDB)
+: mNSamples(aNSamples), mDB(mDB)
 { 
   mRandom = new TRandom2();
 #ifdef _ROOT_4_
@@ -94,7 +94,12 @@ Integrator::Integrator(int aNSamples)
       break;
  // USER DEFINED
     case 99:
-      mFOModel = new Model_SR(mRandom);
+      Model_SR *tModel_SR = new Model_SR(mRandom);
+      mFOModel = tModel_SR;
+      double tProtonsReq = tModel_SR->GetProtonsReq();
+      if (tProtonsReq > 0) {
+          AdjustRadius(tModel_SR, tProtonsReq);
+      }
       break;
 /**********************************************************************************************
  * // [3] add a case for your Model_*
@@ -124,13 +129,11 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount, list
   double   tVal;
   double   tValTest;
   Particle* tParticle; 
-
-  int pdg = aPartType->GetPDGCode();
   
   PRINT_DEBUG_3("Integrator::GenerateParticles\t "<< aPartType->GetName() <<" B:"<< aPartType->GetBarionN() <<" I3:"<< aPartType->GetI3() <<" S:"<< aPartType->GetStrangeN()<<" C:"<< aPartType->GetCharmN());
   tFMax = aPartType->GetMaxIntegrand();
   while (tIter < aPartCount) {
-    tVal      = mFOModel->GetIntegrand(aPartType,true);
+    tVal      = mFOModel->GetIntegrand(aPartType,true,false).first;
     tValTest  = mRandom->Rndm() * tFMax;
 
  //   cout<<pdg<<"  tFMax : "<<tFMax<<"  tVal : "<<tVal<<"  tValTest : "<<tValTest<<" tIter :  "<<tIter<<"  aPartCount :  "<<aPartCount<<endl;
@@ -151,7 +154,7 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount, list
 
 }
 
-void Integrator::SetMultiplicities(ParticleDB *aDB)
+void Integrator::SetMultiplicities()
 {
   // Make or read table with probabilities
   ifstream tFileIn;
@@ -176,8 +179,8 @@ void Integrator::SetMultiplicities(ParticleDB *aDB)
 	continue;
       }
       tFileIn >> tMaxInt >> tMulti;
-      aDB->GetParticleType(tPart)->SetMaxIntegrand(tMaxInt);
-      aDB->GetParticleType(tPart)->SetMultiplicity(tMulti);
+      mDB->GetParticleType(tPart)->SetMaxIntegrand(tMaxInt);
+      mDB->GetParticleType(tPart)->SetMultiplicity(tMulti);
       PRINT_DEBUG_2("\t"<<tPart << " " << tMaxInt << " " << tMulti);
     }
     tFileIn.close();
@@ -194,11 +197,11 @@ void Integrator::SetMultiplicities(ParticleDB *aDB)
       tFileOut << mFOModel->GetDescription();
       tFileOut << endl;
       tFileOut << "# Particle name\tMax integrand\tMultiplicity" << endl;
-      for(int tIter = 0; tIter < aDB->GetParticleTypeCount(); tIter++) {
-        tMulti  = Integrate(aDB->GetParticleType(tIter));
-        tMaxInt = aDB->GetParticleType(tIter)->GetMaxIntegrand();
-        tFileOut << aDB->GetParticleType(tIter)->GetName() << '\t' << tMaxInt << '\t' << tMulti << endl;
-	cout << "\r\tparticle ("<< (tIter + 1) << "/" << aDB->GetParticleTypeCount() << "): " << aDB->GetParticleType(tIter)->GetName();
+      for(int tIter = 0; tIter < mDB->GetParticleTypeCount(); tIter++) {
+        tMulti  = Integrate(mDB->GetParticleType(tIter));
+        tMaxInt = mDB->GetParticleType(tIter)->GetMaxIntegrand();
+        tFileOut << mDB->GetParticleType(tIter)->GetName() << '\t' << tMaxInt << '\t' << tMulti << endl;
+	cout << "\r\tparticle ("<< (tIter + 1) << "/" << mDB->GetParticleTypeCount() << "): " << mDB->GetParticleType(tIter)->GetName();
 	cout.flush();
       }
       cout << endl;
@@ -230,6 +233,7 @@ double Integrator::Integrate(ParticleType* aPartType)
 {
   double tMaxInt;
   double tMulti;
+  double tVolume;
   double tVal;
   int    tIter;
   
@@ -252,11 +256,13 @@ double Integrator::Integrate(ParticleType* aPartType)
 
     for (tIter = 0; tIter < oversamp*mNSamples; tIter++) 
     {
-      tVal = mFOModel->GetIntegrand(aPartType,true);
+      std::pair<double, double> tIntegrands = mFOModel->GetIntegrand(aPartType,true);
+      tVal = tIntegrands.first;
       if (tVal>tMaxInt)
         tMaxInt = tVal;
 
       tMulti += tVal;
+      
     }
     tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * oversamp * mNSamples);
     aPartType->SetMaxIntegrand(tMaxInt);
@@ -295,8 +301,7 @@ double Integrator::Integrate(ParticleType* aPartType)
     
     for (tIter = 0; tIter < oversamp*mNSamples; tIter++) 
     {
-      tVal = mFOModel->GetIntegrand(aPartType,true);
-      int pdg = aPartType->GetPDGCode();
+      tVal = mFOModel->GetIntegrand(aPartType,true).first;
 
       if (tVal>tMaxInt) 
         tMaxInt = tVal;
@@ -312,18 +317,40 @@ double Integrator::Integrate(ParticleType* aPartType)
     /// END_HACK_RR
     for (tIter = 0; tIter < mNSamples; tIter++) 
     {
-      tVal = mFOModel->GetIntegrand(aPartType,true);
-      int pdg = aPartType->GetPDGCode();
+      std::pair<double, double> tIntegrands = mFOModel->GetIntegrand(aPartType,true);
+      tVal = tIntegrands.first;
 
       if (tVal>tMaxInt) 
         tMaxInt = tVal;
 
       tMulti += tVal;
+
+      tVal = tIntegrands.second;
+      tVolume += tVal;
     }
     tMulti *= mFOModel->GetHyperCubeVolume() / (1.0 * mNSamples);
+    tVolume *= 2 * TMath::Pi() * TMath::Pi() * mFOModel->GetHyperCubeVolume() / (1.0 * mNSamples) * TMath::Power(kHbarC, 3)/3;
     aPartType->SetMaxIntegrand(tMaxInt);
     aPartType->SetMultiplicity(tMulti);
   }
 
   return tMulti;
+}
+
+void Integrator::AdjustRadius(Model_SR * aModel, double aRequiredProtons) {
+  static const Double_t tEps = 0.05;
+  ParticleType *tProtonType = this->mDB->GetParticleType("pr0938plu");
+  Double_t tMult = this->Integrate(tProtonType);
+  Int_t tIteration = 1;
+  while (TMath::Abs(tMult - aRequiredProtons) > tEps) {
+    Double_t tOldR = aModel->GetR();
+    Double_t tF = TMath::Power(aRequiredProtons / tMult, 1./3);
+    tF = (tF - 1)/tIteration + 1;
+    Double_t tNewR = tOldR * tF;
+    cout << "Iteration " << tIteration << ", required mult. = " << aRequiredProtons << ", actual mult = " << tMult;
+    cout << ", changing radius from " << tOldR << " to " << tNewR << endl;
+    aModel->SetR(tNewR);
+    tMult = this->Integrate(tProtonType);
+    tIteration++;
+  }
 }

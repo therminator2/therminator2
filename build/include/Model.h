@@ -33,6 +33,7 @@
 #include <TTree.h>
 #include <TString.h>
 #include <TRandom2.h>
+#include "THGlobal.h"
 #include "ParticleType.h"
 #include "Particle.h"
 #include "ParticleDB.h"
@@ -50,7 +51,7 @@ class Model
     Model(TRandom2* aRandom);
     virtual ~Model();
     
-    virtual double GetIntegrand(ParticleType* aPartType, bool) = 0;
+    virtual std::pair<double, double> GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution = false) = 0;
     virtual void   AddParameterBranch(TTree* aTree);
     
     void  	SetParticlePX(Particle* aParticle);
@@ -81,7 +82,6 @@ class Model
     std::map<int, TF1*> *mSpectralFncs;
     std::map<int, double> *mSpectralFncIntegrals;
     ParticleDB *mDB;
-
 
 };
 

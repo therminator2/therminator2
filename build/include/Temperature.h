@@ -44,9 +44,9 @@ class Temperature
     void   SetTemperature(Vector3D* aTemp);
 
   private:
-    int       mTempType;
     double    mTempConst;
     Vector3D* mTempVar;
+    int       mTempType;
 };
 
 #endif

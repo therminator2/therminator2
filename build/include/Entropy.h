@@ -44,9 +44,9 @@ class Entropy
     void   SetEntropy(Vector3D* aEntropy);
 
   private:
-    int       mEntropyType;
     double    mEntropyConst;
     Vector3D* mEntropyVar;
+    int       mEntropyType;
 };
 
 #endif

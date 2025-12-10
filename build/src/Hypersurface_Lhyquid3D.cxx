@@ -122,7 +122,7 @@ void Hypersurface_Lhyquid3D::ReadParameters()
       sHyperXML.Prepend("./");
       sHyperXML += tModelParam->GetParameter("FreezeFile");
     }
-  } catch (TString tError) {
+  } catch (TString &tError) {
     PRINT_MESSAGE("<Hypersurface_Lhyquid3D::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
@@ -190,7 +190,7 @@ void Hypersurface_Lhyquid3D::ReadParameters()
   try {
     sEventDIR += tModelParam->GetParameter("EventSubDir");
   }
-  catch (TString tError) {
+  catch (TString &tError) {
     TString tTemp = tModelParam->GetParameter("FreezeFile");
     tTemp.ReplaceAll("/","-");
     tTemp.ReplaceAll(".xml","/");

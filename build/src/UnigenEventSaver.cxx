@@ -23,7 +23,6 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
     char	  tEventFName[kFileNameMaxChar];
     char	  tTempFName[kFileNameMaxChar];
     static ParticleCoor	tPartCoor;
-    static StructEvent	tStructEvent;
     list<Particle>::iterator	tParticle_i;
 
     UEvent *ev = new UEvent;
@@ -59,8 +58,6 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
     }
     // add all Particle entries to file and Event information
     if(mFile) {
-        int i = 0;
-
         std::shared_ptr<DecayNode> decay_chains(new DecayNode(NULL));
         for(tParticle_i = tEvent->GetParticleList()->begin(); tParticle_i != tEvent->GetParticleList()->end(); tParticle_i++) {
 
@@ -78,9 +75,6 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
             AddDecayToEvent(ev, *it, -1); // Primary particles have decay index = -1
         }
 
-        tStructEvent.eventID     = tEvent->GetEventID();
-        tStructEvent.entries     = tEvent->GetParticleList()->size();
-        tStructEvent.entriesprev = 0; // not used here
         mEventTree->Fill();
         PRINT_DEBUG_2("<EventGenerator::SaveAsUnigen>\tEvent "<<tEventCounter<<" saved.");
     }

@@ -33,6 +33,8 @@
 #include "DecayChannel.h"
 #include "DecayTable.h"
 
+#include <map>
+
 class ParticleType {
   public:
     ParticleType();
@@ -57,6 +59,7 @@ class ParticleType {
     int    GetNumberAC()	const;
     int    GetCharge()		const;
     int    GetPDGCode()		const;
+    int    GetUrQMDCode() const;
     double GetMaxIntegrand()	const;
     double GetMultiplicity()	const;
     int    GetDecayChannelCount2() const;
@@ -110,6 +113,8 @@ class ParticleType {
     int		mDecayChannelCount2;      //number of channels in this case
     int		mDecayChannelCount3;      //number of channels in this case
     DecayTable*	mTable;
+    std::map<TString, int> mPrefixToUrQMDCode;
+    void InitUrQMDCodes();
 };
 
 #endif

@@ -1,15 +1,25 @@
 #!python
 
 import os
-from shutil import copytree, copy, rmtree
+import random
+import string
+from shutil import copytree, copy, rmtree, move
 
 #----------------set input/output dirs here--------------#
 unigendir="/lustre/hades/user/harabasz/unigen_new/UniGen-2.3/set.sh"
 scriptdir = "/cvmfs/hadessoft.gsi.de/install/debian10/root-6.24.02/bin/thisroot.sh"
-submissiondir="/lustre/hades/user/harabasz/submit/HubbDeltHigT_200steps05_noDoubleMomUpdate"
-outputdir="/lustre/hades/user/harabasz/HubbDeltHigT_200steps05_noDoubleMomUpdate"
-jobarrayfile="jobarray.dat"
 
+#whatsin="HubbDeltCaseA_0steps10_fixedPositionUpdate_Spectator_fm_32_JK_noRescale"
+whatsin="HubbDeltCaseB_50steps20_fixedPositionUpdate_spectatorAtRfixedIsospin_specExtrapolationTret_fm_32_JK_protons_req_110.9_Tf_10_a"
+#whatsin="HubbDeltCaseC_0steps10_fixedPositionUpdate_Spectator_fm_32_JK_protons_req_67.8_noRescale"
+
+submissiondir="/lustre/hades/user/harabasz/submit/" + whatsin
+tmpbase="/tmp/harabasz/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=16)) + "/"
+tmpdir=tmpbase+whatsin
+outputbase="/lustre/hades/user/harabasz/"
+outputdir=outputbase+whatsin
+jobarrayfile="jobarray.dat"
+#
 #--------------------------------------------------------#
 
 def gen_primes():   #Sieve of Erastothenes
@@ -61,9 +71,11 @@ def replaceEV(sVal):
     fout.close()
 
 try:
-    rmtree(submissiondir)
+    if os.path.exists(submissiondir):
+        rmtree(submissiondir)
     os.mkdir(submissiondir)
-    os.makedirs(outputdir+"/out", exist_ok=True)
+    os.mkdir(tmpbase)
+    os.mkdir(tmpdir)
     os.remove(jobarrayfile)
 except Exception as e:
     print(e)
@@ -74,11 +86,33 @@ file = open(jobarrayfile,"w")
 
 #--------------change parameters here-------------------#
 
+# Case A
+#HubbList = [0.01]
+#epsilonList = [0.0]
+#deltalist = [0.2]
+# Case B
 HubbList = [0.0225]
-epsilonList = [0.0]
 deltalist = [0.4]
+#epsilonList = [-0.6, -0.4, -0.2]
+epsilonList = [0]
+#deltalist = [0]
 
-NoFiles = 200
+###
+#HubbList = [0, 0.0225]
+#HubbList = [0.01, 0.015, 0.0225]
+#epsilonList = [0.0, -0.3, -0.6]
+### #deltalist = [0.4]
+#deltalist = [0.0, 0.2, 0.4]
+
+# Case C
+#HubbList = [0.016]
+#epsilonList = [0.0]
+#epsilonList = [-0.6, -0.4, -0.2]
+#deltalist = [0.4]
+
+NoFiles = 1000
+#NoFiles = 10
+#NoFiles = 1
 
 #-------------------------------------------------------#
 
@@ -92,7 +126,8 @@ for Hubb in HubbList:
                 newH = newH.replace('.','')
                 newE = abs(int(epsilon*11)) #one would think that using *10 instead would do the trick... but it just won't cut it for some reason
                 newD = int(delta*11)
-                dir = "{}/H{}_E{}_D{}_file{}".format(outputdir,newH,newE,newD,i+1)
+                dir = "{}/H{}_E{}_D{}_file{}".format(tmpdir,newH,newE,newD,i+1)
+                finaldir = "{}/H{}_E{}_D{}_file{}".format(outputdir,newH,newE,newD,i+1)
                 print(dir)
                 
                 try:
@@ -108,7 +143,7 @@ for Hubb in HubbList:
                     copy("fomodel/SR.ini",dir + "/fomodel")
                     copy("share/particles.data",dir + "/share")
                     copy("share/decays.data",dir + "/share")
-                    file.write(f"{unigendir} {scriptdir} {dir}\n")
+                    file.write(f"{unigendir} {scriptdir} {finaldir}\n")
                 except Exception as e:
                     print(e)
                 
@@ -121,9 +156,17 @@ print(chmod_command)
 os.system(chmod_command)
 
 arrElem = NoFiles * len(HubbList) * len(epsilonList) * len(deltalist)
+print("Moving from the temporary folder to the output...")
+move(tmpdir, outputbase)
+print("Done")
+try:
+    os.makedirs(outputdir+"/out", exist_ok=True)
+except Exception as e:
+    print(e)
 
 #command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/wrap.sh {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
 command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
+#command="sbatch --array=1-{3} --mem=2000 --time=0-2:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
 print(command)
 os.system(command)
 

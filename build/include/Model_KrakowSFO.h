@@ -40,15 +40,15 @@ class Model_KrakowSFO
     Model_KrakowSFO(TRandom2* aRandom);
     ~Model_KrakowSFO();
     
-    double GetIntegrand(ParticleType* aPartType, bool);
+    std::pair<double, double> GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution = false);
     void   AddParameterBranch(TTree* aTree);
     
   protected:
+    Thermodynamics* mThermo;
     double mRapPRange;
     double mRapSRange;
     double mTauC;
     double mRhoMax;
-    Thermodynamics* mThermo;
         
   private:
     void Description();

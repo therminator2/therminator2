@@ -40,26 +40,24 @@ class Model_SR
     Model_SR(TRandom2* aRandom);
     ~Model_SR();
     
-    double GetIntegrand(ParticleType* aPartType, bool);
+    std::pair<double, double> GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution = false);
     void   AddParameterBranch(TTree* aTree);
+    double GetT0() const { return mT0 * kHbarC; }
+    double GetR() const { return mR; }
+    double GetProtonsReq() const { return mProtonsReq; }
+    void SetR(const double aR) { mR = aR; }
     
   protected:
-      /*
-      double mRMax;
-    double mVR;  
-    double mh;
-    double mA0;
-    double mT0;
-    */
+    Thermodynamics* mThermo;
     double mR;
+    double mH;
     double mA;  
     double mT0;
-    double mH;
     double mDel;
     double mEps;
-    double mGammaS; 
+    double mGammaS;
+    double mProtonsReq;
 
-    Thermodynamics* mThermo;
     
   private:
     void Description();

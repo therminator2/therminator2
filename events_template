@@ -53,12 +53,16 @@ FreezeOutModel = SR
 [Event]
 # Number of events to generate 
 # default:	50000
-NumberOfEvents = 50000
+#NumberOfEvents = 10000
+#NumberOfEvents = 1000
+NumberOfEvents = 500
+#NumberOfEvents = 5
 
 # Event output file format
 # available:	root, root&text, text
 # default:	root
-EventFileType = root
+EventFileType = unigen&text
+#EventFileType = root
 
 [Primordial]
 # Distribution of primordial particles multiplicity
@@ -70,6 +74,7 @@ MultiplicityDistribution = Poisson
 # primordial multiplicity and max. integrand value
 # default:	   5000000
 IntegrateSamples = 5000000
+#IntegrateSamples = 50000
 
 [Random]
 # Start each event with a new random seed taken from current time (1)
@@ -99,3 +104,7 @@ EventDir = ./
 # Log file
 # default:	therminator.log
 LogFile = therminator.log
+
+# Coulomb afterburner flags
+CoulombTimeSteps = 50
+CoulombStepSize = 2.0

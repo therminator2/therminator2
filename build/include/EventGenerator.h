@@ -41,10 +41,12 @@
 class EventGenerator {
   public:
     EventGenerator();
-    EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLA);
+    EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES);
     ~EventGenerator();
+    void SetAfterburners(ListAfterburner *aLA) { mAfterburners = aLA; }
 
     void GenerateEvents();
+    Model *GetModel() { return mInteg->GetModel(); }
 
   private:
     void GeneratePrimordials(int aSeed=0);
@@ -57,16 +59,16 @@ class EventGenerator {
 
     std::vector<int>	mMultiplicities;
 
+    ParticleDB*	        mDB;
     AbstractEventSaver* mEventSaver;
     ListAfterburner*    mAfterburners;
-    ParticleDB*	        mDB;
     Integrator*	        mInteg;
     Event*      	mEvent;    
     TRandom2*		mRandom;
 
-    int mDistribution;	// type of multiplicity distribution: 0 = Poissonian, 1 - NegativeBinomial
     int	mEventCounter;
     int	mNumberOfEvents;
+    int mDistribution;	// type of multiplicity distribution: 0 = Poissonian, 1 - NegativeBinomial
     
 };
 

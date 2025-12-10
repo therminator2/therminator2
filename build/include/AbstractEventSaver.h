@@ -14,8 +14,8 @@ class AbstractEventSaver {
   protected:
     void ReadParameters();  
     int	        mFileCounter;
-    int	        mNumberOfEvents;
     const int   kEventsPerFile;
+    int	        mNumberOfEvents;
 
 };
 

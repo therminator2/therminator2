@@ -45,6 +45,7 @@ class Chemistry
     double GetFugacity(ParticleType* aPartType, double aX, double aY, double aZ) const;
     double GetMuB() const;
     double GetMuI() const;
+    double GetMuQ() const;
     double GetMuS() const;
     double GetMuC() const;
     double GetLambdaQ() const;
@@ -56,6 +57,8 @@ class Chemistry
     double GetGammaC() const;
     void   SetChemistry(double    aMuB,     double    aMuI,     double    aMuS,     double    aMuC);
     void   SetChemistry(Vector3D* aMuB,     Vector3D* aMuI,     Vector3D* aMuS,     Vector3D* aMuC);
+    void   SetChemistryMuQ(double    aMuB,     double    aMuQ,     double    aMuS,     double    aMuC);
+    void   SetChemistryMuQ(Vector3D* aMuB,     Vector3D* aMuQ,     Vector3D* aMuS,     Vector3D* aMuC);
     void   SetChemistry(double    aLambdaQ, double    aLambdaI, double    aLambdaS, double    aLambdaC,
 			double    aGammaQ,                      double    aGammaS,  double    aGammaC);
     void   SetChemistry(Vector3D* aLambdaQ, Vector3D* aLambdaI, Vector3D* aLambdaS, Vector3D* aLambdaC,
@@ -63,31 +66,33 @@ class Chemistry
     void   SetGammas(double    aGammaQ, double aGammaS, double aGammaC);
 
   private:
-    int		mChemistryType;
-
     double	mMuBConst;
     double	mMuIConst;
+    double	mMuQConst;
     double	mMuSConst;
     double	mMuCConst;
     Vector3D*	mMuBVar;
     Vector3D*	mMuIVar;
+    Vector3D*	mMuQVar;
     Vector3D*	mMuSVar;
     Vector3D*	mMuCVar;
 
+    double	mLambdaQConst;
+    double	mLambdaIConst;
+    double	mLambdaSConst;
+    double	mLambdaCConst;
     double	mGammaQConst;
     double	mGammaSConst;
     double	mGammaCConst;
-    double	mLambdaIConst;
-    double	mLambdaQConst;
-    double	mLambdaSConst;
-    double	mLambdaCConst;
+    Vector3D*	mLambdaQVar;
+    Vector3D*	mLambdaIVar;
+    Vector3D*	mLambdaSVar;
+    Vector3D*	mLambdaCVar;
     Vector3D*	mGammaQVar;
     Vector3D*	mGammaSVar;
     Vector3D*	mGammaCVar;
-    Vector3D*	mLambdaIVar;
-    Vector3D*	mLambdaQVar;
-    Vector3D*	mLambdaSVar;
-    Vector3D*	mLambdaCVar;
+    
+    int		mChemistryType;
 };
 
 #endif

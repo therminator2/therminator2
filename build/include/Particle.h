@@ -44,10 +44,12 @@ class Particle
 
     ParticleCoor& operator= (Particle& aParticle);
     ParticleType* GetParticleType() const;
+    void          SetParticleType(ParticleType*);
     void	  SetParticlePX(double  aPe, double  aPx, double  aPy, double  aPz,
 				double  aXt, double  aXx, double  aXy, double  aXz,
 				Particle* aFather=0);
     const std::string MakeTEXTEntry();
+    const std::string MakeUrQMDEntry();
     static void   ZeroEID();
     
   private:    

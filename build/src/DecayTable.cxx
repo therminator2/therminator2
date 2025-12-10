@@ -59,10 +59,10 @@ void DecayTable::RecalculateBranchingRatios()
   float tSumRatio = 0.0;
   float tCurRatio = 0.0;
 
-  for (int tIter=0; tIter<mDecayChannels.size(); tIter++)
+  for (unsigned long tIter=0; tIter<mDecayChannels.size(); tIter++)
     tSumRatio += mDecayChannels[tIter].GetBranchingRatio();
 
-  for (int tIter=0; tIter<mDecayChannels.size(); tIter++) {
+  for (unsigned long tIter=0; tIter<mDecayChannels.size(); tIter++) {
     tCurRatio += mDecayChannels[tIter].GetBranchingRatio() / tSumRatio;
     if (mBranchingRatios.size() <= tIter)
       mBranchingRatios.push_back(tCurRatio);
@@ -89,7 +89,7 @@ float DecayTable::GetDecayStep(int aIndex)
 
 int DecayTable::ChooseDecayChannel(double aProb)
 {
-  int tChanIndex = 0;
+  unsigned long tChanIndex = 0;
   while ((mBranchingRatios[tChanIndex] < aProb) && (tChanIndex < mDecayChannels.size()))
     tChanIndex++;
 
@@ -100,7 +100,7 @@ int DecayTable::ChooseDecayChannelOrNot(double aProb)
 {
   float tSumRatio = 0.0;
 
-  for (int tIter=0; tIter<mDecayChannels.size(); tIter++) {
+  for (unsigned long tIter=0; tIter<mDecayChannels.size(); tIter++) {
     if ((aProb > tSumRatio) && (aProb <= tSumRatio+mDecayChannels[tIter].GetBranchingRatio()))
       return tIter;
     tSumRatio += mDecayChannels[tIter].GetBranchingRatio();

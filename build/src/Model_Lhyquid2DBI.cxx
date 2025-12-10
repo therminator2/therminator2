@@ -57,7 +57,7 @@ Model_Lhyquid2DBI::~Model_Lhyquid2DBI()
 {
 }
 
-double Model_Lhyquid2DBI::GetIntegrand(ParticleType* aPartType, bool)
+std::pair<double, double> Model_Lhyquid2DBI::GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution)
 {
   double dSigmaP;
   double Spin, Statistics;
@@ -97,7 +97,8 @@ double Model_Lhyquid2DBI::GetIntegrand(ParticleType* aPartType, bool)
   Py = Pt  * Sin(PhiP);
   Pz = Mt  * SinH(RapP);
 // integrand  
-  return (2.0 * Spin + 1.0) * 1.0 / kTwoPi3 * Pt * dPt * dSigmaP * 1.0 / (Exp( ( GetPdotU(Mt, Pt, PhiP, RapP) - mThermo->GetChemicalPotential(aPartType) ) / mThermo->GetTemperature() ) + Statistics );
+  return std::make_pair((2.0 * Spin + 1.0) * 1.0 / kTwoPi3 * Pt * dPt * dSigmaP * 1.0 / (Exp( ( GetPdotU(Mt, Pt, PhiP, RapP) - mThermo->GetChemicalPotential(aPartType) ) / mThermo->GetTemperature() ) + Statistics ),
+  0);
 }
 
 void Model_Lhyquid2DBI::Description()

@@ -46,9 +46,9 @@ class SoundVelocity
     void   SetCs(Vector3D* aCs);
 
   private:
-    int       mCsType;
     double    mCsConst;
     Vector3D* mCsVar;
+    int       mCsType;
 };
 
 #endif

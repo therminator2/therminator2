@@ -66,7 +66,7 @@ Model_KrakowSFO::~Model_KrakowSFO()
   delete mThermo;
 }
 
-double Model_KrakowSFO::GetIntegrand(ParticleType* aPartType, bool)
+std::pair<double, double> Model_KrakowSFO::GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution)
 {
   double dSigmaP, PdotU;
   double Spin, Statistics;
@@ -105,7 +105,8 @@ double Model_KrakowSFO::GetIntegrand(ParticleType* aPartType, bool)
   Py = Pt  * Sin(PhiP);
   Pz = Mt  * SinH(RapP);
 // integrand
-  return (2.0 * Spin + 1.0) * 1.0 / kTwoPi3 * Pt * dPt * dSigmaP * 1.0 / (Exp( ( PdotU - mThermo->GetChemicalPotential(aPartType) ) / mThermo->GetTemperature() ) + Statistics);
+  return std::make_pair((2.0 * Spin + 1.0) * 1.0 / kTwoPi3 * Pt * dPt * dSigmaP * 1.0 / (Exp( ( PdotU - mThermo->GetChemicalPotential(aPartType) ) / mThermo->GetTemperature() ) + Statistics),
+  0);
 }
 
 void Model_KrakowSFO::Description()
@@ -166,7 +167,7 @@ void Model_KrakowSFO::ReadParameters()
 			    tModelParam->GetParameter("MuI").Atof() * 0.001,
 			    tModelParam->GetParameter("MuS").Atof() * 0.001,
 			    tModelParam->GetParameter("MuC").Atof() * 0.001);	// [GeV]
-  } catch (TString tError) {
+  } catch (TString &tError) {
     PRINT_MESSAGE("<Model_KrakowSFO::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
@@ -183,7 +184,7 @@ void Model_KrakowSFO::ReadParameters()
   try {
     sEventDIR += tModelParam->GetParameter("EventSubDir");
     CreateEventSubDir();
-  } catch (TString tError) {
+  } catch (TString &tError) {
   }
   
   delete tModelParam;

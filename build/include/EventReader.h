@@ -53,9 +53,9 @@ class EventReader {
     void SaveEvent();
     std::pair<TChain*, TChain*> GetChains(TString aEventDir, Int_t aEventFiles, ParticleCoor* aParticle, StructEvent* aStructEvent, Int_t* aEvents);
 
+    ParticleDB*	        mDB;
     AbstractEventSaver* mEventSaver;
     ListAfterburner*    mAfterburners;
-    ParticleDB*	        mDB;
     Event*      	mEvent;
     int		        mEventCounter;
     int		        mNumberOfEvents;

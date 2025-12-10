@@ -11,8 +11,8 @@ class RootEventSaver : public AbstractEventSaver {
     virtual void Save(Event *, Model *, int);
   private:
     TFile*	        mFile;
-    TTree*	        mParameterTree;
     TTree*        	mEventTree;
+    TTree*	        mParameterTree;
     TTree*	        mParticleTree;    
 };
 

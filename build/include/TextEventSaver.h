@@ -5,7 +5,10 @@
 
 class TextEventSaver : public AbstractEventSaver {
   public:
+    TextEventSaver(std::string aFileName = "event.txt") : mFileName(aFileName) { }
     virtual void Save(Event *, Model *, int);
+  private:
+    std::string mFileName;
 };
 
 #endif

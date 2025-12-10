@@ -151,7 +151,7 @@ int main(int argc, char **argv)
         stepkT = sMainConfig->GetParameter("WidthkT").Atoi();
         sOvvr = sMainConfig->GetParameter("Override");
     }
-    catch (TString tError) 
+    catch (TString &tError) 
     {
         PRINT_DEBUG_1("therm2_hbtfit - Caught exception " << tError);
         PRINT_MESSAGE("Did not find one of the necessary parameters in the parameters file.");
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
         maxy = sMainConfig->GetParameter("MaxFitRangeY").Atof();
         maxz = sMainConfig->GetParameter("MaxFitRangeZ").Atof();
     }
-    catch (TString tError) 
+    catch (TString &tError) 
     {
     }
     try 
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
         lowCut = sMainConfig->GetParameter("LambdaCutLow").Atof();
         highCut = sMainConfig->GetParameter("LambdaCutHigh").Atof();
     }
-    catch (TString tError) 
+    catch (TString &tError) 
     {
     }
     
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
         {
             tLogName = sMainConfig->GetParameter("LogFile");
         }
-        catch (TString tError) 
+        catch (TString &tError) 
         {
         }   
         if (!tLogName.IsNull()) 
@@ -212,7 +212,6 @@ int main(int argc, char **argv)
 // ############################################################## 
 
     hbtFit = new HBTFit();
-    const int kTlen = maxkT-minkT+1;
     TFile* tInRootFile = new TFile();
     TH3D *numq,*denq;
     TH1D *numq1,*denq1;
@@ -309,7 +308,7 @@ int main(int argc, char **argv)
 // ############################################################## 
 
         TString   tOutTextName;
-        double parVal,parErr,kTmiddle;
+        double parVal,parErr;
         linv = false;
         losl = false;
         
@@ -426,7 +425,7 @@ int main(int argc, char **argv)
             {
                 tLogName = sMainConfig->GetParameter("LogFile");
             }
-            catch (TString tError) 
+            catch (TString &tError) 
             {
             }   
             if (!tLogName.IsNull()) 

@@ -53,8 +53,8 @@ class Viscosity
     
   private:
     int       mViscosityType;
-    double    mTau;
     Vector3D* mBulk;
+    double    mTau;
     Vector3D* mShear[10];
 };
 

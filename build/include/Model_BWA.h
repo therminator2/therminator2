@@ -40,10 +40,11 @@ class Model_BWA
     Model_BWA(TRandom2* aRandom);
     ~Model_BWA();
     
-    double GetIntegrand(ParticleType* aPartType, bool);
+    std::pair<double, double> GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution = false);
     void   AddParameterBranch(TTree* aTree);
 
   protected:
+    Thermodynamics* mThermo;
     double mRapPRange;
     double mRapSRange;
     double mRhoMax;
@@ -51,7 +52,6 @@ class Model_BWA
     double mVt;
     double mA;
     double mDelay;
-    Thermodynamics* mThermo;
         
   private:
     void   Description();

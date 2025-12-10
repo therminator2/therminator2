@@ -33,7 +33,8 @@
 #include "Parser.h"
 #include "ParticleDB.h"
 #include "ParticleType.h"
-#include "EventReader.h"
+#include "RootEventReader.h"
+#include "TextEventReader.h"
 #include "RootEventSaver.h"
 #include "TextEventSaver.h"
 #ifdef USE_UNIGEN
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
 {
   ParticleDB*	  tPartDB; 
   AbstractEventSaver* tEventSaver;
-  EventReader* tEventRead;
+  AbstractEventReader* tEventRead;
   TString tExportType;
   Int_t tEventExportType;
 
@@ -131,7 +132,7 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
   switch (tEventExportType) {
     case 1 : tEventSaver = new RootEventSaver; 
 	     break;
-    case 2 : tEventSaver = new TextEventSaver; 
+    case 2 : tEventSaver = new TextEventSaver("event_coulomb.txt"); 
 	     break;
 #ifdef USE_UNIGEN
     case 4 : tEventSaver = new UnigenEventSaver;
@@ -139,7 +140,7 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
 #endif
     default : CollectionEventSaver *es = new CollectionEventSaver;
               if (tEventExportType & 1) es->Add(new RootEventSaver);
-              if (tEventExportType & 2) es->Add(new TextEventSaver);
+              if (tEventExportType & 2) es->Add(new TextEventSaver("event_coulomb.txt"));
 #ifdef USE_UNIGEN
               if (tEventExportType & 4) es->Add(new UnigenEventSaver);
 #endif
@@ -151,11 +152,17 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
   try {
   int tCoulombSteps = sMainConfig->GetParameter("CoulombTimeSteps").Atoi();
   double tCoulombStepSize = sMainConfig->GetParameter("CoulombStepSize").Atof();
-  tAfterburners->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize));
+  // TODO: Repalce 0.0 with actual value
+ // tAfterburners->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize, 0.0, tEventSaver));
+  tAfterburners->Add(new CoulombAfterburner(tCoulombSteps, tCoulombStepSize, 0.0, nullptr));
   } catch (TString &str) {
     cout << "Parameter " << str.Data() << " is not known" << endl;
   }
-  tEventRead = new EventReader(tPartDB, tEventSaver, tAfterburners);
+  if (tEventExportType == 2) { // only if text in the config file
+      tEventRead = new TextEventReader(tPartDB, tEventSaver, tAfterburners);
+  } else {
+      tEventRead = new RootEventReader(tPartDB, tEventSaver, tAfterburners);
+  }
   tEventRead->ReadEvents();
   tEventSaver->SetEventsTemp();
  
@@ -211,7 +218,7 @@ void ReadParameters()
       PRINT_MESSAGE("\tPlease provide the proper model name in the events.ini file.");
       exit(_ERROR_GENERAL_MODEL_UNKNOWN_);
     }
-  } catch (TString tError) {
+  } catch (TString &tError) {
     PRINT_MESSAGE("<therm2_events::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary parameters in the parameters file.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
@@ -221,7 +228,7 @@ void ReadParameters()
     sModelINI  = sMainConfig->GetParameter("FreezeOutModelINI");
     PRINT_MESSAGE("<therm2_events::ReadParameters>\tUsing custom Freeze-Out-Model INI file " << sModelINI);
   }
-  catch (TString tError) {
+  catch (TString &tError) {
     sModelINI  = tModelINI;
   }
 }
@@ -233,7 +240,7 @@ void ReadSHARE(ParticleDB* aPartDB)
   
   try {
     tShareDir = sMainConfig->GetParameter("ShareDir"); tShareDir.Prepend("./");
-  } catch (TString tError) {
+  } catch (TString &tError) {
     PRINT_DEBUG_1("<Parser::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find SHARE input file location.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
@@ -288,7 +295,7 @@ void AddLogEntry(const char* aEntry)
   try {
     tLogName = sMainConfig->GetParameter("LogFile"); tLogName.Prepend("./");
   }
-  catch (TString tError) {
+  catch (TString &tError) {
     return;
   }
   

@@ -1,0 +1,58 @@
+### Collisions Au on Au at 1.23 AGeV
+#
+# projectile's A and Z
+#
+pro 197 79
+#
+#
+# target's A and Z
+#
+tar 197 79
+#
+#
+# number of events to be simulated
+#
+nev 1000
+#
+#
+# total propagation time in calculation and
+# propagation time until output units 13 and 14 are written
+#
+tim 500 500
+#
+#
+# incident beam energy in AGeV
+#
+ene 1.23
+#
+#
+imp -10
+#
+#
+# --use cascade mode not the equation of state--
+# Use hard Skyrme potential
+#
+eos 1
+#
+#
+# options: use Woods-Saxon sphere model in cascade mode and
+# do not use mass dependent resonance decay widths
+#
+cto 24 1
+cto 40 2
+cto 41 1
+#
+#
+# we just use output file 14 (all particles after freezeout),
+# thus inhibit output to the other files
+#
+f13
+#f15
+f16
+f19
+f20
+#
+#
+# end of configuration file marker
+#
+xxx

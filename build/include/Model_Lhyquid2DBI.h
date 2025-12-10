@@ -41,7 +41,7 @@ class Model_Lhyquid2DBI
     Model_Lhyquid2DBI(TRandom2* aRandom);
     ~Model_Lhyquid2DBI();
     
-    double GetIntegrand(ParticleType* aPartType, bool);
+    std::pair<double, double> GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution = false);
     void   AddParameterBranch(TTree* aTree);
     
   private:

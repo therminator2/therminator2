@@ -115,7 +115,7 @@ void Hypersurface_Lhyquid2D::ReadParameters()
       sHyperXML.Prepend("./");
       sHyperXML += tModelParam->GetParameter("FreezeFile");
     }
-  } catch (TString tError) {
+  } catch (TString &tError) {
     PRINT_MESSAGE("<Hypersurface_Lhyquid2D::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
@@ -174,7 +174,7 @@ void Hypersurface_Lhyquid2D::ReadParameters()
 // event subdirectory
   try {
     sEventDIR += tModelParam->GetParameter("EventSubDir");
-  } catch (TString tError) {
+  } catch (TString &tError) {
     TString tTemp = tModelParam->GetParameter("FreezeFile");
     tTemp.ReplaceAll("/","-"); // if you comment this the event directory will have the same structure as the XML files inside fomodel directory
     tTemp.ReplaceAll(".xml","/");

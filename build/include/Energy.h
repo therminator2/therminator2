@@ -44,9 +44,9 @@ class Energy
     void   SetEnergy(Vector3D* aEnergy);
 
   private:
-    int       mEnergyType;
     double    mEnergyConst;
     Vector3D* mEnergyVar;
+    int       mEnergyType;
 };
 
 #endif

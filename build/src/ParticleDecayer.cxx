@@ -45,7 +45,7 @@ ParticleDecayer::ParticleDecayer()
 }
 
 ParticleDecayer::ParticleDecayer(ParticleDB *aDB, std::list<Particle>* aParticles)
-: mDB(aDB), mParticles(aParticles)
+: mParticles(aParticles), mDB(aDB)
 {
   mRandom = new TRandom2();
 #ifdef _ROOT_4_
@@ -108,9 +108,6 @@ void ParticleDecayer::TwoBodyDecay()
   Particle*	tDaughter2;
   double	Xt, Xx, Xy, Xz;
   double	Pe, Px, Py, Pz;
-
-  int pdg = mFather->pid;
-
 
   mFather->GetPosition(&Xt, &Xx, &Xy, &Xz);
   mFather->GetMomentum(&Pe, &Px, &Py, &Pz);

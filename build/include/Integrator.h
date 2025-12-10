@@ -35,24 +35,29 @@
 #include "ParticleType.h"
 #include "Particle.h"
 #include "Model.h"
+#include "Model_SR.h"
 
 class Integrator {
   public:
-    Integrator();
-    Integrator(int aNSamples);
+    Integrator(ParticleDB *);
+    Integrator(int aNSamples, ParticleDB *);
     ~Integrator();
     
     Model* GetModel();
     void   GenerateParticles(ParticleType* aPartType, int aPartCount, std::list<Particle>* aParticles);
-    void   SetMultiplicities(ParticleDB* aDB);
+    void   SetMultiplicities();
     void   Randomize();
     
-  private:
     double Integrate(ParticleType* aPartType);
+
+  private:
     
-    Model*    mFOModel;
-    TRandom2* mRandom;
-    int       mNSamples;
+    int         mNSamples;
+    TRandom2*   mRandom;
+    Model*      mFOModel;
+    ParticleDB* mDB;
+
+    void        AdjustRadius(Model_SR *, double);
 };
 
 #endif

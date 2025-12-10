@@ -41,7 +41,7 @@ class Model_Lhyquid3D
     Model_Lhyquid3D(TRandom2* aRandom);
     ~Model_Lhyquid3D();
     
-    double GetIntegrand(ParticleType* aPartType, bool);
+    std::pair<double, double> GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution = false);
     void   AddParameterBranch(TTree* aTree);
     
   private:

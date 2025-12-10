@@ -44,9 +44,9 @@ class Pressure
     void   SetPressure(Vector3D* aPress);
 
   private:
-    int       mPressType;
     double    mPressConst;
     Vector3D* mPressVar;
+    int       mPressType;
 };
 
 #endif

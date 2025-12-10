@@ -278,7 +278,7 @@ int main(int argc, char **argv)
     else
       writesourcehists = 0;
   }
-  catch (TString tError) {
+  catch (TString &tError) {
     PRINT_DEBUG_1("therm2_femto - Caught exception " << tError);
     PRINT_MESSAGE("Did not find one of the necessary parameters in the parameters file.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
@@ -693,7 +693,7 @@ int main(int argc, char **argv)
     try {
       tLogName = tMainConfig->GetParameter("LogFile");
     }
-    catch (TString tError) {
+    catch (TString &tError) {
     }   
     if (!tLogName.IsNull()) {
       tDate.Set();
@@ -1029,7 +1029,7 @@ int main(int argc, char **argv)
     try {
       tLogName = tMainConfig->GetParameter("LogFile");
     }
-    catch (TString tError) {
+    catch (TString &tError) {
     }   
     if (!tLogName.IsNull()) {
       tDate.Set();
@@ -1434,7 +1434,6 @@ double GetQuantumCoulomb()
   dcomplex expikr;
   expikr.re = cos(kstrst);
   expikr.im = sin(kstrst);
-  dcomplex expikrc = conj(expikr);
   dcomplex ffplusc = conj(ffplus);
   dcomplex ffminusc = conj(ffminus);
 
@@ -1633,7 +1632,6 @@ double GetQuantumCoulombStrong()
   long double rho = mRSt * kstar;
   
   int ccase = 0;
-  static int pcount = 0;
   int wavesign = 1;
 
   // Classical limit - if distance is larger than Coulomb radius, 

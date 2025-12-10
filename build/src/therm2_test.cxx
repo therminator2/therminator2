@@ -100,7 +100,7 @@ int main(int argc, char **argv)
 
         sTest = sMainConfig->GetParameter("Test");
     }
-    catch (TString tError) 
+    catch (TString &tError) 
     {
         PRINT_DEBUG_1("Q2test - Caught exception " << tError);
         PRINT_MESSAGE("Did not find one of the necessary parameters in the parameters file.");

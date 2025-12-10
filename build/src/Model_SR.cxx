@@ -68,7 +68,7 @@ Model_SR::~Model_SR()
   delete mThermo;
 }
 
-double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
+std::pair<double, double> Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool)
 {
   double dSIGMAdotP, Integrand;
   double Spin, Gs, Statistics;
@@ -180,7 +180,7 @@ double Model_SR::GetIntegrand(ParticleType* aPartType, bool finiteWidth)
          << mThermo->GetGammaS() << "\t" << aPartType->GetNumberS() << "\t" << aPartType->GetNumberAS() << endl;
   }
 // integrand
-  return  Integrand;
+  return  std::make_pair(Integrand, 0.0);
   }
 
 void Model_SR::Description()
@@ -261,7 +261,7 @@ void Model_SR::AddParameterBranch(TTree* aTree)
   tPar.GammaS       = mThermo->GetGammaS(); 
   tPar.GammaC       = mThermo->GetGammaC(); 
  
-  cout << "PRINTOUT HERE : " << _MODEL_T_FORMAT_SR_ << endl;
+//  cout << "PRINTOUT HERE : " << _MODEL_T_FORMAT_SR_ << endl;
   aTree->Branch(_MODEL_T_BRANCH_, &tPar, _MODEL_T_FORMAT_SR_)->Fill();
 }
 
@@ -276,6 +276,11 @@ void Model_SR::ReadParameters()
   tParser->ReadINI(tModelParam);
   delete tParser;
 
+  if (tModelParam->HasParameter("protons_req")) {
+      mProtonsReq  	 = tModelParam->GetParameter("protons_req").Atof();
+  } else {
+      mProtonsReq  	 = -1.0;
+  }
   try {
     mT0  	 = tModelParam->GetParameter("T0").Atof() / kHbarC;		// [GeV^-1]
     /*

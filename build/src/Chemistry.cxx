@@ -32,8 +32,8 @@
 using namespace TMath;
 
 Chemistry::Chemistry()
-: mMuBConst(0.0),	mMuIConst(0.0),		mMuSConst(0.0),		mMuCConst(0.0),
-  mMuBVar(0),		mMuIVar(0),		mMuSVar(0),		mMuCVar(0),
+: mMuBConst(0.0),	mMuIConst(0.0),		mMuQConst(0.0),		mMuSConst(0.0),		mMuCConst(0.0),
+  mMuBVar(0),		mMuIVar(0),		mMuQVar(0),		mMuSVar(0),		mMuCVar(0),
   mLambdaQConst(1.0),	mLambdaIConst(1.0),	mLambdaSConst(1.0),	mLambdaCConst(1.0),
   mGammaQConst(1.0),				mGammaSConst(1.0),	mGammaCConst(1.0),
   mLambdaQVar(0),	mLambdaIVar(0),		mLambdaSVar(0),		mLambdaCVar(0),
@@ -46,6 +46,7 @@ Chemistry::~Chemistry()
 {
   delete mMuBVar;
   delete mMuIVar;
+  delete mMuQVar;
   delete mMuSVar;
   delete mMuCVar;
   delete mLambdaQVar;
@@ -59,18 +60,38 @@ Chemistry::~Chemistry()
 
 double Chemistry::GetChemicalPotential(ParticleType* aPartType) const
 {
-  return (aPartType->GetBarionN()  * mMuBConst +
-	  aPartType->GetI3()       * mMuIConst +
-	  aPartType->GetStrangeN() * mMuSConst +
-	  aPartType->GetCharmN()   * mMuCConst );
+    if (GetChemistryType() < 10)
+    {
+        return (aPartType->GetBarionN()  * mMuBConst +
+                aPartType->GetI3()       * mMuIConst +
+                aPartType->GetStrangeN() * mMuSConst +
+                aPartType->GetCharmN()   * mMuCConst );
+    }
+    else
+    {
+        return (aPartType->GetBarionN()  * mMuBConst +
+                aPartType->GetCharge()   * mMuQConst +
+                aPartType->GetStrangeN() * mMuSConst +
+                aPartType->GetCharmN()   * mMuCConst );
+    }
 }
 
 double Chemistry::GetChemicalPotential(ParticleType* aPartType, double aX, double aY, double aZ) const
 {
-  return (aPartType->GetBarionN()  * mMuBVar->Interpolate(aX, aY, aZ) +
-	  aPartType->GetI3()       * mMuIVar->Interpolate(aX, aY, aZ) +
-	  aPartType->GetStrangeN() * mMuSVar->Interpolate(aX, aY, aZ) +
-	  aPartType->GetCharmN()   * mMuCVar->Interpolate(aX, aY, aZ) );
+    if (GetChemistryType() < 10)
+    {
+        return (aPartType->GetBarionN()  * mMuBVar->Interpolate(aX, aY, aZ) +
+                aPartType->GetI3()       * mMuIVar->Interpolate(aX, aY, aZ) +
+                aPartType->GetStrangeN() * mMuSVar->Interpolate(aX, aY, aZ) +
+                aPartType->GetCharmN()   * mMuCVar->Interpolate(aX, aY, aZ) );
+    }
+    else
+    {
+        return (aPartType->GetBarionN()  * mMuBVar->Interpolate(aX, aY, aZ) +
+                aPartType->GetCharge()   * mMuQVar->Interpolate(aX, aY, aZ) +
+                aPartType->GetStrangeN() * mMuSVar->Interpolate(aX, aY, aZ) +
+                aPartType->GetCharmN()   * mMuCVar->Interpolate(aX, aY, aZ) );
+    }
 }
 
 double Chemistry::GetFugacity(ParticleType* aPartType) const
@@ -98,6 +119,7 @@ double Chemistry::GetFugacity(ParticleType* aPartType, double aX, double aY, dou
 int    Chemistry::GetChemistryType() const	{ return mChemistryType; }
 double Chemistry::GetMuB() const		{ return mMuBConst; }
 double Chemistry::GetMuI() const		{ return mMuIConst; }
+double Chemistry::GetMuQ() const		{ return mMuQConst; }
 double Chemistry::GetMuS() const		{ return mMuSConst; }
 double Chemistry::GetMuC() const		{ return mMuCConst; }
 double Chemistry::GetLambdaQ() const		{ return mLambdaQConst; }
@@ -117,6 +139,16 @@ void Chemistry::SetChemistry(Vector3D* aMuB, Vector3D* aMuI, Vector3D* aMuS, Vec
 {
   mChemistryType = 1;
   mMuBVar = aMuB; mMuIVar = aMuI; mMuSVar = aMuS; ; mMuCVar = aMuC;
+}
+void Chemistry::SetChemistryMuQ(double aMuB, double aMuQ, double aMuS, double aMuC)
+{
+  mChemistryType = 10;
+  mMuBConst = aMuB; mMuQConst = aMuQ; mMuSConst = aMuS; mMuCConst = aMuC;
+}
+void Chemistry::SetChemistryMuQ(Vector3D* aMuB, Vector3D* aMuQ, Vector3D* aMuS, Vector3D* aMuC)
+{
+  mChemistryType = 11;
+  mMuBVar = aMuB; mMuQVar = aMuQ; mMuSVar = aMuS; ; mMuCVar = aMuC;
 }
 void Chemistry::SetChemistry(double aLambdaQ, double aLambdaI, double aLambdaS, double aLambdaC, double aGammaQ, double aGammaS,  double aGammaC)
 {

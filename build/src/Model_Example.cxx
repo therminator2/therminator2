@@ -66,7 +66,7 @@ Model_Example::~Model_Example()
   delete mThermo;
 }
 
-double Model_Example::GetIntegrand(ParticleType* aPartType, bool)
+std::pair<double, double> Model_Example::GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution)
 {
   double Integrand, dSigmaP, PdotU, tStatistics;
   double Spin;
@@ -112,7 +112,7 @@ double Model_Example::GetIntegrand(ParticleType* aPartType, bool)
   Px = Pt  * Cos(PhiP);
   Py = Pt  * Sin(PhiP);
   Pz = Mt  * SinH(RapP);
-  return Integrand;
+  return std::make_pair(Integrand. 0);
 }
 
 void Model_Example::Description()
@@ -153,7 +153,7 @@ void Model_Example::ReadParameters()
     mParameter1	= (tModelParam->GetParameter("Parameter1")).Atof();
     mParameter2	= (tModelParam->GetParameter("Parameter2")).Atof();
     mParameter3	= (tModelParam->GetParameter("Parameter3")).Atof();
-  } catch (TString tError) {
+  } catch (TString &tError) {
     PRINT_MESSAGE("<Model_Example::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary model parameters.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
@@ -169,7 +169,7 @@ void Model_Example::ReadParameters()
   try {
     sEventDIR += tModelParam.GetParameter("EventSubDir");
     CreateEventSubDir();
-  } catch (TString tError) {
+  } catch (TString &tError) {
   }
   
   delete tModelParam;

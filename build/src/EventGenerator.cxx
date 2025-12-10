@@ -56,15 +56,15 @@ EventGenerator::EventGenerator()
   mMultiplicities.clear();
 }
 
-EventGenerator::EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLA)
-: mDB(aDB), mEventSaver(aES), mAfterburners(aLA),
+EventGenerator::EventGenerator(ParticleDB* aDB, AbstractEventSaver *aES)
+: mDB(aDB), mEventSaver(aES), mAfterburners(),
   mEventCounter(0), mNumberOfEvents(0), mDistribution(0)
 {
   mMultiplicities.clear();
   mMultiplicities.resize(mDB->GetParticleTypeCount());
   ReadParameters();
-  mInteg = new Integrator(sIntegrateSample);
-  mInteg->SetMultiplicities(mDB);
+  mInteg = new Integrator(sIntegrateSample, mDB);
+  mInteg->SetMultiplicities();
   mEvent = new Event();
   if (sRandomize) {
     mInteg->Randomize();
@@ -170,7 +170,7 @@ void EventGenerator::ReadParameters()
     mNumberOfEvents	= (sMainConfig->GetParameter("NumberOfEvents")).Atoi();
     sIntegrateSample	= (sMainConfig->GetParameter("IntegrateSamples")).Atoi();
   }
-  catch (TString tError) {
+  catch (TString &tError) {
     PRINT_MESSAGE("<EventGenerator::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary parameters in the parameters file.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
@@ -182,7 +182,7 @@ void EventGenerator::ReadParameters()
     if (tDistribution.Contains("NegativeBinomial"))
       mDistribution = 1;
   }
-  catch (TString tError) {
+  catch (TString &tError) {
     PRINT_DEBUG_1("<Event::ReadParameters>\tUsing default multiplicity distribution: Poissonian");
   }
 }

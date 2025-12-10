@@ -12,12 +12,12 @@ void TextEventSaver::Save(Event *tEvent, Model *, int)
   TDatime  tDate;
   ofstream tFile;
   list<Particle>::iterator tParticle_i;
-  
-  tFile.open((sEventDIR + "event.txt").Data(), ios_base::app); 
+
+  tFile.open((sEventDIR + mFileName).Data(), ios_base::app); 
   if((tFile) && (tFile.is_open())) {
     if (static_cast<long>(tFile.tellp()) == 0) {
       tDate.Set();
-      PRINT_MESSAGE("\n["<<tDate.AsSQLString() << "]\tFile "<<(sEventDIR + "event.txt").Data()<<" created.");
+      PRINT_MESSAGE("\n["<<tDate.AsSQLString() << "]\tFile "<<(sEventDIR + mFileName).Data()<<" created.");
       tFile << "# THERMINATOR 2 text output" << endl;
       tFile << "#<EVENT_ENTRY>\tEID\tfatherEID\tPID\tfatherPID\trootPID\tdecayed\tmass\tE\tp_x\tp_y\tp_z\tt\tx\ty\tz\t</EVENT_ENTRY>" << endl;
     }

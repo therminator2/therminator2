@@ -75,7 +75,7 @@ void AbstractEventSaver::ReadParameters()
     mNumberOfEvents	= (sMainConfig->GetParameter("NumberOfEvents")).Atoi();
     sEventDIR	= sMainConfig->GetParameter("EventDir"); sEventDIR.Prepend("./");
   }
-  catch (TString tError) {
+  catch (TString &tError) {
     PRINT_MESSAGE("<EventGenerator::ReadParameters>\tCaught exception " << tError);
     PRINT_MESSAGE("\tDid not find one of the necessary parameters in the parameters file.");
     exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);

@@ -40,14 +40,14 @@ class Model_Example
     Model_Example(TRandom2* aRandom);
     ~Model_Example();
     
-    double GetIntegrand(ParticleType* aPartType, bool);
+    std::pair<double, double> GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution = false);
     void   AddParameterBranch(TTree* aTree);
     
   protected:
+    Thermodynamics* mThermo;
     double mParameter1;	// model parameter #1
     double mParameter2;	// model parameter #2
     double mParameter3;	// model parameter #3
-    Thermodynamics* mThermo;
     
   private:
     void Description();

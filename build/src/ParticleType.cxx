@@ -27,6 +27,10 @@
  ********************************************************************************/
 
 #include "ParticleType.h"
+#include <iostream>
+#include <set>
+
+static std::set<TString> sUnknownTyps;
 
 ParticleType::ParticleType()
 : mNumber(0), mName(""),
@@ -64,6 +68,8 @@ ParticleType::ParticleType(const ParticleType& aParticleType)
   mDecayChannelCount2 = aParticleType.GetDecayChannelCount2();
   mDecayChannelCount3 = aParticleType.GetDecayChannelCount3();
   mTable	= new DecayTable(*(aParticleType.GetTable()));
+
+  InitUrQMDCodes();
 }
 
 ParticleType::~ParticleType()
@@ -130,4 +136,125 @@ void ParticleType::AddDecayChannel(DecayChannel aChannel)
   if (!mTable)
     mTable = new DecayTable();
   mTable->AddDecayChannel(aChannel);
+}
+
+void ParticleType::InitUrQMDCodes()
+{
+  mPrefixToUrQMDCode["pr0"] = 1;
+  mPrefixToUrQMDCode["ne0"] = 1;
+  mPrefixToUrQMDCode["Ns1440"] = 2;
+  mPrefixToUrQMDCode["Ns1520"] = 3;
+  mPrefixToUrQMDCode["Ns1535"] = 4;
+  mPrefixToUrQMDCode["Ns1650"] = 5;
+  mPrefixToUrQMDCode["Ns1675"] = 6;
+  mPrefixToUrQMDCode["Ns1680"] = 7;
+  mPrefixToUrQMDCode["Ns1700"] = 8;
+  mPrefixToUrQMDCode["Ns1710"] = 9;
+  mPrefixToUrQMDCode["Ns1720"] = 10;
+  mPrefixToUrQMDCode["Ns1900"] = 11;
+  mPrefixToUrQMDCode["Ns1990"] = 12;
+  mPrefixToUrQMDCode["Ns2080"] = 13;
+  mPrefixToUrQMDCode["Ns2190"] = 14;
+  mPrefixToUrQMDCode["Ns2200"] = 15;
+  mPrefixToUrQMDCode["Ns2250"] = 16;
+  mPrefixToUrQMDCode["Dl1232"] = 17;
+  mPrefixToUrQMDCode["Dl1600"] = 18;
+  mPrefixToUrQMDCode["Dl1620"] = 19;
+  mPrefixToUrQMDCode["Dl1700"] = 20;
+  mPrefixToUrQMDCode["Dl1900"] = 21;
+  mPrefixToUrQMDCode["Dl1905"] = 22;
+  mPrefixToUrQMDCode["Dl1910"] = 23;
+  mPrefixToUrQMDCode["Dl1920"] = 24;
+  mPrefixToUrQMDCode["Dl1930"] = 25;
+  mPrefixToUrQMDCode["Dl1950"] = 26;
+  mPrefixToUrQMDCode["Lm1115"] = 27;
+  mPrefixToUrQMDCode["Lm1405"] = 28;
+  mPrefixToUrQMDCode["Lm1520"] = 29;
+  mPrefixToUrQMDCode["Lm1600"] = 30;
+  mPrefixToUrQMDCode["Lm1670"] = 31;
+  mPrefixToUrQMDCode["Lm1690"] = 32;
+  mPrefixToUrQMDCode["Lm1800"] = 33;
+  mPrefixToUrQMDCode["Lm1810"] = 34;
+  mPrefixToUrQMDCode["Lm1820"] = 35;
+  mPrefixToUrQMDCode["Lm1830"] = 36;
+  mPrefixToUrQMDCode["Lm1890"] = 37;
+  mPrefixToUrQMDCode["Lm2100"] = 38;
+  mPrefixToUrQMDCode["Lm2110"] = 39;
+  mPrefixToUrQMDCode["Sg1192"] = 40;
+  mPrefixToUrQMDCode["Sg1385"] = 41;
+  mPrefixToUrQMDCode["Sg1660"] = 42;
+  mPrefixToUrQMDCode["Sg1670"] = 43;
+  mPrefixToUrQMDCode["Sg1775"] = 44;
+  mPrefixToUrQMDCode["Sg1790"] = 45;
+  mPrefixToUrQMDCode["Sg1915"] = 46;
+  mPrefixToUrQMDCode["Sg1940"] = 47;
+  mPrefixToUrQMDCode["Sg2030"] = 48;
+  mPrefixToUrQMDCode["Xi1321"] = 49;
+  mPrefixToUrQMDCode["Xi1530"] = 50;
+  mPrefixToUrQMDCode["Xi1690"] = 51;
+  mPrefixToUrQMDCode["Xi1820"] = 52;
+  mPrefixToUrQMDCode["Xi1950"] = 53;
+  mPrefixToUrQMDCode["Xi2025"] = 54;
+  mPrefixToUrQMDCode["Om1672"] = 55;
+  
+  mPrefixToUrQMDCode["gam"] = 100;
+  mPrefixToUrQMDCode["pi"] = 101;
+  mPrefixToUrQMDCode["eta5"] = 102;  
+  mPrefixToUrQMDCode["om0"] = 103;
+  mPrefixToUrQMDCode["rho"] = 104;  
+  mPrefixToUrQMDCode["f00"] = 105;
+  mPrefixToUrQMDCode["Ka04"] = 106;
+  mPrefixToUrQMDCode["eta0prime"] = 107;
+  mPrefixToUrQMDCode["Ka08"] = 108;
+  mPrefixToUrQMDCode["ph1020"] = 109;  
+  mPrefixToUrQMDCode["Ka1430"] = 110;
+  mPrefixToUrQMDCode["a0"] = 111;
+  mPrefixToUrQMDCode["f0137"] = 112;
+  mPrefixToUrQMDCode["Ka12"] = 113;
+  mPrefixToUrQMDCode["a1"] = 114;
+  mPrefixToUrQMDCode["f112"] = 115;
+  mPrefixToUrQMDCode["f114"] = 116;
+  mPrefixToUrQMDCode["a2"] = 118;
+  mPrefixToUrQMDCode["f212"] = 119;
+  mPrefixToUrQMDCode["f215"] = 120;
+  mPrefixToUrQMDCode["Ka1400"] = 121;
+  mPrefixToUrQMDCode["b1"] = 122;
+  mPrefixToUrQMDCode["h1"] = 123;
+  mPrefixToUrQMDCode["Ka1410"] = 125;
+  mPrefixToUrQMDCode["rh14"] = 126;
+  mPrefixToUrQMDCode["om14"] = 127;
+  mPrefixToUrQMDCode["ph16"] = 128;
+  mPrefixToUrQMDCode["Ka16"] = 129;
+  mPrefixToUrQMDCode["rh17"] = 130;
+  mPrefixToUrQMDCode["om16"] = 131;
+  mPrefixToUrQMDCode["ph18"] = 132;
+  mPrefixToUrQMDCode["Jp"] = 135;
+
+}
+
+int ParticleType::GetUrQMDCode() const
+{
+  int result = 0;
+  bool found = false;
+  for (auto it = mPrefixToUrQMDCode.begin(); it != mPrefixToUrQMDCode.end(); ++it)
+  {
+    if (mName.BeginsWith(it->first)) {
+      if (found) // already before
+      {
+        std::cout << "Found ambiguous UrQMD ityp for name " << mName.Data() << ": " << result << " and " << it->second << std::endl;
+      }
+      else {
+        result = it->second;
+        found = true;
+      }
+    }
+  }
+  if (!found) 
+  {
+    if (sUnknownTyps.find(mName) == sUnknownTyps.end()) {
+      sUnknownTyps.insert(mName);
+      std::cout << "Unknown UrQMD ityp for particle with name " << mName.Data() << " (it is printed only once)" << std::endl;
+    }
+  }
+  return result;
 }

@@ -40,16 +40,16 @@ class Model_BlastWave
     Model_BlastWave(TRandom2* aRandom);
     ~Model_BlastWave();
     
-    double GetIntegrand(ParticleType* aPartType, bool);
+    std::pair<double, double> GetIntegrand(ParticleType* aPartType, bool finiteWidth, bool positionDistribution = false);
     void   AddParameterBranch(TTree* aTree);
     
   protected:
+    Thermodynamics* mThermo;
     double mRapPRange;
     double mRapSRange;
     double mRhoMax;
     double mTau;
     double mVt;
-    Thermodynamics* mThermo;
     
   private:
     void   Description();
