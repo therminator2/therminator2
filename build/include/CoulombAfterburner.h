@@ -35,9 +35,13 @@ class CoulombAfterburner : public AbstractAfterburner {
     TVector3 CalculateTotalForce(std::list<Particle>::iterator &, std::list<Particle> *, int ** tBestIs, double tCurrentTime,
             Int_t iStep
             );
-    std::pair<TVector3, Double_t>  CalculatePotentials(std::list<Particle>::iterator &, std::list<Particle> *, int ** tBestIs, 
-            double tCurrentTime
+    std::pair<TVector3, Double_t>  CalculatePotentials(std::list<Particle>::iterator &, std::list<Particle> *, int ** tBestIs,
+            double tCurrentTime, Int_t iStep
             );
+    bool RetardedSource(std::list<Particle>::iterator &tPartIter, std::list<Particle>::iterator &tPartOtherIter,
+            TVector3 &tPos, double tTime, int **tBestIs, Int_t iStep,
+            TVector3 &tOtherPos, TVector3 &tOtherVel, TVector3 &tOtherAcc, bool debug = false);
+    static bool IsSpectator(std::list<Particle>::iterator &);
     double Interval(TVector3, double, TVector3, double, bool debug = false);
     double Interval(TVector3, double, TLorentzVector, bool debug = false);
     double Interval(TLorentzVector, TLorentzVector, bool debug = false);
@@ -130,7 +134,7 @@ class CoulombAfterburner : public AbstractAfterburner {
   std::vector<TVector3> *m_velocities;
   std::vector<TVector3> *m_accelerations;
 
-   void PrintProblem(Int_t eid, Int_t step, TString indent);
+   void PrintProblem(Int_t eid, Int_t step, TString indent, Int_t depth = 0);
 
 };
 

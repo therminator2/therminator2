@@ -11,7 +11,7 @@ using namespace std;
 extern TString sModelINI;
 
 static const bool USE_SPECTATORS = true;
-static const bool EXTRAPOLATE_SPECTATORS = false;
+static const bool EXTRAPOLATE_SPECTATORS = true;
 static const bool EXTRAPOLATE_FIREBALL = true;
 
 static const bool FIND_PROBLEM = true;
@@ -47,7 +47,7 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
         std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int **tBestIs, double tCurrentTime,
         Int_t iStep)
 {
-    if (TMath::Abs(tPartIter->GetParticleType()->GetPDGCode()) == 72212 || TMath::Abs(tPartIter->GetParticleType()->GetPDGCode()) == 72112) {
+    if (IsSpectator(tPartIter)) {
         return TVector3();
     }
     //quantity tQe = 2 * hep::meter;
@@ -94,151 +94,12 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
             continue;
         }
 
-        double tBestInterval;
-        unsigned long tLastBestI = tBestIs[tPartIter->eid][tPartOtherIter->eid] > -1 ? tBestIs[tPartIter->eid][tPartOtherIter->eid] : 0;
-        unsigned long tBestI = NearestInterval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid], tLastBestI, tBestInterval,
-                FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID);
-        tBestIs[tPartIter->eid][tPartOtherIter->eid] = tBestI;
-
-        // The best interval is at the end of trajectory of other particle and it's space-like:
-        // the particles are not causally connected
-        if ((tBestI + 1) == m_coordinates[tPartOtherIter->eid].size() && tBestInterval < 0)
+        TVector3 tPartOtherPos, tPartOtherVel, tPartOtherAcc;
+        if (!RetardedSource(tPartIter, tPartOtherIter, tPartPos, tCurrentTime, tBestIs, iStep,
+                    tPartOtherPos, tPartOtherVel, tPartOtherAcc,
+                    FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID))
         {
             continue;
-        }
-
-        if (tBestI >= 0 && tBestI < m_coordinates[tPartOtherIter->eid].size())
-        {
-            if (false && (tBestI - 2) >= 0 && (tBestI + 2) < m_coordinates[tPartOtherIter->eid].size())
-            {
-                double tIntervalDown2 = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI - 2]);
-                double tIntervalDown  = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI - 1]);
-                double tInterval      = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI]);
-                double tIntervalUp    = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI + 1]);
-                double tIntervalUp2   = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI + 2]);
-                /*
-                   double tInterval = TMath::Power(tCurrentTime - m_coordinates[tPartOtherIter->eid][tBestI].T(), 2) - (tPartPos - m_coordinates[tPartOtherIter->eid][tBestI].Vect()).Mag2();
-                   double tIntervalDown2 = TMath::Power(tCurrentTime - m_coordinates[tPartOtherIter->eid][tBestI - 2].T(), 2) - (tPartPos - m_coordinates[tPartOtherIter->eid][tBestI - 2].Vect()).Mag2();
-                   double tIntervalDown = TMath::Power(tCurrentTime - m_coordinates[tPartOtherIter->eid][tBestI - 1].T(), 2) - (tPartPos - m_coordinates[tPartOtherIter->eid][tBestI - 1].Vect()).Mag2();
-                   double tIntervalUp = TMath::Power(tCurrentTime - m_coordinates[tPartOtherIter->eid][tBestI + 1].T(), 2) - (tPartPos - m_coordinates[tPartOtherIter->eid][tBestI + 1].Vect()).Mag2();
-                   double tIntervalUp2 = TMath::Power(tCurrentTime - m_coordinates[tPartOtherIter->eid][tBestI + 2].T(), 2) - (tPartPos - m_coordinates[tPartOtherIter->eid][tBestI + 2].Vect()).Mag2();
-                   */
-                cout << " tBestI = " << tBestI << " " << tBestInterval << " "
-                    << "Intervals " << tIntervalUp2 << " " << tIntervalUp << " " << tInterval << " " << tIntervalDown << " " << tIntervalDown2 << " " << endl
-                    << tCurrentTime << " " << m_coordinates[tPartOtherIter->eid][tBestI].T() << " "
-                    << (tPartPos - m_coordinates[tPartOtherIter->eid][tBestI].Vect()).Mag() << endl;
-
-                cout << "X, V, A " << m_coordinates[tPartOtherIter->eid][tBestI].Vect().Mag() << " "
-                    << m_velocities[tPartOtherIter->eid][tBestI].Mag() << "  " << endl;
-                //                     << m_accelerations[tPartOtherIter->eid][tBestI].Mag() << endl;
-            }
-            TVector3 tPartOtherPos = m_coordinates[tPartOtherIter->eid][tBestI].Vect();
-            TVector3 tPartOtherVel = m_velocities[tPartOtherIter->eid][tBestI];
-            TVector3 tPartOtherAcc = m_accelerations[tPartOtherIter->eid][tBestI];
-
-            // Initial idea: True, when the null interval is NOT withing the trajectory of the particle from its creation
-            // to its decay or to the end of simulation
-            // Seems to not work, because at late times intervals jump from one point to another by more than the time step size,
-            // therefore skipping, maybe will be fully removed
-            /// if (TMath::Abs(tBestInterval) >= m_StepSize) {
-            // Particle is primary AND null interval would be before freeze-out
-            if (tPartOtherIter->pid == tPartOtherIter->fatherpid && (tBestI == 0 || tBestI == 1))
-            {
-                bool tOtherIsSpectator = TString(tPartOtherIter->GetParticleType()->GetName()).Contains("Spectator");
-                if (tOtherIsSpectator && !EXTRAPOLATE_SPECTATORS) {
-                    continue;
-                } else if (!tOtherIsSpectator && !EXTRAPOLATE_FIREBALL) {
-                    continue;
-                } else if (tPartOtherIter->pid != tPartOtherIter->fatherpid) {
-                    continue; // don't extrapolate decay products
-                }
-                double tZeroTime = m_coordinates[tPartOtherIter->eid][0].T();
-                TVector3 tX0 = m_coordinates[tPartOtherIter->eid][0].Vect();
-                TVector3 tIniV = m_velocities[tPartOtherIter->eid][0];
-                // double NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV,TVector3 &tY,  double tT0, double tU, bool debug = false);
-                double tTimePreFreeze = NearestPreFreezeoutIntervalTime(tX0, tIniV, tPartPos, tZeroTime, tCurrentTime/*, tPartIter->eid == 10 && (TString(tPartOtherIter->GetParticleType()->GetName()).Contains("Spectator"))*/);
-                // No solution for extrapolated past trajectory of the other particle crossing the past light cone 
-                // of the current particle. They are not causaly connected
-                if (!TMath::Finite(tTimePreFreeze)) {
-                    continue;
-                }
-                TVector3 tPosPreFreeze = m_coordinates[tPartOtherIter->eid][0].Vect() + (tTimePreFreeze-tZeroTime) * tIniV;
-                tPartOtherPos = tPosPreFreeze;
-                tPartOtherVel = tIniV;
-                tPartOtherAcc = TVector3(0, 0, 0);
-                /*
-                   if (tPartIter->eid == 10 || !USE_SPECTATORS) {
-                   if ((TString(tPartOtherIter->GetParticleType()->GetName()).Contains("Spectator") && tPartOtherVel.Z() > 0) || !USE_SPECTATORS) {
-                   double tIntervalBestI = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI]);
-                   double tIntervalExtrap = this->Interval(tPartPos, tCurrentTime, tPartOtherPos, tTimePreFreeze);
-
-                   cout << " extrapolating before freezeout " << tTimePreFreeze*kHbarC << " fm, current time " << tCurrentTime*kHbarC << " fm" << endl;
-                   cout << " interval " << tIntervalExtrap << endl;
-                   cout << " at best i = " << tBestI << " would be " << endl;
-                   cout << " interval " << tIntervalBestI << " = ";
-                   cout << (tPartPos - m_coordinates[tPartOtherIter->eid][tBestI].Vect()).Mag2() << " - ";
-                   cout << TMath::Power(tCurrentTime - m_coordinates[tPartOtherIter->eid][tBestI].T(),  2) << endl;
-                   tPartPos.Print();
-                   m_coordinates[tPartOtherIter->eid][tBestI].Print();
-                   } else if (tPartOtherIter->eid == 11) {
-                // cout << " extrapolating someone else before freezeout " << endl;
-                // cout << " " << tPartOtherPos.X() << " " << tPartOtherPos.Y() << " " << tPartOtherPos.Z() << endl;
-                // cout << " " << tPartOtherVel.X() << " " << tPartOtherVel.Y() << " " << tPartOtherVel.Z() << endl;
-                }
-
-                }
-                ///     } else {
-                ///         continue;
-                ///     }
-                */
-        } else if (tBestI > 1) {
-            double tIntervalBestIup = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI+1],false);
-            double tIntervalBestI = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI], false);
-            double tIntervalBestIdown = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI-1], false);
-            Int_t tZeroI;
-            if (tIntervalBestIup * tIntervalBestI < 0) { // change of sign between tBestI+1 and tBestI, extrapolate from tBestI+1
-                tZeroI = tBestI+1;
-            } else { // otherwise extrapolate from tBestI
-                tZeroI = tBestI;
-            }
-            double tZeroTime = m_coordinates[tPartOtherIter->eid][tZeroI].T();
-            TVector3 tX0 = m_coordinates[tPartOtherIter->eid][tZeroI].Vect();
-            TVector3 tZeroV = m_velocities[tPartOtherIter->eid][tZeroI];
-            double tTimeBest = NearestPreFreezeoutIntervalTime(tX0, tZeroV, tPartPos, tZeroTime, tCurrentTime);
-            // No solution for extrapolated past trajectory of the other particle crossing the past light cone 
-            // of the current particle. They are not causaly connected
-            if (TMath::Finite(tTimeBest)) {
-                TVector3 tPosPreFreeze = m_coordinates[tPartOtherIter->eid][tZeroI].Vect() + (tTimeBest-tZeroTime) * tZeroV;
-                double tInterpolatingWeight = (tTimeBest - tZeroTime - m_StepSize)/m_StepSize;
-                tPartOtherPos = tPosPreFreeze;
-                if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID) {
-                    cout << "v_x here = " << tPartOtherVel.X() << endl;
-                }
-                tPartOtherVel = 
-                    tZeroV * tInterpolatingWeight +
-                    m_velocities[tPartOtherIter->eid][tZeroI-1] * (1-tInterpolatingWeight);
-                if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID) {
-                    cout << "and here = " << tPartOtherVel.X() << endl;
-                    cout << "tZeroV.X = " << tZeroV.X() << endl;
-                    cout << "weight = " << tInterpolatingWeight << endl;
-                }
-                tPartOtherAcc = 
-                    m_accelerations[tPartOtherIter->eid][tZeroI] * tInterpolatingWeight +
-                    m_accelerations[tPartOtherIter->eid][tZeroI-1] * (1-tInterpolatingWeight);
-                if (!TMath::Finite(tPartOtherVel.X())) {
-                    cout << "interpolating weight " << tInterpolatingWeight << " " << tZeroV.X() << " " << m_velocities[tPartOtherIter->eid][tZeroI-1].X() << " " << tZeroI << " " << tBestI << endl;
-                }
-            }
-            if (tPartOtherIter->pid == tPartOtherIter->fatherpid && false) {
-                if (tPartIter->eid == 10 || !USE_SPECTATORS) {
-                    if ((TString(tPartOtherIter->GetParticleType()->GetName()).Contains("Spectator") && tPartOtherVel.Z() > 0) || !USE_SPECTATORS) {
-                        cout << " not extrapolating before freezeout " << tCurrentTime << " " << tBestI << endl;
-                        cout << " intervals " << tIntervalBestIup << " " << tIntervalBestI << " " << tIntervalBestIdown << endl;
-                        cout << " " << tPartOtherPos.X() << " " << tPartOtherPos.Y() << " " << tPartOtherPos.Z() << endl;
-                        cout << " " << tPartOtherVel.X() << " " << tPartOtherVel.Y() << " " << tPartOtherVel.Z() << endl;
-                    }
-                }
-            }
         }
         if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID) {
             cout << "v_x here = " << tPartOtherVel.X() << endl;
@@ -264,10 +125,8 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
         if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP/* && tPartOtherIter->eid == DEBUG_OTHER_EID*/)
        // if (!TMath::Finite(Rdotu))
         {
-            cout << endl << "Condition: best interval < step size " << (tBestInterval < m_StepSize) 
-                << " best interval " << tBestInterval << " bestI " << tBestI 
-                << " size of other coords " << m_coordinates[tPartOtherIter->eid].size() 
-                << " other pid " << tPartOtherIter->pid << " other eid " << tPartOtherIter->eid 
+            cout << endl << "Size of other coords " << m_coordinates[tPartOtherIter->eid].size()
+                << " other pid " << tPartOtherIter->pid << " other eid " << tPartOtherIter->eid
                 << " other father eid " << tPartOtherIter->fathereid << " other father pid " << tPartOtherIter->fatherpid
                 << " n parts " << tParticles->size() << " " << endl;
             cout << "Other exists since step " << m_FirstStepExists[tPartOtherIter->eid] << endl;
@@ -289,12 +148,6 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
                     cout << "---- v(" << vel_i << " of " << vel_size << ") = (" << vel.X() << "," << vel.Y() << "," << vel.Z() << "), |v| = " << vel.Mag() << endl;
                 }
             }
-            double tIntervalDown2 = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI - 2], FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID);
-            double tIntervalDown  = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI - 1], FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID);
-            double tInterval      = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI], FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID);
-            double tIntervalUp    = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI + 1], FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID);
-            double tIntervalUp2   = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI + 2], FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID);
-            cout << "INTERVALS " << tIntervalDown2 << " " << tIntervalDown << " " << tInterval << " " << tIntervalUp << " " << tIntervalUp2 << endl;
            // return TVector3(0, 0, 0);
         }
         // TVector3 tTermCoul = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * (1 - v2)) * u; // sqrt(GeV*fm) / GeV * GeV**3 = sqrt(GeV*fm) * GeV**2
@@ -344,7 +197,6 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
             //    cout << "COUL TOTAL " << tTermCoulTotal.Mag() << " CONTRIB " << tTermCoul.Mag() << endl; 
         }
 
-        }
     }
     TVector3 tForceTotal = tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal; // GeV**3 * fm / (GeV**2 * fm) = GeV / fm
 
@@ -352,29 +204,15 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
 }
 
 std::pair<TVector3, Double_t> CoulombAfterburner::CalculatePotentials(
-        std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int **tBestIs, double tCurrentTime
-        )
+        std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int **tBestIs, double tCurrentTime,
+        Int_t iStep)
 {
-    if (TMath::Abs(tPartIter->GetParticleType()->GetPDGCode()) == 72212 || TMath::Abs(tPartIter->GetParticleType()->GetPDGCode()) == 72112) {
+    if (IsSpectator(tPartIter)) {
         return std::make_pair(TVector3(), 0);
     }
-    Double_t tTermScalarTotal;
+    Double_t tTermScalarTotal = 0;
     TVector3 tTermVectorTotal;
     TVector3 tPartPos = tPartIter->VecX(); // 1/GeV
-    TVector3 tPartMom = tPartIter->VecP();
-    TVector3 tV(0, 0, 0);
-    double tP = tPartIter->GetP();
-    double tE = tPartIter->E();
-    if (tP > 0 && TMath::Finite(tP))
-    {
-        tV = tP / tE * tPartMom.Unit();
-    }
-    // double tP2 = tPartMom.Mag2();
-    // double tM2 = TMath::Power(tPartIter->mass, 2);
-    // if (tP2 > 0 && TMath::Finite(tP2))
-    // {
-    //     tV = 1. / TMath::Sqrt(tM2 / tP2 + 1) * tPartMom.Unit();
-    // }
     std::list<Particle>::iterator tPartOtherIter = tParticles->begin();
     for (; tPartOtherIter != tParticles->end(); ++tPartOtherIter)
     {
@@ -386,86 +224,141 @@ std::pair<TVector3, Double_t> CoulombAfterburner::CalculatePotentials(
         if (tOtherQ == 0)
             continue;
 
-        double tBestInterval;
-        unsigned long tLastBestI = tBestIs[tPartIter->eid][tPartOtherIter->eid] > -1 ? tBestIs[tPartIter->eid][tPartOtherIter->eid] : 0;
-        unsigned long tBestI = NearestInterval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid], tLastBestI, tBestInterval);
-        tBestIs[tPartIter->eid][tPartOtherIter->eid] = tBestI;
-
-        // The best interval is at the end of trajectory of other particle and it's space-like:
-        // the particles are not causally connected
-        if ((tBestI + 1) == m_coordinates[tPartOtherIter->eid].size() && tBestInterval < 0)
+        TVector3 tPartOtherPos, tPartOtherVel, tPartOtherAcc;
+        if (!RetardedSource(tPartIter, tPartOtherIter, tPartPos, tCurrentTime, tBestIs, iStep,
+                    tPartOtherPos, tPartOtherVel, tPartOtherAcc))
         {
             continue;
         }
 
-        if (tBestI >= 0 && tBestI < m_coordinates[tPartOtherIter->eid].size())
-        {
-            if (false && (tBestI - 2) >= 0 && (tBestI + 2) < m_coordinates[tPartOtherIter->eid].size())
-            {
-                double tIntervalDown2 = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI - 2]);
-                double tIntervalDown  = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI - 1]);
-                double tInterval      = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI]);
-                double tIntervalUp    = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI + 1]);
-                double tIntervalUp2   = this->Interval(tPartPos, tCurrentTime, m_coordinates[tPartOtherIter->eid][tBestI + 2]);
+        TVector3 v = tPartOtherVel;                // ()
+        TVector3 vecR = tPartPos - tPartOtherPos;  // 1/GeV
+        Double_t R = vecR.Mag();                   // 1/GeV
+
+        Double_t tTermScalar = k * tOtherQ / (R - vecR.Dot(v)) / kHbarC; // GeV * fm / (1/GeV) / (GeV * fm) = GeV
+        TVector3 tTermVector = tTermScalar * v; // GeV
+        tTermScalarTotal += tTermScalar;
+        tTermVectorTotal += tTermVector;
+    }
+
+    return std::make_pair(tTermVectorTotal, tTermScalarTotal);
+}
+
+bool CoulombAfterburner::IsSpectator(std::list<Particle>::iterator &tPartIter)
+{
+    Int_t tPDG = TMath::Abs(tPartIter->GetParticleType()->GetPDGCode());
+    return tPDG == 72212 || tPDG == 72112;
+}
+
+// Finds the position, velocity and acceleration of tPartOtherIter at the point where its trajectory crosses
+// the past light cone of the space-time point (tPos, tTime). Returns false if there is no such point,
+// i.e. the two particles are not causally connected.
+// tTime may be up to one time step after the last recorded point of the trajectories (force at the new position).
+bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter, std::list<Particle>::iterator &tPartOtherIter,
+        TVector3 &tPos, double tTime, int **tBestIs, Int_t iStep,
+        TVector3 &tOtherPos, TVector3 &tOtherVel, TVector3 &tOtherAcc, bool debug)
+{
+    Int_t tOtherEid = tPartOtherIter->eid;
+    std::vector<TLorentzVector> &tTrajectory = m_coordinates[tOtherEid];
+    std::vector<TVector3> &tVelocities = m_velocities[tOtherEid];
+    std::vector<TVector3> &tAccelerations = m_accelerations[tOtherEid];
+    unsigned long tSize = tTrajectory.size();
+    if (tSize == 0) {
+        return false;
+    }
+
+    double tBestInterval;
+    unsigned long tLastBestI = tBestIs[tPartIter->eid][tOtherEid] > -1 ? tBestIs[tPartIter->eid][tOtherEid] : 0;
+    unsigned long tBestI = NearestInterval(tPos, tTime, tTrajectory, tLastBestI, tBestInterval, debug);
+    tBestIs[tPartIter->eid][tOtherEid] = tBestI;
+    if (debug) {
+        cout << "RetardedSource: other eid " << tOtherEid << " bestI " << tBestI << " of " << tSize
+            << " best interval " << tBestInterval << endl;
+    }
+
+    // The whole trajectory is inside the past light cone, the crossing would be after its last point
+    if (tBestI + 1 == tSize && tBestInterval > 0) {
+        bool tOtherExistsNow = (Int_t)m_FirstStepExists[tOtherEid] <= iStep && iStep <= (Int_t)m_LastStepExists[tOtherEid];
+        if (!tOtherExistsNow) {
+            // The other particle decayed before the crossing, its field is taken over by its decay products
+            return false;
+        }
+        // The trajectory is recorded only up to the current step: extrapolate forwards from its last point
+        TVector3 tX0 = tTrajectory[tBestI].Vect();
+        TVector3 tV0 = tVelocities[tBestI];
+        double tT0 = tTrajectory[tBestI].T();
+        double tTimeRet = NearestPreFreezeoutIntervalTime(tX0, tV0, tPos, tT0, tTime);
+        if (!TMath::Finite(tTimeRet)) {
+            return false;
+        }
+        tOtherPos = tX0 + (tTimeRet - tT0) * tV0;
+        tOtherVel = tV0;
+        tOtherAcc = tAccelerations[tBestI];
+        return true;
+    }
+
+    bool tIsPrimary = tPartOtherIter->pid == tPartOtherIter->fatherpid;
+    // The whole trajectory is outside the past light cone, the crossing would be before its first point
+    if (tBestI == 0 && tBestInterval < 0 && !tIsPrimary) {
+        // The decay product is not created yet, as seen from (tPos, tTime)
+        return false;
+    }
+
+    tOtherPos = tTrajectory[tBestI].Vect();
+    tOtherVel = tVelocities[tBestI];
+    tOtherAcc = tAccelerations[tBestI];
+
+    if (tIsPrimary && (tBestI == 0 || tBestI == 1))
+    {
+        // Primary particle and the crossing is close to or before freeze-out:
+        // extrapolate the trajectory backwards from freeze-out with the initial velocity
+        bool tOtherIsSpectator = IsSpectator(tPartOtherIter);
+        if (tOtherIsSpectator && !EXTRAPOLATE_SPECTATORS) {
+            return false;
+        } else if (!tOtherIsSpectator && !EXTRAPOLATE_FIREBALL) {
+            return false;
+        }
+        double tZeroTime = tTrajectory[0].T();
+        TVector3 tX0 = tTrajectory[0].Vect();
+        TVector3 tIniV = tVelocities[0];
+        double tTimePreFreeze = NearestPreFreezeoutIntervalTime(tX0, tIniV, tPos, tZeroTime, tTime);
+        // No solution for extrapolated past trajectory of the other particle crossing the past light cone
+        // of the current particle. They are not causaly connected
+        if (!TMath::Finite(tTimePreFreeze)) {
+            return false;
+        }
+        tOtherPos = tX0 + (tTimePreFreeze - tZeroTime) * tIniV;
+        tOtherVel = tIniV;
+        tOtherAcc = TVector3(0, 0, 0);
+    } else {
+        // The crossing is between points tZeroI-1 and tZeroI of the trajectory. A non-negative interval at tBestI
+        // means tBestI is before the crossing. tZeroI >= 1, because tBestI == 0 with a negative interval was handled above.
+        unsigned long tZeroI = (tBestInterval >= 0 && tBestI + 1 < tSize) ? tBestI + 1 : tBestI;
+        if (tZeroI == 0) {
+            return true;
+        }
+        double tZeroTime = tTrajectory[tZeroI].T();
+        TVector3 tX0 = tTrajectory[tZeroI].Vect();
+        TVector3 tZeroV = tVelocities[tZeroI];
+        double tTimeBest = NearestPreFreezeoutIntervalTime(tX0, tZeroV, tPos, tZeroTime, tTime);
+        if (TMath::Finite(tTimeBest)) {
+            tOtherPos = tX0 + (tTimeBest - tZeroTime) * tZeroV;
+            // Weight of point tZeroI: 0 at its predecessor, 1 at tZeroI itself
+            double tInterpolatingWeight = (tTimeBest - tZeroTime + m_StepSize) / m_StepSize;
+            tInterpolatingWeight = TMath::Max(0., TMath::Min(1., tInterpolatingWeight));
+            tOtherVel =
+                tZeroV * tInterpolatingWeight +
+                tVelocities[tZeroI-1] * (1-tInterpolatingWeight);
+            tOtherAcc =
+                tAccelerations[tZeroI] * tInterpolatingWeight +
+                tAccelerations[tZeroI-1] * (1-tInterpolatingWeight);
+            if (debug) {
+                cout << "RetardedSource: zeroI " << tZeroI << " weight " << tInterpolatingWeight
+                    << " v_x " << tOtherVel.X() << endl;
             }
-            TVector3 tPartOtherPos = m_coordinates[tPartOtherIter->eid][tBestI].Vect();
-            TVector3 tPartOtherVel = m_velocities[tPartOtherIter->eid][tBestI];
-            TVector3 tPartOtherAcc = m_accelerations[tPartOtherIter->eid][tBestI];
-
-            if (tPartOtherIter->pid == tPartOtherIter->fatherpid && (tBestI == 0 || tBestI == 1))
-            {
-                bool tOtherIsSpectator = TString(tPartOtherIter->GetParticleType()->GetName()).Contains("Spectator");
-                if (tOtherIsSpectator && !EXTRAPOLATE_SPECTATORS) {
-                    continue;
-                } else if (!tOtherIsSpectator && !EXTRAPOLATE_FIREBALL) {
-                    continue;
-                } else if (tPartOtherIter->pid != tPartOtherIter->fatherpid) {
-                    continue; // don't extrapolate decay products
-                }
-                double tZeroTime = m_coordinates[tPartOtherIter->eid][0].T();
-                TVector3 tX0 = m_coordinates[tPartOtherIter->eid][0].Vect();
-                TVector3 tIniV = m_velocities[tPartOtherIter->eid][0];
-                // double NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV,TVector3 &tY,  double tT0, double tU, bool debug = false);
-                double tTimePreFreeze = NearestPreFreezeoutIntervalTime(tX0, tIniV, tPartPos, tZeroTime, tCurrentTime/*, tPartIter->eid == 10 && (TString(tPartOtherIter->GetParticleType()->GetName()).Contains("Spectator"))*/);
-                // No solution for extrapolated past trajectory of the other particle crossing the past light cone 
-                // of the current particle. They are not causaly connected
-                if (!TMath::Finite(tTimePreFreeze)) {
-                    continue;
-                }
-                TVector3 tPosPreFreeze = m_coordinates[tPartOtherIter->eid][0].Vect() + (tTimePreFreeze-tZeroTime) * tIniV;
-                tPartOtherPos = tPosPreFreeze;
-                tPartOtherVel = tIniV;
-                tPartOtherAcc = TVector3(0, 0, 0);
-            }
-
-            TVector3 tPosDiff = tPartPos - tPartOtherPos;
-            TVector3 tDirection = tPosDiff.Unit();
-
-            TVector3 v = tPartOtherVel; // ()
-            TVector3 a = tPartOtherAcc; // GeV
-            TVector3 vecR = tPosDiff;   // 1/GeV
-            Double_t R = vecR.Mag();
-            ;                             // 1/GeV
-            TVector3 hatR = tDirection;   // ()
-            TVector3 u = hatR - v;        // ()
-            Double_t Rdotu = vecR.Dot(u); // 1/GeV
-                                          // Double_t Rdota = vecR.Dot(a); // ()
-                                          // Double_t v2 = v.Mag2();       // ()
-
-            if (false && !TMath::Finite(Rdotu))
-            {
-                return std::make_pair(TVector3(), 0);
-            }
-            Double_t tTermScalar = k * tOtherQ / (R - vecR.Dot(v)) / kHbarC; // GeV * fm / (1/GeV) / (GeV * fm) = GeV
-            TVector3 tTermVector = tTermScalar * v; // GeV
-            tTermScalarTotal += tTermScalar;
-            tTermVectorTotal += tTermVector;
         }
     }
-    Double_t tScalar = /*(1 / TMath::Power(kHbarC, 2)) * */ tTermScalarTotal;
-    TVector3 tVector = /*(1 / TMath::Power(kHbarC, 2)) * */ tTermVectorTotal;
-
-    return std::make_pair(tVector, tScalar);;
+    return true;
 }
 
 
@@ -587,7 +480,6 @@ void CoulombAfterburner::Finalize() {
     delete m_Rs;
     delete m_us;
     delete m_vs;
-    delete m_fourmomenta;
 }
 
 TGraph *initImpBGraph() {
@@ -609,57 +501,53 @@ bool CoulombAfterburner::ParticleExists(std::list<Particle>::iterator &tPartIter
         return tPartIter->T() <= tTime;
     }
 }
+// Along a trajectory with |v| < 1 the interval to the point (tPos, tTime) decreases monotonically: it is positive
+// (time-like) before the crossing with the past light cone and negative (space-like) after it.
+// Points later than tTime are in the future and are treated as space-like.
+// Starting from the previous best index, find the last time-like and the first space-like point and return
+// the one with smaller |interval|, with tBestInterval = sign(interval) * sqrt(|interval|).
+// If the whole trajectory is space-like, returns 0 with tBestInterval < 0;
+// if the whole trajectory is time-like, returns size - 1 with tBestInterval > 0.
 unsigned long CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vector<TLorentzVector> &tTrajectory, unsigned long tLastBestI, double &tBestInterval, bool debug)
 {
-    int tBestI = 0;
-    double tPrevInterval = 1000000;
-    bool goUp = true;
-    if (tLastBestI > 0 && tLastBestI < (tTrajectory.size() - 1))
-    {
-        double tIntervalDown = this->Interval(tPos, tTime, tTrajectory[tLastBestI - 1]);
-        double tInterval     = this->Interval(tPos, tTime, tTrajectory[tLastBestI    ]);
-        double tIntervalUp   = this->Interval(tPos, tTime, tTrajectory[tLastBestI + 1]);
-        /*
-           double tInterval =     TMath::Power(tTime - tTrajectory[tLastBestI    ].T(), 2) - (tPos - tTrajectory[tLastBestI    ].Vect()).Mag2();
-           double tIntervalDown = TMath::Power(tTime - tTrajectory[tLastBestI - 1].T(), 2) - (tPos - tTrajectory[tLastBestI - 1].Vect()).Mag2();
-           double tIntervalUp =   TMath::Power(tTime - tTrajectory[tLastBestI + 1].T(), 2) - (tPos - tTrajectory[tLastBestI + 1].Vect()).Mag2();
-           */
-        if (TMath::Abs(tIntervalUp) > TMath::Abs(tInterval) && TMath::Abs(tIntervalDown) > TMath::Abs(tInterval))
-        {
-            Int_t tSign = tInterval > 0 ? +1 : -1;
-            tBestInterval = tSign * TMath::Sqrt(TMath::Abs(tInterval)); // Zostalo poprawione na sign(...)*sqrt(abs(...))
-            return tLastBestI;
+    long tSize = tTrajectory.size();
+    if (tSize == 0) {
+        tBestInterval = std::numeric_limits<double>::quiet_NaN();
+        return 0;
+    }
+    auto tIsTimeLikePast = [&](long j) {
+        return tTrajectory[j].T() <= tTime && this->Interval(tPos, tTime, tTrajectory[j]) >= 0;
+    };
+    long i = (long)tLastBestI < tSize ? (long)tLastBestI : tSize - 1;
+    long tLastTimeLike; // -1 if none
+    if (tIsTimeLikePast(i)) {
+        tLastTimeLike = i;
+        while (tLastTimeLike + 1 < tSize && tIsTimeLikePast(tLastTimeLike + 1)) {
+            ++tLastTimeLike;
         }
-        else
-        {
-            goUp = TMath::Abs(tIntervalUp) < TMath::Abs(tInterval);
+    } else {
+        tLastTimeLike = i - 1;
+        while (tLastTimeLike >= 0 && !tIsTimeLikePast(tLastTimeLike)) {
+            --tLastTimeLike;
         }
     }
-    int tSign = 0;
-    if (debug)
-        cout << "NearestInterval: " << tLastBestI << " " << tTrajectory.size() << " " << goUp << endl;
-    for (unsigned long i = tLastBestI; i < tTrajectory.size() && i >= 0; i = goUp ? i + 1 : i - 1)
-    {
-        double tInterval = this->Interval(tPos, tTime, tTrajectory[i ]);
-        /*
-           double tInterval = TMath::Power(tTime - tTrajectory[i].T(), 2) - (tPos - tTrajectory[i].Vect()).Mag2();
-           */
-        int tNewSign = TMath::Sign(1.0, tInterval);
-        if (debug)
-        {
-            cout << "NearestInterval: i = " << i << " " << tInterval << " " << tTime << " " << tTrajectory[i].T() << " " << (tPos - tTrajectory[i].Vect()).Mag2() << " " << (tPos - tTrajectory[i].Vect()).Mag() << " " << tPos.Mag() << " " << tTrajectory[i].Vect().Mag() << " " << tSign << endl;
-        }
-        if (i != tLastBestI)
-        {
-            if ((tSign != tNewSign && tSign != 0) || TMath::Abs(tInterval) > TMath::Abs(tPrevInterval))
-            {
-                tBestInterval = TMath::Sqrt(TMath::Abs(tPrevInterval)); // Zostalo poprawione na  zwracane poprzednie
-                tBestI = goUp ? i - 1 : i + 1;                          // i indeks tak samo
-                break;
-            }
-        }
-        tPrevInterval = tInterval;
-        tSign = tNewSign;
+    long tFirstSpaceLike = tLastTimeLike + 1; // tSize if none
+
+    long tBestI;
+    if (tLastTimeLike < 0) {
+        tBestI = 0;
+    } else if (tFirstSpaceLike >= tSize) {
+        tBestI = tSize - 1;
+    } else {
+        double tIntervalTimeLike  = this->Interval(tPos, tTime, tTrajectory[tLastTimeLike]);
+        double tIntervalSpaceLike = this->Interval(tPos, tTime, tTrajectory[tFirstSpaceLike]);
+        tBestI = TMath::Abs(tIntervalTimeLike) <= TMath::Abs(tIntervalSpaceLike) ? tLastTimeLike : tFirstSpaceLike;
+    }
+    double tInterval = this->Interval(tPos, tTime, tTrajectory[tBestI]);
+    tBestInterval = (tInterval >= 0 ? +1 : -1) * TMath::Sqrt(TMath::Abs(tInterval));
+    if (debug) {
+        cout << "NearestInterval: start " << tLastBestI << " size " << tSize << " last time-like " << tLastTimeLike
+            << " best " << tBestI << " interval " << tBestInterval << endl;
     }
     return tBestI;
 }
@@ -859,11 +747,16 @@ void CoulombAfterburner::Apply(Event *tEvent)
         }
     }
 
-    Int_t tNspec = 0;
     if (USE_SPECTATORS) {
-        tNspec = AddSpectators(tParticles, tEarliestTime);
+        AddSpectators(tParticles, tEarliestTime);
     }
-    unsigned long N = tParticles->size() + tNspec;
+    // All arrays below are indexed by eid
+    unsigned long N = 0;
+    for (auto tPartIter = tParticles->begin(); tPartIter != tParticles->end(); ++tPartIter) {
+        if ((unsigned long)tPartIter->eid + 1 > N) {
+            N = tPartIter->eid + 1;
+        }
+    }
     m_coordinates = new std::vector<TLorentzVector>[N];
     m_fourmomenta = new std::vector<TLorentzVector>[N];
     m_velocities = new std::vector<TVector3>[N];
@@ -872,10 +765,13 @@ void CoulombAfterburner::Apply(Event *tEvent)
     double *tDecayTimes = new double[N];
     m_FirstStepExists = new unsigned int[N];
     m_LastStepExists = new unsigned int[N];
+    TLorentzVector *tOriginalCoordinates = new TLorentzVector[N];
 
     for (auto tPartIter = tParticles->begin(); tPartIter != tParticles->end(); ++tPartIter)
     {
         m_coordinates[tPartIter->eid] = std::vector<TLorentzVector>();
+        tOriginalCoordinates[tPartIter->eid] = TLorentzVector(tPartIter->VecX(), tPartIter->T());
+        tDecayTimes[tPartIter->eid] = std::numeric_limits<double>::infinity();
         if (tPartIter->decayed)
         {
             std::list<Particle>::iterator tChildPartIter = tParticles->begin();
@@ -888,25 +784,22 @@ void CoulombAfterburner::Apply(Event *tEvent)
                 }
             }
         }
-        unsigned int tFirstStep = (unsigned int)TMath::Floor((tPartIter->T() - tEarliestTime) / m_StepSize);
-        if (tFirstStep >= m_nSteps)
+        // A particle exists at the time steps t with creation time <= t < decay time, so that the first step
+        // of a decay product directly follows the last step of its father
+        double tFirstStep = TMath::Min((double)m_nSteps, TMath::Ceil((tPartIter->T() - tEarliestTime) / m_StepSize));
+        double tLastStep = m_nSteps - 1;
+        if (TMath::Finite(tDecayTimes[tPartIter->eid]))
         {
-            tFirstStep = m_nSteps - 1;
+            tLastStep = TMath::Min(tLastStep, TMath::Ceil((tDecayTimes[tPartIter->eid] - tEarliestTime) / m_StepSize) - 1);
         }
-        m_FirstStepExists[tPartIter->eid] = tFirstStep;
-        if (tPartIter->decayed)
+        if (tFirstStep > tLastStep)
         {
-            unsigned int tLastStep = (unsigned int)TMath::Floor((tDecayTimes[tPartIter->eid] - tEarliestTime) / m_StepSize) - 1;
-            if (tLastStep >= m_nSteps)
-            {
-                tLastStep = m_nSteps - 1;
-            }
-            m_LastStepExists[tPartIter->eid] = tLastStep;
+            // The particle doesn't exist at any time step
+            tFirstStep = m_nSteps;
+            tLastStep = 0;
         }
-        else
-        {
-            m_LastStepExists[tPartIter->eid] = m_nSteps - 1;
-        }
+        m_FirstStepExists[tPartIter->eid] = (unsigned int)tFirstStep;
+        m_LastStepExists[tPartIter->eid] = (unsigned int)tLastStep;
     }
     cout << "End setting initial coordinates" << endl;
     // if (USE_SPECTATORS) {
@@ -928,6 +821,20 @@ void CoulombAfterburner::Apply(Event *tEvent)
     m_Rs->clear();
     m_us->clear();
     m_vs->clear();
+
+    // Reference values from the first step, to monitor conservation laws
+    Double_t tTotalHamil_0 = 0;
+    Double_t tTotalMomMS_0 = 0;
+    Double_t tTotalPx_0 = 0;
+    Double_t tTotalPy_0 = 0;
+    Double_t tTotalPz_0 = 0;
+    Double_t tTotalAx_0 = 0;
+    Double_t tTotalAy_0 = 0;
+    Double_t tTotalAz_0 = 0;
+    Double_t tTotalV_0 = 0;
+    Double_t tTotalPdotA_0 = 0;
+    Double_t tRadiatedEnergy = 0;
+    Double_t tRadiatedEnergy_0 = 0;
 
     TVector3 *tTotalForcesLast = NULL;
     for (unsigned int iStep = 0; iStep < m_nSteps; ++iStep)
@@ -956,6 +863,17 @@ void CoulombAfterburner::Apply(Event *tEvent)
                */
             if (iStep >= m_FirstStepExists[tPartIter->eid] && iStep <= m_LastStepExists[tPartIter->eid])
             {
+                if (iStep == m_FirstStepExists[tPartIter->eid])
+                {
+                    // Propagate freely from the creation time to the first time step
+                    TVector3 tPos = tPartIter->VecX();
+                    double tP = tPartIter->GetP();
+                    if (tP > 0 && TMath::Finite(tP))
+                    {
+                        tPos += ((tCurrentTime - tPartIter->T()) * tP / tPartIter->E()) * tPartIter->VecP().Unit();
+                    }
+                    tPartIter->SetTXYZ(tCurrentTime, tPos.X(), tPos.Y(), tPos.Z());
+                }
                 Int_t tQ = tPartIter->GetParticleType()->GetCharge();
                 TVector3 tPartPos = tPartIter->VecX(); // 1/GeV
                 TVector3 tPartMom = tPartIter->VecP();
@@ -1008,13 +926,13 @@ void CoulombAfterburner::Apply(Event *tEvent)
 
             TVector3 tForceTotal;
             // For spectator nucleons, the force stays zero
-            // Possibly reuse calculation from the previous step.
-            if (tTotalForcesLast != NULL) {
-                tForceTotal = tTotalForcesLast[tPartIter->eid];
-            } else {
-                Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-                if (tQ != 0 && iStep >= m_FirstStepExists[tPartIter->eid] && iStep <= m_LastStepExists[tPartIter->eid])
-                {
+            // Reuse the force at the new position from the previous step, unless the particle has just been created
+            Int_t tQ = tPartIter->GetParticleType()->GetCharge();
+            if (tQ != 0 && iStep >= m_FirstStepExists[tPartIter->eid] && iStep <= m_LastStepExists[tPartIter->eid])
+            {
+                if (tTotalForcesLast != NULL && iStep != m_FirstStepExists[tPartIter->eid]) {
+                    tForceTotal = tTotalForcesLast[tPartIter->eid];
+                } else {
                     tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime, iStep);
                 }
             }
@@ -1024,41 +942,37 @@ void CoulombAfterburner::Apply(Event *tEvent)
             }
             tTotalForces[tPartIter->eid] = tForceTotal;
         }
-        // Update positions (x_{n+1} = ...) using velocity and force (for acceleration) calculated at old position
+        // Update positions x_{n+1} = x_n + v_n dt + a_n dt^2 / 2, using the force calculated at old position
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
+            if (iStep < m_FirstStepExists[tPartIter->eid] || iStep > m_LastStepExists[tPartIter->eid])
+                continue;
+
             TVector3 tPartPos = tPartIter->VecX();
             TVector3 tPartMom = tPartIter->VecP();
-
             TVector3 tForceTotal = tTotalForces[tPartIter->eid];
-            TVector3 tImpulse = (m_StepSize * kHbarC) * tForceTotal; // (1/GeV) * GeV*fm * GeV/fm = GeV
 
-            double tP2 = tPartMom.Mag2();
-            double fM = tPartIter->mass;
-            double tM2 = fM*fM;
-
-            if (tP2 > 0 && TMath::Finite(tP2))
+            TVector3 tV(0, 0, 0);
+            double tP = tPartIter->GetP();
+            double tE = tPartIter->E();
+            if (tP > 0 && TMath::Finite(tP))
             {                                                                           // guardian
-                tPartPos += (m_StepSize / TMath::Sqrt(tM2 / tP2 + 1)) * tPartMom.Unit(); // 1/GeV
-                + (0.5 / fM / kHbarC) * TMath::Power(m_StepSize * kHbarC, 2) * tForceTotal; // 1/GeV (first 1/kHbarC should give this)
-                if (debug && !TMath::Finite(tPartPos.Mag()))
-                {
-                    cout << "updating position: " << tM2 << " " << tP2 << " " << tPartMom.Mag() << endl;
-                }
+                tV = tP / tE * tPartMom.Unit();
+            }
+            // Relativistic acceleration dv/dt = (F - v (v.F)) / E
+            TVector3 tAcc = (kHbarC / tE) * (tForceTotal - tV.Dot(tForceTotal) * tV); // GeV*fm * GeV/fm / GeV = GeV
+            tPartPos += m_StepSize * tV + (0.5 * m_StepSize * m_StepSize) * tAcc; // 1/GeV
+            if (debug && !TMath::Finite(tPartPos.Mag()))
+            {
+                cout << "updating position: " << tE << " " << tP << " " << tPartMom.Mag() << endl;
             }
 
-            tPartIter->SetTXYZ(tCurrentTime, tPartPos.X(), tPartPos.Y(), tPartPos.Z());
-        }
-        if (tTotalForcesLast != NULL) {                
-            delete [] tTotalForcesLast;
-        }
-        tTotalForcesLast = new TVector3[N];
-        for (unsigned long ind = 0; ind < N; ++ind) {
-            tTotalForcesLast[ind] = tTotalForces[ind];
+            tPartIter->SetTXYZ(tCurrentTime + m_StepSize, tPartPos.X(), tPartPos.Y(), tPartPos.Z());
         }
 
-        // Calculate force at new position
+        // Calculate force at new position x_{n+1} and time t_{n+1}
+        TVector3 *tTotalForcesNew = new TVector3[N];
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
@@ -1067,28 +981,24 @@ void CoulombAfterburner::Apply(Event *tEvent)
             Int_t tQ = tPartIter->GetParticleType()->GetCharge();
             if (tQ != 0 && iStep >= m_FirstStepExists[tPartIter->eid] && iStep <= m_LastStepExists[tPartIter->eid])
             {
-                tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime, iStep);
+                tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime + m_StepSize, iStep);
             }
             if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
                 cout << "total force at new pos, step " << iStep << ", eid = " << tPartIter->eid
                     << ", F = (" << tForceTotal.X() << "," << tForceTotal.Y() << "," << tForceTotal.Z() << ") "  << endl;
             }
-            tTotalForces[tPartIter->eid] = tForceTotal;
+            tTotalForcesNew[tPartIter->eid] = tForceTotal;
         }
-        // Update momenmta (p_{n+1} = ...) using average force from old and new position
+        // Update momenta p_{n+1} = p_n + (F_n + F_{n+1}) dt / 2, using average force from old and new position
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
+            if (iStep < m_FirstStepExists[tPartIter->eid] || iStep > m_LastStepExists[tPartIter->eid])
+                continue;
+
             TVector3 tPartPos = tPartIter->VecX();
             TVector3 tPartMom = tPartIter->VecP();
-            // TODO: use this really
-            // TVector3 tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesLast[tPartIter->eid]);
-            TVector3 tForceTotal = tTotalForces[tPartIter->eid];
-            // TVector3 tForceTotal = tTotalForcesLast[tPartIter->eid];
-            if (tTotalForcesLast[tPartIter->eid].X() != 0) {
-                // cout << "DEBUG " << &tTotalForces[tPartIter->eid] << " " << TVector3toString(tTotalForces[tPartIter->eid]).Data() << " " << &tTotalForcesLast[tPartIter->eid] << " " << TVector3toString(tTotalForcesLast[tPartIter->eid]).Data() << endl;
-            }
-            // TVector3 tForceTotal = TVector3(0,0,0);
+            TVector3 tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesNew[tPartIter->eid]);
             TVector3 tImpulse = (m_StepSize * kHbarC) * tForceTotal; // GeV/fm * (1/GeV) * GeV*fm = GeV
             if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
                 cout << "total force " << iStep << ", eid = " << tPartIter->eid
@@ -1130,7 +1040,13 @@ void CoulombAfterburner::Apply(Event *tEvent)
                 }
             }
         }
-        // Calculating total kinetic energy
+        // The force at the new position is the force at the old position in the next step
+        if (tTotalForcesLast != NULL) {
+            delete [] tTotalForcesLast;
+        }
+        tTotalForcesLast = tTotalForcesNew;
+
+        // Calculating total energy, momentum and potentials at time t_{n+1}
         Double_t tTotalHamil = 0;
         Double_t tTotalMomMS = 0;
         Double_t tTotalPx = 0;
@@ -1143,48 +1059,41 @@ void CoulombAfterburner::Apply(Event *tEvent)
         Double_t tTotalPdotA = 0;
         Double_t tTotalRadPower = 0;
 
-        Double_t tTotalHamil_0 = 0;
-        Double_t tTotalMomMS_0 = 0;
-        Double_t tTotalPx_0 = 0;
-        Double_t tTotalPy_0 = 0;
-        Double_t tTotalPz_0 = 0;
-        Double_t tTotalAx_0 = 0;
-        Double_t tTotalAy_0 = 0;
-        Double_t tTotalAz_0 = 0;
-        Double_t tTotalV_0 = 0;
-        Double_t tTotalPdotA_0 = 0;
-        Double_t tTotalRadPower_0 = 0;
-
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
-            Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-            TVector3 tPartMom = tPartIter->VecP();
+            if (iStep < m_FirstStepExists[tPartIter->eid] || iStep > m_LastStepExists[tPartIter->eid])
+                continue;
 
-            auto tPotentials = CalculatePotentials(tPartIter, tParticles, tBestIs, tCurrentTime);
+            Int_t tQ = tPartIter->GetParticleType()->GetCharge();
+            TVector3 tPartMom = tPartIter->VecP(); // kinetic momentum
+
+            auto tPotentials = CalculatePotentials(tPartIter, tParticles, tBestIs, tCurrentTime + m_StepSize, iStep);
             TVector3 tPotA = tPotentials.first;
             Double_t tPotV = tPotentials.second;
             double fM = tPartIter->mass;
             double tM2 = fM*fM;
 
-            Double_t tH = TMath::Sqrt(tM2 + (tPartMom - tQ*tPotA).Mag2()) + tQ*tPotV; // GeV
+            Double_t tEkin = TMath::Sqrt(tM2 + tPartMom.Mag2()); // GeV
+            // Each pair contributes to the potentials of both particles, hence 1/2 in the potential energy
+            Double_t tH = tEkin + 0.5*tQ*tPotV; // GeV
             tTotalHamil += tH;
-            tTotalMomMS += TMath::Sqrt(tM2 + (tPartMom - tQ*tPotA).Mag2());
+            tTotalMomMS += tEkin;
             tTotalPx += tPartIter->Px();
             tTotalPy += tPartIter->Py();
             tTotalPz += tPartIter->Pz();
             tTotalAx += tQ*tPotA.X();
             tTotalAy += tQ*tPotA.Y();
             tTotalAz += tQ*tPotA.Z();
-            tTotalV  += tQ*tPotV;
+            tTotalV  += 0.5*tQ*tPotV;
             tTotalPdotA  += 2*tQ*tPartMom.Dot(tPotA);
 
-            if (m_velocities[tPartIter->eid].size() > 0 && m_accelerations[tPartIter->eid].size() > 0) {
+            if (tQ != 0 && m_velocities[tPartIter->eid].size() > 0 && m_accelerations[tPartIter->eid].size() > 0) {
                 TVector3 tV = m_velocities[tPartIter->eid].back();
                 double tBeta2 = tV.Mag2();
                 double tGamma2 = 1/(1-tBeta2);
                 TVector3 tA = m_accelerations[tPartIter->eid].back();
-                double tRadPower = (2./3) * k * tQ * tQ * TMath::Power(tGamma2, 3) * (tA.Mag2() - tV.Cross(tA).Mag2());
+                double tRadPower = (2./3) * k * tQ * tQ * TMath::Power(tGamma2, 3) * (tA.Mag2() - tV.Cross(tA).Mag2()); // GeV*fm * GeV**2
                 if (tRadPower < 0) {
                     PrintProblem(tPartIter->eid, iStep, "");
                 }
@@ -1192,10 +1101,11 @@ void CoulombAfterburner::Apply(Event *tEvent)
             }
             if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
                 cout << "at end of step " << iStep << ", eid = " << tPartIter->eid
-                    << ", p = (" << tPartIter->Px() << "," << tPartIter->Py() << "," << tPartIter->Pz() << "), |p| = " 
+                    << ", p = (" << tPartIter->Px() << "," << tPartIter->Py() << "," << tPartIter->Pz() << "), |p| = "
                     << tPartIter->GetP() << ", E = " << tPartIter->E() << ", mass = " << tPartIter->mass << endl;
             }
         }
+        tRadiatedEnergy += tTotalRadPower / kHbarC * m_StepSize; // GeV*fm * GeV**2 / (GeV*fm) / GeV = GeV
 
         if (iStep == 0) {
             tTotalHamil_0 = tTotalHamil;
@@ -1208,7 +1118,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
             tTotalAz_0 = tTotalAz;
             tTotalV_0 = tTotalV;
             tTotalPdotA_0 = tTotalPdotA;
-            tTotalRadPower_0 = tTotalRadPower;
+            tRadiatedEnergy_0 = tRadiatedEnergy;
         } else {
             m_hTotalHamil->SetBinContent(iStep+1, tTotalHamil);
             m_hTotalMomMS->SetBinContent(iStep+1, tTotalMomMS);
@@ -1219,10 +1129,8 @@ void CoulombAfterburner::Apply(Event *tEvent)
             m_hTotalAy->SetBinContent(iStep+1, tTotalAy);
             m_hTotalAz->SetBinContent(iStep+1, tTotalAz);
             m_hTotalV->SetBinContent(iStep+1, tTotalV);
-            m_hTotalRadPower->SetBinContent(iStep+1, tTotalRadPower + 
-                    iStep > 0 ? 
-                    m_hTotalRadPower->GetBinContent(iStep) : 
-                    0);
+            // RadPower histograms contain the energy radiated since the first step
+            m_hTotalRadPower->SetBinContent(iStep+1, tRadiatedEnergy - tRadiatedEnergy_0);
             m_hTotalPdotA->SetBinContent(iStep+1, tTotalPdotA);
             m_pTotalHamil->Fill((iStep+0.1)*m_StepSize, tTotalHamil-tTotalHamil_0);
             m_pTotalMomMS->Fill((iStep+0.1)*m_StepSize, tTotalMomMS-tTotalMomMS_0);
@@ -1233,10 +1141,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
             m_pTotalAy->Fill((iStep+0.1)*m_StepSize, tTotalAy-tTotalAy_0);
             m_pTotalAz->Fill((iStep+0.1)*m_StepSize, tTotalAz-tTotalAz_0);
             m_pTotalV->Fill((iStep+0.1)*m_StepSize, tTotalV-tTotalV_0);
-            m_pTotalRadPower->Fill((iStep+0.1)*m_StepSize, tTotalRadPower-tTotalRadPower_0 + 
-                    iStep > 0 ? 
-                    m_hTotalRadPower->GetBinContent(iStep) : 
-                    0);
+            m_pTotalRadPower->Fill((iStep+0.1)*m_StepSize, tRadiatedEnergy - tRadiatedEnergy_0);
             m_pTotalPdotA->Fill((iStep+0.1)*m_StepSize, tTotalPdotA-tTotalPdotA_0);
             m_h2TotalHamil->Fill((iStep+0.1)*m_StepSize, tTotalHamil-tTotalHamil_0);
             m_h2TotalMomMS->Fill((iStep+0.1)*m_StepSize, tTotalMomMS-tTotalMomMS_0);
@@ -1247,41 +1152,36 @@ void CoulombAfterburner::Apply(Event *tEvent)
             m_h2TotalAy->Fill((iStep+0.1)*m_StepSize, tTotalAy-tTotalAy_0);
             m_h2TotalAz->Fill((iStep+0.1)*m_StepSize, tTotalAz-tTotalAz_0);
             m_h2TotalV->Fill((iStep+0.1)*m_StepSize, tTotalV-tTotalV_0);
-            m_h2TotalRadPower->Fill((iStep+0.1)*m_StepSize, tTotalRadPower-tTotalRadPower_0 + 
-                    iStep > 0 ? 
-                    m_hTotalRadPower->GetBinContent(iStep) : 
-                    0);
+            m_h2TotalRadPower->Fill((iStep+0.1)*m_StepSize, tRadiatedEnergy - tRadiatedEnergy_0);
             m_h2TotalPdotA->Fill((iStep+0.1)*m_StepSize, tTotalPdotA-tTotalPdotA_0);
         }
-        if (tTotalForces != NULL) {                
+        if (tTotalForces != NULL) {
             delete [] tTotalForces;
         }
     }
-    if (tTotalForcesLast != NULL) {                
+    if (tTotalForcesLast != NULL) {
         delete [] tTotalForcesLast;
     }
     // Writing back to particles' objects original position, to not change HBT radii
     for (auto tPartIter = tParticles->begin(); tPartIter != tParticles->end(); ++tPartIter)
     {
-        // cout << tPartIter->eid << " " << tPartIter->pid << " " << m_coordinates[tPartIter->eid].size() << " " << tPartIter->z << " ";
-        if (m_coordinates[tPartIter->eid].size() > 0)
-        {
-            Double_t tPartTime =  m_coordinates[tPartIter->eid].front().T();
-            TVector3 tPartPos = m_coordinates[tPartIter->eid].front().Vect();
-            TVector3 tPartPosFinal = tPartIter->VecX();
-            // cout << tPartPos.Z() << " ";
-            tPartIter->SetTXYZ(tPartTime, tPartPos.X(), tPartPos.Y(), tPartPos.Z());
-        }
-        // cout << endl;
+        TLorentzVector &tOrig = tOriginalCoordinates[tPartIter->eid];
+        tPartIter->SetTXYZ(tOrig.T(), tOrig.X(), tOrig.Y(), tOrig.Z());
+    }
+    for (unsigned long ai = 0; ai < N; ++ai)
+    {
+        delete[] tBestIs[ai];
     }
     delete[] tBestIs;
 
     delete[] m_coordinates;
+    delete[] m_fourmomenta;
     delete[] m_velocities;
     delete[] m_accelerations;
     delete[] tDecayTimes;
     delete[] m_FirstStepExists;
     delete[] m_LastStepExists;
+    delete[] tOriginalCoordinates;
     delete m_pids;
 
     //tParticles->remove_if([](Particle &p) { return TString(p.GetParticleType()->GetName()).Contains("Spectator"); });
@@ -1295,16 +1195,25 @@ void CoulombAfterburner::Apply(Event *tEvent)
 
 }
 
-void CoulombAfterburner::PrintProblem(Int_t eid, Int_t step, TString indent) {
+void CoulombAfterburner::PrintProblem(Int_t eid, Int_t step, TString indent, Int_t depth) {
+    // Avoid endless recursion when two particles point at each other
+    if (depth > 3) {
+        return;
+    }
     Int_t firstStep = m_FirstStepExists[eid];
-    TVector3 tV = m_velocities[eid].at(step - firstStep);
+    Int_t index = step - firstStep;
+    if (index < 0 || index >= (Int_t)m_velocities[eid].size() || index >= (Int_t)m_fourmomenta[eid].size()) {
+        cout << indent.Data() << "problem in step " << step << ", eid = " << eid << ": particle does not exist at this step" << endl;
+        return;
+    }
+    TVector3 tV = m_velocities[eid].at(index);
     double tBeta2 = tV.Mag2();
     double tGamma2 = 1/(1-tBeta2);
-    TVector3 tA = m_accelerations[eid].at(step-firstStep);
-    TLorentzVector tPartFourMom = m_fourmomenta[eid][step];
+    TVector3 tA = m_accelerations[eid].at(index);
+    TLorentzVector tPartFourMom = m_fourmomenta[eid].at(index);
     cout << indent.Data() << "problem in step " << step << ", pid = " << (*m_pids)[eid] << ", eid = " << eid
         << ", gamma^2 = " << tGamma2
-        << ", |a| = " << tA.Mag() << ", |v| = (" << tV.Mag() << ", a^2 - (v x a)^2 = " 
+        << ", |a| = " << tA.Mag() << ", |v| = (" << tV.Mag() << ", a^2 - (v x a)^2 = "
         << tA.Mag2() - tV.Cross(tA).Mag2() << endl;
     cout << indent.Data() << "|p| = " << tPartFourMom.Vect().Mag() << ", E = " << tPartFourMom.E() << endl;
     for (int is = 0; is < m_termsCoul->size(); ++is) {
@@ -1315,8 +1224,8 @@ void CoulombAfterburner::PrintProblem(Int_t eid, Int_t step, TString indent) {
                 cout << indent.Data() << "R: " << m_Rs->at(is)[std::make_pair(mapping.first.first, mapping.first.second)].Mag() << endl;
                 cout << indent.Data() << "u: " << m_us->at(is)[std::make_pair(mapping.first.first, mapping.first.second)].Mag() << endl;
                 cout << indent.Data() << "v: " << m_vs->at(is)[std::make_pair(mapping.first.first, mapping.first.second)].Mag() << endl;
-                PrintProblem(mapping.first.second, is, indent + "**** ");
-            } 
+                PrintProblem(mapping.first.second, is, indent + "**** ", depth + 1);
+            }
         }
     }
 
