@@ -99,7 +99,7 @@ void AbstractEventReader::ReadEvents()
         mEvent->GetParticleList()->push_back(tParticle);
     }
 
-    Float_t dummy;
+    Double_t dummy;
     ParticleType *tSpectatorType = CoulombAfterburner::SpectatorType(mEvent->GetParticleList(), dummy);
     for (auto &tParticle : *mEvent->GetParticleList()) {
         if (tParticle.GetParticleType() == nullptr) {
