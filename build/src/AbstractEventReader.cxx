@@ -80,6 +80,7 @@ void AbstractEventReader::ReadEvents()
   SetupInput(tEventDir + mEventSubDir, 1);
 
   int tAllParticleIter = 0;
+  mAfterburners->Finalize();
   while (NextEvent()) {
 
     mEventCounter = mEventIter+1;
@@ -113,6 +114,7 @@ void AbstractEventReader::ReadEvents()
     // TODO: FInd better solution to pass here a correct Model* parameter
     mEventSaver->Save(mEvent,NULL,mEventCounter);
   }
+  mAfterburners->Finalize();
 }
 
 void AbstractEventReader::ReadParameters()

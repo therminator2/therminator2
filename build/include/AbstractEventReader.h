@@ -44,7 +44,7 @@ class AbstractEventReader {
   public:
     AbstractEventReader();
     AbstractEventReader(ParticleDB* aDB, AbstractEventSaver *aES, ListAfterburner *aLA);
-    ~AbstractEventReader();
+    virtual ~AbstractEventReader();
 
     void   ReadEvents();
 

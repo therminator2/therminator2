@@ -92,6 +92,7 @@ void EventGenerator::GenerateEvents()
   TDatime tDate;
   
   tDate.Set();
+  mAfterburners->Init();
   PRINT_MESSAGE("["<<tDate.AsSQLString()<<"]\tGenerating events");
   for (int tIter=0; tIter<mNumberOfEvents; tIter++) {
     mEventCounter = tIter+1;
@@ -108,6 +109,7 @@ void EventGenerator::GenerateEvents()
     mAfterburners->Apply(mEvent);
     mEventSaver->Save(mEvent,mInteg->GetModel(),mEventCounter);
   }
+  mAfterburners->Finalize();
 }
 
 void EventGenerator::GeneratePrimordials(int aSeed)
