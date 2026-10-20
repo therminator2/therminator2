@@ -13,7 +13,8 @@ scriptdir = "/cvmfs/hadessoft.gsi.de/install/debian10/root-6.24.02/bin/thisroot.
 ####whatsin="HubbDeltCaseB_50steps10_fixedPositionUpdate_spectatorAtRfixedIsospin_specExtrapolationTret_fm_32_JK_protons_req_110.9_Tf_0_manyspec_a"
 #whatsin="HubbDeltCaseC_0steps10_fixedPositionUpdate_Spectator_fm_32_JK_protons_req_67.8_noRescale"
 
-whatsin="HubbDeltCaseB_0steps10_protons_req_110.9_testSampleShort10trials_new_3"
+whatsin="HubbDeltCaseB_1000steps01_protons_req_110.9_histsHamiltonian_exptrapFireball_useNotExtrapSpec_interpolationLoghtCone_d"
+#whatsin="HubbDeltCaseB_protons_req_110.9_fixedIndex"
 
 submissiondir="/lustre/hades/user/harabasz/submit/" + whatsin
 tmpbase="/tmp/harabasz/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=16)) + "/"
