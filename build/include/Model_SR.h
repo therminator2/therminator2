@@ -46,7 +46,6 @@ class Model_SR
     double GetR() const { return mR; }
     double GetProtonsReq() const { return mProtonsReq; }
     void SetR(const double aR) { mR = aR; }
-    void SetImportanceSampling(bool aImportanceSampling) { mImportanceSampling = aImportanceSampling; }    
 
   protected:
     Thermodynamics* mThermo;
@@ -65,11 +64,6 @@ class Model_SR
     void ReadParameters();
     bool PointInGrid(Vector3D *aV, double aX, double aY, double aZ, unsigned int &aI, unsigned int &aJ, unsigned int &aK);
     void GetGridAxisPoint(double aMin, double aMax, double aPts, double aVal, unsigned int &aRoundN, double &aRoundError);
-
-    bool mImportanceSampling;
-    double mPrevIntegrand;
-    double mPrevXx, mPrevXy, mPrevXz, mPrevXt;
-    double mPrevPx, mPrevPy, mPrevPz, mPrevPe;
 
 };
 

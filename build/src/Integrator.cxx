@@ -141,11 +141,6 @@ void Integrator::GenerateParticles(ParticleType* aPartType, int aPartCount, list
   double   tValTest;
   Particle* tParticle; 
  
-  Model_SR * aFOModel_SR = dynamic_cast<Model_SR*>(mFOModel);
-  if (aFOModel_SR != nullptr) {
-    aFOModel_SR->SetImportanceSampling(false);
-  }
- 
   PRINT_DEBUG_3("Integrator::GenerateParticles\t "<< aPartType->GetName() <<" B:"<< aPartType->GetBarionN() <<" I3:"<< aPartType->GetI3() <<" S:"<< aPartType->GetStrangeN()<<" C:"<< aPartType->GetCharmN());
   tFMax = aPartType->GetMaxIntegrand();
   while (tIter < aPartCount) {
@@ -303,11 +298,6 @@ double Integrator::Integrate(ParticleType* aPartType)
   Int_t aNSamplesActual = 0;
   Double_t aMultiPrev = 0;
   Int_t aCountSmallChange = 0;
-
-  Model_SR * aFOModel_SR = dynamic_cast<Model_SR*>(mFOModel);
-  if (aFOModel_SR != nullptr) {
-    aFOModel_SR->SetImportanceSampling(true);
-  }
 
   for (tIter = 0; tIter < mNSamples * aOversamp; tIter++) 
   {

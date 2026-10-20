@@ -93,47 +93,27 @@ std::pair<double, double> Model_SR::GetIntegrand(ParticleType* aPartType, bool f
     //  finiteWidth = false;
     GetParticleMass(aPartType, finiteWidth,M,spectralFunctionWeight);
 
-    if (!mImportanceSampling || mPrevIntegrand < 0) {
+    // generate random spatial position 
+    R	= mR * mRandom->Rndm();
+    Phi	= 2.0 * Pi() * mRandom->Rndm();  
+    Theta	= Pi() * mRandom->Rndm();  
 
-        // generate random spatial position 
-        R	= mR * mRandom->Rndm();
-        Phi	= 2.0 * Pi() * mRandom->Rndm();  
-        Theta	= Pi() * mRandom->Rndm();  
+    // generate random momentum position 
+    double Zet = mRandom->Rndm();
+    P	= Zet / (1.0 - Zet);	// 0 <= p <= Infinity
+    dPdZet	= 1.0 / ( (1.0 - Zet) * (1.0 - Zet) );
+    PhiP	= 2.0 * Pi() * mRandom->Rndm(); 
+    ThetaP	= Pi() * mRandom->Rndm();  
 
-        // generate random momentum position 
-        double Zet = mRandom->Rndm();
-        P	= Zet / (1.0 - Zet);	// 0 <= p <= Infinity
-        dPdZet	= 1.0 / ( (1.0 - Zet) * (1.0 - Zet) );
-        PhiP	= 2.0 * Pi() * mRandom->Rndm(); 
-        ThetaP	= Pi() * mRandom->Rndm();  
+    // other variables
 
-        // other variables
+    Xx = Sqrt(1-mEps) * R * Cos(Phi) * Sin(Theta);
+    Xy = Sqrt(1-mEps) * R * Sin(Phi) * Sin(Theta);
+    Xz = Sqrt(1+mEps) * R * Cos(Theta);
 
-        Xx = Sqrt(1-mEps) * R * Cos(Phi) * Sin(Theta);
-        Xy = Sqrt(1-mEps) * R * Sin(Phi) * Sin(Theta);
-        Xz = Sqrt(1+mEps) * R * Cos(Theta);
-
-        Px = P * Cos(PhiP) * Sin(ThetaP);
-        Py = P * Sin(PhiP) * Sin(ThetaP);
-        Pz = P * Cos(ThetaP);
-    } else {
-        Xx = mRandom->Gaus(mPrevXx, 0.1 * mR);
-        Xy = mRandom->Gaus(mPrevXy, 0.1 * mR);
-        Xz = mRandom->Gaus(mPrevXz, 0.1 * mR);
-
-        R = TMath::Sqrt(Xx*Xx + Xy*Xy + Xz*Xz);
-        Theta = TMath::ACos(Xz / R);
-        Phi = Xx * Xy / (TMath::Abs(Xy) * TMath::Hypot(Xx, Xy));
-
-        Px = mRandom->Gaus(mPrevPx, 0.1);
-        Py = mRandom->Gaus(mPrevPy, 0.1);
-        Pz = mRandom->Gaus(mPrevPz, 0.1);
-
-        P = TMath::Sqrt(Px*Px + Py*Py + Pz*Pz);
-        dPdZet = (1.0 + P) * (1.0 + P);
-        ThetaP = TMath::ACos(Pz / P);
-        PhiP = Px * Py / (TMath::Abs(Py) * TMath::Hypot(Px, Py));
-    }
+    Px = P * Cos(PhiP) * Sin(ThetaP);
+    Py = P * Sin(PhiP) * Sin(ThetaP);
+    Pz = P * Cos(ThetaP);
     Ep	= Hypot(M,P);
     Pe = Ep;
     Xt = mT0 + mA * R;
@@ -160,41 +140,6 @@ std::pair<double, double> Model_SR::GetIntegrand(ParticleType* aPartType, bool f
     double F  = (Gs / kTwoPi3) / (Exp(UdotP/T)/Upsilon  + Statistics);
 
     Integrand = F * DP * dSIGMAdotP;
-
-    if (mImportanceSampling) {
-        double aIntegrandRatio = Integrand / mPrevIntegrand;
-
-        bool aOutOfFireball = false;
-
-        if (Xx > Sqrt(1-mEps) * mR * Cos(Phi) * Sin(Theta)) aOutOfFireball = true;
-        if (Xy > Sqrt(1-mEps) * mR * Sin(Phi) * Sin(Theta)) aOutOfFireball = true;
-        if (Xz > Sqrt(1+mEps) * mR * Cos(Theta))            aOutOfFireball = true;
-
-        if (mRandom->Rndm() > aIntegrandRatio || aOutOfFireball) { // Stay at the previous site
-            Xx = mPrevXx;
-            Xy = mPrevXy;
-            Xz = mPrevXz;
-            Xt = mPrevXt;
-
-            Px = mPrevPx;
-            Py = mPrevPy;
-            Pz = mPrevPz;
-            Pe = mPrevPe;
-
-            Integrand = mPrevIntegrand;
-        }
-        mPrevXx = Xx;
-        mPrevXy = Xy;
-        mPrevXz = Xz;
-        mPrevXt = Xt;
-             
-        mPrevPx = Px;
-        mPrevPy = Py;
-        mPrevPz = Pz;
-        mPrevPe = Pe;
-
-        mPrevIntegrand = Integrand;
-    }
 
     if (false) {
         // if (TString(aPartType->GetName()).Contains("Ka0492plu")) {
