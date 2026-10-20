@@ -81,6 +81,11 @@ void Model::AddParameterBranch(TTree* aTree)
 void Model::SetParticlePX(Particle* aParticle)
 {
   aParticle->SetParticlePX(Pe,Px,Py,Pz,Xt,Xx,Xy,Xz);
+  // Override mass in the case of finite-width resonances
+  Double_t tM = TMath::Sqrt(
+    Pe*Pe - Px*Px - Py*Py - Pz*Pz
+  );
+  aParticle->mass = tM;
 }  
 
 double Model::GetHyperCubeVolume()
