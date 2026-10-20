@@ -110,9 +110,13 @@ Float_t ParticleCoor::GetRapidityS() const
   return 0.5 * TMath::Log( (t + z) / (t - z) );
 }
 
-Float_t ParticleCoor::GetP() const
+Float_t ParticleCoor::GetP()
 {
-  return TMath::Sqrt(px*px + py*py + pz*pz);
+  if (!ptot_valid) {
+    ptot = TMath::Sqrt(px*px + py*py + pz*pz);
+    ptot_valid = kTRUE;
+  }
+  return ptot;
 }
 
 Float_t ParticleCoor::GetPt() const
@@ -135,7 +139,7 @@ Float_t ParticleCoor::GetRapidityP() const
   return 0.5 * TMath::Log( (e + pz) / (e - pz) );
 }   
 
-Float_t ParticleCoor::GetEtaP() const
+Float_t ParticleCoor::GetEtaP()
 {
   Float_t tP = GetP();
   return 0.5 * TMath::Log( (tP + pz) / (tP - pz) );

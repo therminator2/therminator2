@@ -25,7 +25,7 @@ void UrQMDEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
       tT0 = tModel_SR->GetT0();
     }
     else {
-      tT0 = tEvent->GetParticleList()->begin()->t;
+      tT0 = tEvent->GetParticleList()->begin()->T();
     }
     tFile << "UQMD   version:       30400   1000  30400  output_file  14" << endl;
     tFile << "projectile:  (mass, char)  197  79   target:  (mass, char)  197  79" << endl;

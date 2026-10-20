@@ -108,6 +108,7 @@ void Particle::SetParticlePX(double aPe, double aPx, double aPy, double aPz,
     fathereid = aFather->eid;
   }  
   eid = EIDi++;
+  ptot_valid = kFALSE;
 }
 
 const std::string Particle::MakeTEXTEntry()

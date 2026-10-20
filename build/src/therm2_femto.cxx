@@ -759,13 +759,13 @@ int main(int argc, char **argv)
 		      pcount++;
 		      if (pcount == 4) pcount=0;
 		    }
-		    if (fabs(evbuf[eviter][fiter].t - evbuf[mixiter][siter].t) > 500.0)
+		    if (fabs(evbuf[eviter][fiter].T() - evbuf[mixiter][siter].T()) > 500.0)
 		      quantumweight = 1.0;
 		    cnuma->Fill(mKO, mKS, mKL, quantumweight);
 		    num1d->Fill(fabs(mKStarSigned)*2.0, quantumweight);
 		    
 		    if (docoulomb) {
-		      if (fabs(evbuf[eviter][fiter].t - evbuf[mixiter][siter].t) > 500.0) {
+		      if (fabs(evbuf[eviter][fiter].T() - evbuf[mixiter][siter].T()) > 500.0) {
 			coulombweight = 1.0;
 			coulqscpart = 1.0;
 		      }
@@ -784,10 +784,10 @@ int main(int argc, char **argv)
 		      cnumasph->Fill(mKR, mKP, mKC, coulombweight);
 		    }
 // 		    if (fabs(mKStarSigned) < 0.1) {
-// 		      double rad = hypot(evbuf[eviter][fiter].x, evbuf[eviter][fiter].y);
-// 		      double phi = TMath::ATan2(evbuf[eviter][fiter].y, evbuf[eviter][fiter].x);
+// 		      double rad = hypot(evbuf[eviter][fiter].X(), evbuf[eviter][fiter].Y());
+// 		      double phi = TMath::ATan2(evbuf[eviter][fiter].Y(), evbuf[eviter][fiter].X());
 // 		      simage1->Fill(rad * cos(phi - pairphi), rad * sin(phi - pairphi), 1.0);
-// 		      time1->Fill(evbuf[eviter][fiter].t);
+// 		      time1->Fill(evbuf[eviter][fiter].T());
 // 		    }
  		  }
 		}
@@ -825,7 +825,7 @@ int main(int argc, char **argv)
 		      den1dntrue->Fill(fabs(mKStarSigned), 1.0);
 		  }
 		  if (docoulomb) {
-		    if (fabs(evbuf[eviter][fiter].t - evbuf[mixiter][siter].t) > 500.0)
+		    if (fabs(evbuf[eviter][fiter].T() - evbuf[mixiter][siter].T()) > 500.0)
 		      coulombweight = 1.0;
 		    else
 		      coulombweight = GetCoulomb();
@@ -847,15 +847,15 @@ int main(int argc, char **argv)
 		    }
 		  }
 		  if (fabs(mKStarSigned) < 0.1) {
-		    double rad = hypot(evbuf[eviter][fiter].x, evbuf[eviter][fiter].y);
-		    double phi = TMath::ATan2(evbuf[eviter][fiter].y, evbuf[eviter][fiter].x);
+		    double rad = hypot(evbuf[eviter][fiter].X(), evbuf[eviter][fiter].Y());
+		    double phi = TMath::ATan2(evbuf[eviter][fiter].Y(), evbuf[eviter][fiter].X());
 		    simage1->Fill(rad * cos(phi - pairphi), rad * sin(phi - pairphi), 1.0);
-		    time1->Fill(evbuf[eviter][fiter].t);
+		    time1->Fill(evbuf[eviter][fiter].T());
 
-		    rad = hypot(evbuf2[mixiter][siter].x, evbuf2[mixiter][siter].y);
-		    phi = TMath::ATan2(evbuf2[mixiter][siter].y, evbuf2[mixiter][siter].x);
+		    rad = hypot(evbuf2[mixiter][siter].X(), evbuf2[mixiter][siter].Y());
+		    phi = TMath::ATan2(evbuf2[mixiter][siter].Y(), evbuf2[mixiter][siter].X());
 		    simage2->Fill(rad * cos(phi - pairphi), rad * sin(phi - pairphi), 1.0);
-		    time2->Fill(evbuf2[mixiter][siter].t);
+		    time2->Fill(evbuf2[mixiter][siter].T());
 		    
 		  }
 		}
@@ -877,13 +877,13 @@ int main(int argc, char **argv)
       cout.flush();
       tEventIter++;
     }
-    if (((buf.pid == partpid) || ((buf.pid == partpid2) && (partpid2 !=0))) && (buf.t<tcut)) {
-      pt = hypot(buf.px, buf.py);
+    if (((buf.pid == partpid) || ((buf.pid == partpid2) && (partpid2 !=0))) && (buf.T()<tcut)) {
+      pt = hypot(buf.Px(), buf.Py());
       if ((((pt>ptmin1) && (pt<ptmax1) && (buf.pid == partpid)) ||
 	   ((pt>ptmin2) && (pt<ptmax2) && (buf.pid == partpid2) && (partpid2 != 0))) &&
 	  ((onlyprim == 0) || ((buf.fatherpid == partpid) || ((buf.fatherpid == partpid2) && (partpid2 != 0))))) {
-	rap = 0.5*log((buf.e+buf.pz)/(buf.e-buf.pz));
-	peta = -TMath::Log(TMath::Tan(TMath::ATan2(pt, buf.pz)/2.0));
+	rap = 0.5*log((buf.E()+buf.Pz())/(buf.E()-buf.Pz()));
+	peta = -TMath::Log(TMath::Tan(TMath::ATan2(pt, buf.Pz())/2.0));
 	
 	// Check if it is coming from a weak decay
 	isweak = 0;
@@ -895,14 +895,8 @@ int main(int argc, char **argv)
 	    ((!isweak) || (onlyprim == 2)))
 	  {
 	    if (buf.pid == partpid) {
-	      evbuf[eviter][evtscount[eviter]].x = buf.x;
-	      evbuf[eviter][evtscount[eviter]].y = buf.y;
-	      evbuf[eviter][evtscount[eviter]].z = buf.z;
-	      evbuf[eviter][evtscount[eviter]].t = buf.t;
-	      evbuf[eviter][evtscount[eviter]].px = buf.px;
-	      evbuf[eviter][evtscount[eviter]].py = buf.py;
-	      evbuf[eviter][evtscount[eviter]].pz = buf.pz;
-	      evbuf[eviter][evtscount[eviter]].e = buf.e;
+              evbuf[eviter][evtscount[eviter]].SetTXYZ(buf.T(), buf.X(), buf.Y(), buf.Z());
+              evbuf[eviter][evtscount[eviter]].SetEPxPyPz(buf.E(), buf.Px(), buf.Py(), buf.Pz());
 	      evbuf[eviter][evtscount[eviter]].pid = buf.pid;
 	      evbuf[eviter][evtscount[eviter]].fatherpid = buf.fatherpid;
 	      evbuf[eviter][evtscount[eviter]].rootpid = buf.rootpid;
@@ -911,14 +905,8 @@ int main(int argc, char **argv)
 	      evtscount[eviter]++;
 	    }
 	    else if ((buf.pid == partpid2) && (partpid2 != 0)) {
-	      evbuf2[eviter][evtscount2[eviter]].x = buf.x;
-	      evbuf2[eviter][evtscount2[eviter]].y = buf.y;
-	      evbuf2[eviter][evtscount2[eviter]].z = buf.z;
-	      evbuf2[eviter][evtscount2[eviter]].t = buf.t;
-	      evbuf2[eviter][evtscount2[eviter]].px = buf.px;
-	      evbuf2[eviter][evtscount2[eviter]].py = buf.py;
-	      evbuf2[eviter][evtscount2[eviter]].pz = buf.pz;
-	      evbuf2[eviter][evtscount2[eviter]].e = buf.e;
+              evbuf2[eviter][evtscount2[eviter]].SetTXYZ(buf.T(), buf.X(), buf.Y(), buf.Z());
+              evbuf2[eviter][evtscount2[eviter]].SetEPxPyPz(buf.E(), buf.Px(), buf.Py(), buf.Pz());
 	      evbuf2[eviter][evtscount2[eviter]].pid = buf.pid;
 	      evbuf2[eviter][evtscount2[eviter]].fatherpid = buf.fatherpid;
 	      evbuf2[eviter][evtscount2[eviter]].rootpid = buf.rootpid;
@@ -1787,10 +1775,10 @@ double GetQuantumCoulombStrong()
 void PairKinematics(ParticleCoor part1, ParticleCoor part2)
 {
   // Calculate pair variables
-  double tPx = part1.px+part2.px;
-  double tPy = part1.py+part2.py;
-  double tPz = part1.pz+part2.pz;
-  double tE  = part1.e +part2.e;
+  double tPx = part1.Px()+part2.Px();
+  double tPy = part1.Py()+part2.Py();
+  double tPz = part1.Pz()+part2.Pz();
+  double tE  = part1.E() +part2.E();
   double tPt = tPx*tPx + tPy*tPy;
   double tMt = tE*tE - tPz*tPz;//mCVK;
   double tM  = sqrt(tMt - tPt);
@@ -1812,43 +1800,45 @@ void PairKinematics(ParticleCoor part1, ParticleCoor part2)
   // Boost to LCMS
   double tBeta = tPz/tE;
   double tGamma = tE/tMt;	    
-  mKStarLong = tGamma * (part1.pz - tBeta * part1.e);
-  double tE1L = tGamma * (part1.e  - tBeta * part1.pz);
+  mKStarLong = tGamma * (part1.Pz() - tBeta * part1.E());
+  double tE1L = tGamma * (part1.E()  - tBeta * part1.Pz());
   
   // Transform to LCMS
-  particle1lcms.z = tGamma * (part1.z - tBeta * part1.t);
-  particle1lcms.t = tGamma * (part1.t - tBeta * part1.z);
+  particle1lcms.SetZ(tGamma * (part1.Z() - tBeta * part1.T()));
+  particle1lcms.SetT(tGamma * (part1.T() - tBeta * part1.Z()));
   
-  particle2lcms.z = tGamma * (part2.z - tBeta * part2.t);
-  particle2lcms.t = tGamma * (part2.t - tBeta * part2.z);
+  particle2lcms.SetZ(tGamma * (part2.Z() - tBeta * part2.T()));
+  particle2lcms.SetT(tGamma * (part2.T() - tBeta * part2.Z()));
   
-  particle1prf.pz = particle1lcms.pz = tGamma * (part1.pz - tBeta * part1.e);
-  particle1lcms.e  = tGamma * (part1.e  - tBeta * part1.pz);
+  particle1lcms.SetPz(tGamma * (part1.Pz() - tBeta * part1.E()));
+  particle1prf.SetPz(particle1lcms.Z());
+  particle1lcms.SetE(tGamma * (part1.E()  - tBeta * part1.Pz()));
   
-  particle2prf.pz = particle2lcms.pz = tGamma * (part2.pz - tBeta * part2.e);
-  particle2lcms.e  = tGamma * (part2.e  - tBeta * part2.pz);
+  particle2lcms.SetPz(tGamma * (part2.Pz() - tBeta * part2.E()));
+  particle2prf.SetPz(particle2lcms.Z());
+  particle2lcms.SetE(tGamma * (part2.E()  - tBeta * part2.Pz()));
   
   // Rotate in transverse plane
-  mKStarOut  = ( part1.px*tPx + part1.py*tPy)/tPt;
-  mKStarSide = (-part1.px*tPy + part1.py*tPx)/tPt;
+  mKStarOut  = ( part1.Px()*tPx + part1.Py()*tPy)/tPt;
+  mKStarSide = (-part1.Px()*tPy + part1.Py()*tPx)/tPt;
       
-  particle1lcms.px = mKStarOut;
-  particle1lcms.py = mKStarSide;
+  particle1lcms.SetPx(mKStarOut);
+  particle1lcms.SetPy(mKStarSide);
   
-  particle2lcms.px = (part2.px*tPx + part2.py*tPy)/tPt;
-  particle2lcms.py = (part2.py*tPx - part2.px*tPy)/tPt;;
+  particle2lcms.SetPx((part2.Px()*tPx + part2.Py()*tPy)/tPt);
+  particle2lcms.SetPy((part2.Py()*tPx - part2.Px()*tPy)/tPt);;
   
-  mKO = particle1lcms.px - particle2lcms.px;
-  mKS = particle1lcms.py - particle2lcms.py;
-  mKL = particle1lcms.pz - particle2lcms.pz;
-  mDE = particle1lcms.e  - particle2lcms.e;
+  mKO = particle1lcms.Px() - particle2lcms.Px();
+  mKS = particle1lcms.Py() - particle2lcms.Py();
+  mKL = particle1lcms.Pz() - particle2lcms.Pz();
+  mDE = particle1lcms.E()  - particle2lcms.E();
   
   // save the rotated coordinates in LCMS variables
-  particle1lcms.x = ( part1.x*tPx + part1.y*tPy)/tPt;
-  particle1lcms.y = (-part1.x*tPy + part1.y*tPx)/tPt;
+  particle1lcms.SetX(( part1.X()*tPx + part1.Y()*tPy)/tPt);
+  particle1lcms.SetY((-part1.X()*tPy + part1.Y()*tPx)/tPt);
 
-  particle2lcms.x = ( part2.x*tPx + part2.y*tPy)/tPt;
-  particle2lcms.y = (-part2.x*tPy + part2.y*tPx)/tPt;
+  particle2lcms.SetX(( part2.X()*tPx + part2.Y()*tPy)/tPt);
+  particle2lcms.SetY((-part2.X()*tPy + part2.Y()*tPx)/tPt);
   
   // Boost to pair cms
   mKStarOut = tMt/tM * (mKStarOut - tPt/tMt * tE1L);
@@ -1856,18 +1846,18 @@ void PairKinematics(ParticleCoor part1, ParticleCoor part2)
   Double_t tBetat = tPt/tMt;
   Double_t tGammat = 1.0/TMath::Sqrt(1.0-tBetat*tBetat);
   
-  particle1prf.x = tGammat*(particle1lcms.x - tBetat*particle1lcms.t);
-  particle1prf.t = tGammat*(particle1lcms.t - tBetat*particle1lcms.x);
+  particle1prf.SetX(tGammat*(particle1lcms.X() - tBetat*particle1lcms.T()));
+  particle1prf.SetT(tGammat*(particle1lcms.T() - tBetat*particle1lcms.X()));
   
-  particle2prf.x = tGammat*(particle2lcms.x - tBetat*particle2lcms.t);
-  particle2prf.t = tGammat*(particle2lcms.t - tBetat*particle2lcms.x);
+  particle2prf.SetX(tGammat*(particle2lcms.X() - tBetat*particle2lcms.T()));
+  particle2prf.SetT(tGammat*(particle2lcms.T() - tBetat*particle2lcms.X()));
   
-  mRO = (particle1lcms.x - particle2lcms.x)/0.197327;
-  mRS = (particle1lcms.y - particle2lcms.y)/0.197327;
-  mRL = (particle1lcms.z - particle2lcms.z)/0.197327;
-  mDT = (particle1lcms.t - particle2lcms.t)/0.197327;
+  mRO = (particle1lcms.X() - particle2lcms.X())/0.197327;
+  mRS = (particle1lcms.Y() - particle2lcms.Y())/0.197327;
+  mRL = (particle1lcms.Z() - particle2lcms.Z())/0.197327;
+  mDT = (particle1lcms.T() - particle2lcms.T())/0.197327;
 
-  mKO = particle1lcms.px - particle2lcms.px;
+  mKO = particle1lcms.Px() - particle2lcms.Px();
 
   mKStarSigned = mKStarOut>0.? 1. : -1.;
   mKStarSigned *= sqrt(mKStarSide*mKStarSide + mKStarOut*mKStarOut + mKStarLong*mKStarLong);
@@ -1877,10 +1867,10 @@ void PairKinematics(ParticleCoor part1, ParticleCoor part2)
   else mKC=mKStarLong/mKR;
   mKP=atan2(mKStarSide,mKStarOut);
 
-  double tDX = part1.x-part2.x;
-  double tDY = part1.y-part2.y;
-  mRLong = part1.z-part2.z;
-  mDTime = part1.t-part2.t;
+  double tDX = part1.X()-part2.X();
+  double tDY = part1.Y()-part2.Y();
+  mRLong = part1.Z()-part2.Z();
+  mDTime = part1.T()-part2.T();
 
   mRTrans = tDX>0.? ::sqrt(tDX*tDX+tDY*tDY) : -1.*::sqrt(tDX*tDX+tDY*tDY);
   mROut = (tDX*tPx + tDY*tPy)/tPt;

@@ -30,6 +30,7 @@
   #define _TH2_PARTICLE_COORDINATES_H_
 
 #include <Rtypes.h>
+#include <TVector3.h>
 
 #define _PARTICLES_TREE_  "particles"
 #define _PARTICLE_BRANCH_ "particle"
@@ -38,8 +39,8 @@
 class ParticleCoor {
   public:
     ParticleCoor()
-    : mass(0.0), t(0.0), x(0.0), y(0.0), z(0.0), e(0.0), px(0.0), py(0.0), pz(0.0),
-      decayed(0), pid(0), fatherpid(0), rootpid(0), eid(0), fathereid(0), eventid(0)
+    : mass(0.0), decayed(0), pid(0), fatherpid(0), rootpid(0), eid(0), fathereid(0), eventid(0),
+      t(0.0), x(0.0), y(0.0), z(0.0), e(0.0), px(0.0), py(0.0), pz(0.0)
     { }
     ~ParticleCoor()
     { }
@@ -56,12 +57,63 @@ class ParticleCoor {
     Float_t GetPhiS() const;
     Float_t GetRapidityS() const;
 
-    Float_t GetP() const;
+    Float_t GetP();
     Float_t GetPt() const;
     Float_t GetMt() const;
     Float_t GetPhiP() const;
     Float_t GetRapidityP() const;
-    Float_t GetEtaP() const;
+    Float_t GetEtaP();
+
+    Float_t Px() const { return px; }
+    Float_t Py() const { return py; }
+    Float_t Pz() const { return pz; }
+    Float_t E() const { return e; }
+
+    TVector3 VecP() const { return TVector3(px, py, pz); }
+
+    void SetPx(Float_t px) { 
+        this->px = px; 
+        ptot_valid = false;
+    }
+    void SetPy(Float_t py) { 
+        this->py = py; 
+        ptot_valid = false;
+    }
+    void SetPz(Float_t pz) { 
+        this->pz = pz; 
+        ptot_valid = false;
+    }
+    void SetE(Float_t e) { 
+        this->e = e; 
+        ptot_valid = false;
+    }
+
+    void SetEPxPyPz(Float_t e, Float_t px, Float_t py, Float_t pz) {
+        this->e = e;
+        this->px = px;
+        this->py = py;
+        this->pz = pz;
+        ptot_valid = false;
+    }
+
+    Float_t X() const { return x; }
+    Float_t Y() const { return y; }
+    Float_t Z() const { return z; }
+    Float_t T() const { return t; }
+
+    TVector3 VecX() const { return TVector3(x, y, z); }
+
+    void SetX(Float_t x) { this->x = x; }
+    void SetY(Float_t y) { this->y = y; }
+    void SetZ(Float_t z) { this->z = z; }
+    void SetT(Float_t t) { this->t = t; }
+
+    void SetTXYZ(Float_t t, Float_t x, Float_t y, Float_t z) {
+        this->t = t;
+        this->x = x;
+        this->y = y;
+        this->z = z;
+    }
 
     Int_t   GetDecayed() const;
     void    SetDecayed();
@@ -71,8 +123,6 @@ class ParticleCoor {
     void    TransformToPRF(Float_t aBetaT);
 
     Float_t mass;
-    Float_t t, x,  y,  z;
-    Float_t e, px, py, pz;
     Int_t   decayed;
     Int_t   pid;
     Int_t   fatherpid;
@@ -80,6 +130,12 @@ class ParticleCoor {
     Int_t   eid;
     Int_t   fathereid;
     UInt_t  eventid;
+
+protected:
+    Float_t ptot;
+    Bool_t ptot_valid;
+    Float_t t, x,  y,  z;
+    Float_t e, px, py, pz;
 };
 
 #endif

@@ -42,10 +42,12 @@ void RootEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
   if(mFile) {
     for(tParticle_i = tEvent->GetParticleList()->begin(); tParticle_i != tEvent->GetParticleList()->end(); tParticle_i++) {
       tPartCoor = (*tParticle_i);
-      tPartCoor.t *= kHbarC;
-      tPartCoor.x *= kHbarC;
-      tPartCoor.y *= kHbarC;
-      tPartCoor.z *= kHbarC;
+      tPartCoor.SetTXYZ(
+              tPartCoor.T() * kHbarC,
+              tPartCoor.X() * kHbarC,
+              tPartCoor.Y() * kHbarC,
+              tPartCoor.Z() * kHbarC
+              );
       tPartCoor.eventid = tEvent->GetEventID();
       mParticleTree->Fill();
     }

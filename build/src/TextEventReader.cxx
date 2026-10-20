@@ -47,14 +47,15 @@ bool TextEventReader::NextEvent() {
 }
 
 void TextEventReader::GetParticle(int aIter) {
-    static long long int i = 0;
     std::string tLine;
     std::getline(mInput, tLine);
+//    static long long int i = 0;
 //    std::cerr << "tLine:" << tLine << "< " << i++ << std::endl;
 /*
 <EVENT_ENTRY>  EID     fatherEID       PID     fatherPID       rootPID decayed mass    E       p_x     p_y     p_z     t       x       y       z       </EVENT_ENTRY>
      0  -1      80000   80000   80000   0       1.875613e+00    2.109259e+00    -1.497327e-01   -4.404987e-01   -8.454174e-01   1.000000e+01    2.664469e+00    -3.389931e+00   -2.901068e+00
 */
+    Float_t tempE, tempPx, tempPy, tempPz, tempT, tempX, tempY, tempZ;
     std::stringstream tLineStream(tLine);
     tLineStream
         >> mParticleCoor.eid
@@ -64,18 +65,18 @@ void TextEventReader::GetParticle(int aIter) {
         >> mParticleCoor.rootpid
         >> mParticleCoor.decayed
         >> mParticleCoor.mass
-        >> mParticleCoor.e
-        >> mParticleCoor.px
-        >> mParticleCoor.py
-        >> mParticleCoor.pz
-        >> mParticleCoor.t
-        >> mParticleCoor.x
-        >> mParticleCoor.y
-        >> mParticleCoor.z;
-        mParticleCoor.t /= kHbarC;
-        mParticleCoor.x /= kHbarC;
-        mParticleCoor.y /= kHbarC;
-        mParticleCoor.z /= kHbarC;
+        >> tempE
+        >> tempPx
+        >> tempPy
+        >> tempPz
+        >> tempT
+        >> tempX
+        >> tempY
+        >> tempZ;
+
+        mParticleCoor.SetEPxPyPz(tempE, tempPx, tempPy, tempPz);
+        mParticleCoor.SetTXYZ(tempT / kHbarC, tempX / kHbarC, tempY / kHbarC, tempZ / kHbarC);
+
     mParticleCoor.eventid = mStructEvent.eventID;    
 
 }

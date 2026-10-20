@@ -66,11 +66,11 @@ void HGeantEventSaver::Save(Event *tEvent, Model *, int eventCounter)
 
         for(tParticle_i = tEvent->GetParticleList()->begin(); tParticle_i != tEvent->GetParticleList()->end(); tParticle_i++)
         {
-            tGeantPID = GetGeantID((*tParticle_i).pid);
-            tE = (*tParticle_i).e;
-            tPx = (*tParticle_i).px;
-            tPy = (*tParticle_i).py;
-            tPz = (*tParticle_i).pz;
+            tGeantPID = GetGeantID(tParticle_i->pid);
+            tE = tParticle_i->E();
+            tPx = tParticle_i->Px();
+            tPy = tParticle_i->Py();
+            tPz = tParticle_i->Pz();
             
             if (tGeantPID == 0 || std::isnan(tE) || std::isnan(tPx) || std::isnan(tPy) || std::isnan(tPz))
                 continue;
