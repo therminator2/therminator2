@@ -20,6 +20,7 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
     char	  tTempFName[kFileNameMaxChar];
     static ParticleCoor	tPartCoor;
     list<Particle>::iterator	tParticle_i;
+    mUnsortedParticles.clear();
 
     UEvent *ev = new UEvent;
     ev->Clear();
@@ -53,10 +54,12 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
             decay_chains = decay_chains->AddParticle(&(*tParticle_i));
 
             tPartCoor = (*tParticle_i);
-            tPartCoor.t *= kHbarC;
-            tPartCoor.x *= kHbarC;
-            tPartCoor.y *= kHbarC;
-            tPartCoor.z *= kHbarC;
+            tPartCoor.SetTXYZ(
+                    tPartCoor.T() * kHbarC,
+                    tPartCoor.X() * kHbarC,
+                    tPartCoor.Y() * kHbarC,
+                    tPartCoor.Z() * kHbarC
+                    );
             tPartCoor.eventid = tEvent->GetEventID();
         }
         std::vector<std::shared_ptr<DecayNode> >::const_iterator it = decay_chains->children.begin();
@@ -64,7 +67,16 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
             AddDecayToEvent(ev, *it, -1); // Primary particles have decay index = -1
         }
 
+        std::sort(mUnsortedParticles.begin(), mUnsortedParticles.end(), [](const UParticle &a, const UParticle &b) {
+                return a.GetIndex() < b.GetIndex();
+                });
+        for (auto aParticle : mUnsortedParticles) {
+            ev->AddParticle(aParticle);
+        }
+
         mEventTree->Fill();
+
+
         PRINT_DEBUG_2("<EventGenerator::SaveAsUnigen>\tEvent "<<tEventCounter<<" saved.");
     }
     // close & rename file   
@@ -87,10 +99,17 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
 }
 
 void UnigenEventSaver::AddDecayToEvent(UEvent *ev, std::shared_ptr<DecayNode> node, int parent_decay) {
+    recur++;
     int status = 1;
     int decay = -1;
     int mate = -1;
     int child[2];
+/*
+    for (int r = 0; r < recur; ++r) {
+        cout << "-";
+    }
+    cout << " " << node->particle->eid << " " << node->particle->pid << endl;;
+*/
     if (node->children.size() > 0) {
          child[0] = node->children.front()->particle->eid;
          child[1] = node->children.back()->particle->eid;
@@ -99,12 +118,16 @@ void UnigenEventSaver::AddDecayToEvent(UEvent *ev, std::shared_ptr<DecayNode> no
     } else {
         child[0] = child[1] = -1;
     }
-    ev->AddParticle(node->particle->eid, node->particle->pid, status, node->particle->fathereid,
+    mUnsortedParticles.push_back(UParticle(node->particle->eid, node->particle->pid, status, node->particle->fathereid,
             parent_decay,mate-1, decay,child,
-            node->particle->px, node->particle->py, node->particle->pz, node->particle->e, node->particle->x, node->particle->y, node->particle->z, node->particle->t, 1.);
+            node->particle->Px(), node->particle->Py(), node->particle->Pz(), node->particle->E(), node->particle->X(), node->particle->Y(), node->particle->Z(), node->particle->T(), 1.));
+//    ev->AddParticle(node->particle->eid, node->particle->pid, status, node->particle->fathereid,
+//            parent_decay,mate-1, decay,child,
+//            node->particle->px, node->particle->py, node->particle->pz, node->particle->e, node->particle->x, node->particle->y, node->particle->z, node->particle->T(), 1.);
     std::vector<std::shared_ptr<DecayNode> >::const_iterator it = node->children.begin();
     for ( ; it != node->children.end(); ++it) {
         AddDecayToEvent(ev, *it, decay);
     }
+    recur--;
 }
 

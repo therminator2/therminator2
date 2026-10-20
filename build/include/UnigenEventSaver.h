@@ -9,12 +9,14 @@
 #include <memory>
 
 #include "UEvent.h"
+#include "UParticle.h"
 
 class UnigenEventSaver : public AbstractEventSaver {
     public:
         UnigenEventSaver();
         virtual void Save(Event *, Model *, int);
     private:
+        Int_t recur = 0;
         struct DecayNode {
            // DecayNode() : particle(nullptr) {}
             DecayNode(const Particle *p) : particle(p) {}
@@ -84,6 +86,7 @@ class UnigenEventSaver : public AbstractEventSaver {
         TFile*	        mFile;
         TTree*      	mEventTree;
         Int_t           mDecayIndex;
+        std::vector<UParticle> mUnsortedParticles;
 
 };
 
