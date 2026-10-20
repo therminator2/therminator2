@@ -80,7 +80,7 @@ void AbstractEventReader::ReadEvents()
   SetupInput(tEventDir + mEventSubDir, 1);
 
   int tAllParticleIter = 0;
-  mAfterburners->Finalize();
+  mAfterburners->Init();
   while (NextEvent()) {
 
     mEventCounter = mEventIter+1;

@@ -17,8 +17,6 @@ void ListAfterburner::Apply(Event *tEvent)
     for (auto afterburner : afterburners) {
         afterburner->Apply(tEvent);
     }
-    vector<AbstractAfterburner*>::iterator it = afterburners.begin();
-    for ( ; it != afterburners.end(); ++it) { (*it)->Apply(tEvent); }
 }
 void ListAfterburner::Finalize()
 {
