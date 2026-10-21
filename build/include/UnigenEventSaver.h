@@ -1,7 +1,6 @@
 #ifndef UNIGEN_EVENT_SAVER
 #define UNIGEN_EVENT_SAVER
 
-#include "utils/Option.h"
 #include "AbstractEventSaver.h"
 #include "TFile.h"
 #include "TTree.h"
@@ -14,6 +13,7 @@
 class UnigenEventSaver : public AbstractEventSaver {
     public:
         UnigenEventSaver();
+        virtual ~UnigenEventSaver();
         virtual void Save(Event *, Model *, int);
     private:
         Int_t recur = 0;
@@ -24,19 +24,17 @@ class UnigenEventSaver : public AbstractEventSaver {
             const Particle *particle;
             const std::vector<std::shared_ptr<DecayNode> > children;
 
-            const Utils::Option<DecayNode> *FindByEid(const Int_t &eid) const {
+            bool ContainsEid(const Int_t &eid) const {
                 if (particle->eid == eid) {
-                    return new Utils::Some<DecayNode>(*this);
+                    return true;
                 }
                 std::vector<std::shared_ptr<DecayNode> >::const_iterator it = children.begin();
                 for ( ; it != children.end(); ++it) {
-                    const Utils::Option<DecayNode> *descendant = (*it)->FindByEid(eid);
-                        if (*descendant != Utils::None<DecayNode>()) {
-                            return descendant;
-                        }
-
+                    if ((*it)->ContainsEid(eid)) {
+                        return true;
+                    }
                 }
-                return &Utils::None<DecayNode>();
+                return false;
             }
             bool operator==(const DecayNode &other) const {
                 return particle->eid == other.particle->eid;
@@ -60,7 +58,7 @@ class UnigenEventSaver : public AbstractEventSaver {
                 std::vector<std::shared_ptr<DecayNode> >::const_iterator it = children.begin();
                 bool added = false;
                 for ( ; it != children.end(); ++it) {
-                    if ((*it)->FindByEid(p->fathereid) == &Utils::None<DecayNode>()) {
+                    if (!(*it)->ContainsEid(p->fathereid)) {
                         if ((*it)->particle->fathereid == p->eid) {
                             std::vector<std::shared_ptr<DecayNode> > sub_children;
                             sub_children.push_back(*it);
@@ -85,6 +83,7 @@ class UnigenEventSaver : public AbstractEventSaver {
         void AddDecayToEvent(UEvent *ev, std::shared_ptr<DecayNode> node, int parent_decay);
         TFile*	        mFile;
         TTree*      	mEventTree;
+        UEvent*         mUEvent;        // reused for every event, the tree branch points to it
         Int_t           mDecayIndex;
         std::vector<UParticle> mUnsortedParticles;
 

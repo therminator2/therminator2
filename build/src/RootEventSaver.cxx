@@ -61,6 +61,7 @@ void RootEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
   if( !(tEventCounter % kEventsPerFile) || (tEventCounter == mNumberOfEvents) ) {
     mFile->Write();
     mFile->Close();
+    delete mFile;
     mFile = 0;
     // rename temporary file to ROOT
     sprintf(tEventFName,"%sevent%03i.root",sEventDIR.Data(),mFileCounter);

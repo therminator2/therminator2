@@ -9,7 +9,11 @@ using namespace std;
 
 extern TString	sEventDIR;
 
-UnigenEventSaver::UnigenEventSaver() : mFile(0), mEventTree(0) {
+UnigenEventSaver::UnigenEventSaver() : mFile(0), mEventTree(0), mUEvent(new UEvent) {
+}
+
+UnigenEventSaver::~UnigenEventSaver() {
+    delete mUEvent;
 }
 
 void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
@@ -22,7 +26,7 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
     list<Particle>::iterator	tParticle_i;
     mUnsortedParticles.clear();
 
-    UEvent *ev = new UEvent;
+    UEvent *ev = mUEvent;
     ev->Clear();
     ev->SetEventNr(tEventCounter);
     ev->SetB(0);    // no impact parameter in Therminator
@@ -43,7 +47,7 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
         SaveParameters(tModel);
 
         // (void*) cast to avoid some compilation errors on older ROOT versions
-        mEventTree    ->Branch(_EVENTS_BRANCH_, "UEvent", &ev);   
+        mEventTree    ->Branch(_EVENTS_BRANCH_, "UEvent", &mUEvent);   
         PRINT_DEBUG_2("<UnigenEventSaver::Save>\tCreated file "<<tTempFName);
     }
     // add all Particle entries to file and Event information
@@ -83,6 +87,7 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
     if( !(tEventCounter % kEventsPerFile) || (tEventCounter == mNumberOfEvents) ) {
         mFile->Write();
         mFile->Close();
+        delete mFile;
         mFile = 0;
         // rename temporary file to ROOT
         sprintf(tEventFName,"%sunigen%03i.root",sEventDIR.Data(),mFileCounter);

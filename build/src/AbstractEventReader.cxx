@@ -80,11 +80,14 @@ void AbstractEventReader::ReadEvents()
   SetupInput(tEventDir + mEventSubDir, 1);
 
   int tAllParticleIter = 0;
+  // Spectator type of the current event, deleted after the particles referring to it are cleared
+  ParticleType *tSpectatorType = nullptr;
   mAfterburners->Init();
   while (NextEvent()) {
 
     mEventCounter = mEventIter+1;
     mEvent->Reset(mEventIter);
+    delete tSpectatorType;
 
     for (unsigned long tParticleIter = 0; tParticleIter < mStructEvent.entries; ++tParticleIter, ++tAllParticleIter) {
        // std::cerr << "tParticleIter " << tParticleIter << " of " << mStructEvent.entries << ", ";
@@ -100,7 +103,7 @@ void AbstractEventReader::ReadEvents()
     }
 
     Double_t dummy;
-    ParticleType *tSpectatorType = CoulombAfterburner::SpectatorType(mEvent->GetParticleList(), dummy);
+    tSpectatorType = CoulombAfterburner::SpectatorType(mEvent->GetParticleList(), dummy);
     for (auto &tParticle : *mEvent->GetParticleList()) {
         if (tParticle.GetParticleType() == nullptr) {
             tParticle.SetParticleType(tSpectatorType);
@@ -115,6 +118,8 @@ void AbstractEventReader::ReadEvents()
     mEventSaver->Save(mEvent,NULL,mEventCounter);
   }
   mAfterburners->Finalize();
+  mEvent->Reset();
+  delete tSpectatorType;
 }
 
 void AbstractEventReader::ReadParameters()
