@@ -15,6 +15,9 @@ static const bool EXTRAPOLATE_SPECTATORS = true;
 static const bool EXTRAPOLATE_FIREBALL = true;
 
 static const bool FIND_PROBLEM = true;
+// With FIND_PROBLEM, pair contributions with a Coulomb term larger than this (GeV/fm) are stored for every step,
+// so that a particle getting faster than light can be traced back to the interactions that caused it
+static const double LARGE_TERM = 1.0;
 /*
 static const int DEBUG_STEP = 3;
 //static const int DEBUG_EID = 269;
@@ -164,13 +167,16 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
             //    cout << "COUL TOTAL " << tTermCoulTotal.Mag() << endl; 
         }
 
-        m_termsCoul->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermCoul;
-        m_termsVelo->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermVelo;
-        m_termsAcce->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermAcce;
-        m_termsMagn->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermMagn;
-        m_Rs->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = vecR;
-        m_us->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = u;
-        m_vs->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = v;
+        // Storing all pairs at all steps would take many GB, keep only the large contributions
+        if (FIND_PROBLEM && tTermCoul.Mag() > LARGE_TERM) {
+            m_termsCoul->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermCoul;
+            m_termsVelo->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermVelo;
+            m_termsAcce->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermAcce;
+            m_termsMagn->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermMagn;
+            m_Rs->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = vecR;
+            m_us->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = u;
+            m_vs->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = v;
+        }
 
         if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP) {
             cout << " -- other pid = " << tPartOtherIter->pid << " other eid = " << tPartOtherIter->eid << endl;;
@@ -1033,7 +1039,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
                 cout << "In step " << iStep << " v = " << tVnew.X() << " " << tVnew.Y() << " " << tVnew.Z() << endl;
                 cout << "In step " << iStep << " |p| = " << tPartMom.Mag() << ", E = " << tE << endl;
                 for (auto mapping : m_termsCoul->back()) {
-                    if (mapping.first.first == tPartIter->eid && mapping.second.Mag() > 1.0) {
+                    if (mapping.first.first == tPartIter->eid && mapping.second.Mag() > LARGE_TERM) {
                         cout << "possible reason: " << mapping.second.X() << " " << mapping.second.Y() << " " << mapping.second.Z() << endl;
                         cout << "other eid: " << mapping.first.second << endl;
                     } 
@@ -1218,7 +1224,7 @@ void CoulombAfterburner::PrintProblem(Int_t eid, Int_t step, TString indent, Int
     cout << indent.Data() << "|p| = " << tPartFourMom.Vect().Mag() << ", E = " << tPartFourMom.E() << endl;
     for (int is = 0; is < m_termsCoul->size(); ++is) {
         for (auto mapping : m_termsCoul->at(is)) {
-            if (mapping.first.first == eid && mapping.second.Mag() > 1.0) {
+            if (mapping.first.first == eid && mapping.second.Mag() > LARGE_TERM) {
                 cout << indent.Data() << "possible reason: " << mapping.second.X() << " " << mapping.second.Y() << " " << mapping.second.Z() << endl;
                 cout << indent.Data() << "step number " << is << ", other eid: " << mapping.first.second << endl;
                 cout << indent.Data() << "R: " << m_Rs->at(is)[std::make_pair(mapping.first.first, mapping.first.second)].Mag() << endl;
