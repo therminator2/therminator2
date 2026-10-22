@@ -1,7 +1,8 @@
 #!/bin/bash
 # Builds and runs the full-evolution checks of the Coulomb afterburner (coulomb_evolution_checks.cxx).
 # Needs ROOT: root-config in PATH (e.g. an activated conda environment), or ROOTSYS set.
-# Build products go to $WORK (default: a new temporary directory).
+# Build products go to $WORK (default: a new temporary directory), graphs of the trajectories to $OUT
+# (default: coulomb_checks.root in the current directory).
 #
 # The afterburner is compiled from a copy of build/src/CoulombAfterburner.cxx with USE_SPECTATORS = false,
 # so that the test events contain only the particles defined in the checks. Nothing in the source tree is changed.
@@ -15,6 +16,9 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 TOP=$(cd "$HERE/../.." && pwd)
 WORK=${WORK:-$(mktemp -d)}
 mkdir -p "$WORK"
+# Graphs of the trajectories, code vs exact (default: in the directory the script is called from)
+OUT=${OUT:-$PWD/coulomb_checks.root}
+case "$OUT" in /*) ;; *) OUT="$PWD/$OUT" ;; esac
 
 if ! command -v root-config >/dev/null; then
     if [ -n "${ROOTSYS:-}" ]; then export PATH="$ROOTSYS/bin:$PATH"; else echo "root-config not found, set ROOTSYS"; exit 1; fi
@@ -41,6 +45,6 @@ g++ -o "$WORK/coulomb_evolution_checks" "${OBJS[@]}" $(root-config --libs)
 
 cd "$WORK"
 # The afterburner prints progress messages; show only the results of the checks
-./coulomb_evolution_checks | grep -E '^(PASS|FAIL|INFO|ALL PASSED|FAILED)'
+./coulomb_evolution_checks "$OUT" | grep -E '^(PASS|FAIL|INFO|ALL PASSED|FAILED)'
 exit "${PIPESTATUS[0]}"
 )
