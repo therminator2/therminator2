@@ -476,7 +476,7 @@ void CoulombAfterburner::Finalize() {
     m_h2TotalV->Write();
     m_h2TotalRadPower->Write();
     m_h2TotalPdotA->Write();
-    // m_fileHistOut->Close();
+    m_fileHistOut->Close();
     cout << "After writing hists to file" << endl;
 
     delete m_termsCoul;
