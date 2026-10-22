@@ -369,7 +369,7 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
 
 
 CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize, Double_t aR, AbstractEventSaver *aEventSaver, ParticleDB *tPartDB) 
-    : m_nSteps(aSteps), m_StepSize(aStepSize / kHbarC), mR(aR), mEventSaver(aEventSaver), m_hNpartImpB(nullptr)
+    : m_nSteps(aSteps), m_StepSize(aStepSize / kHbarC), mR(aR), mEventSaver(aEventSaver), m_hNpartImpB(nullptr), mKeepTrajectories(false)
 {
     m_mcg=new TGlauberMC("Au","Au",23.8,0);
     ParticleType *tProtonType = tPartDB->FindByPID(2212);
@@ -1180,6 +1180,10 @@ void CoulombAfterburner::Apply(Event *tEvent)
     }
     delete[] tBestIs;
 
+    if (mKeepTrajectories) {
+        mKeptCoordinates.assign(m_coordinates, m_coordinates + N);
+        mKeptFourMomenta.assign(m_fourmomenta, m_fourmomenta + N);
+    }
     delete[] m_coordinates;
     delete[] m_fourmomenta;
     delete[] m_velocities;

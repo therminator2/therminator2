@@ -19,6 +19,11 @@ class CoulombAfterburner : public AbstractAfterburner {
     virtual void Apply(Event *);
     virtual void Finalize();
     static ParticleType *SpectatorType(std::list<Particle> *, Double_t &tSpectatorX);
+    // For checks: keep the recorded trajectory (t, x, y, z in GeV^-1) and four-momenta (GeV) of every particle
+    // at all time steps of the last event, indexed by eid; off by default
+    void SetKeepTrajectories(bool aKeep) { mKeepTrajectories = aKeep; }
+    const std::vector<TLorentzVector> &GetTrajectory(Int_t aEid) const { return mKeptCoordinates.at(aEid); }
+    const std::vector<TLorentzVector> &GetFourMomenta(Int_t aEid) const { return mKeptFourMomenta.at(aEid); }
 
   protected:
     void ReadParameters();
@@ -135,6 +140,10 @@ class CoulombAfterburner : public AbstractAfterburner {
   std::vector<TVector3> *m_accelerations;
 
    void PrintProblem(Int_t eid, Int_t step, TString indent, Int_t depth = 0);
+
+  bool mKeepTrajectories;
+  std::vector<std::vector<TLorentzVector> > mKeptCoordinates;
+  std::vector<std::vector<TLorentzVector> > mKeptFourMomenta;
 
 };
 
