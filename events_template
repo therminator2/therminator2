@@ -127,3 +127,37 @@ LogFile = therminator.log
 CoulombTimeSteps = 1000
 # CoulombTimeSteps = 0
 CoulombStepSize = 0.1
+
+# Add the spectator nucleons of a Glauber MC event to the Coulomb
+# propagation (1) or not (0)
+# default:	1
+CoulombUseSpectators = 1
+
+# Extrapolate the trajectories of spectators (CoulombExtrapolateSpectators)
+# and of primary fireball particles (CoulombExtrapolateFireball) back in
+# time before their creation, when their field is needed there (1), or
+# ignore them there (0)
+# default:	1
+CoulombExtrapolateSpectators = 1
+# default:	1
+CoulombExtrapolateFireball = 1
+
+# Debugging of the Coulomb afterburner: printouts, and storing of large
+# pair contributions for every step to trace back particles getting
+# faster than light (1), or not (0)
+# default:	1
+CoulombFindProblem = 1
+
+# With CoulombFindProblem, pair contributions with a Coulomb term larger
+# than this (GeV/fm) are stored
+# default:	1.0
+CoulombLargeTerm = 1.0
+
+# Time step, eid and eid of the other particle for detailed debugging
+# printouts with CoulombFindProblem (-2: none)
+# default:	-2
+CoulombDebugStep = -2
+# default:	-2
+CoulombDebugEid = -2
+# default:	-2
+CoulombDebugOtherEid = -2

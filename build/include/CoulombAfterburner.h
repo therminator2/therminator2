@@ -3,6 +3,7 @@
 
 #include "AbstractAfterburner.h"
 #include "AbstractEventSaver.h"
+#include "Configurator.h"
 #include "ParticleDB.h"
 #include "TGlauberMC.h"
 #include "TLorentzVector.h"
@@ -24,9 +25,10 @@ class CoulombAfterburner : public AbstractAfterburner {
     void SetKeepTrajectories(bool aKeep) { mKeepTrajectories = aKeep; }
     const std::vector<TLorentzVector> &GetTrajectory(Int_t aEid) const { return mKeptCoordinates.at(aEid); }
     const std::vector<TLorentzVector> &GetFourMomenta(Int_t aEid) const { return mKeptFourMomenta.at(aEid); }
+    // Optional settings from the main configuration (events.ini); keys that are not present keep the defaults
+    void ReadParameters(Configurator *aMainConfig);
 
   protected:
-    void ReadParameters();
     unsigned int m_nSteps;
     Double_t m_StepSize;
 
@@ -147,6 +149,17 @@ class CoulombAfterburner : public AbstractAfterburner {
   bool mKeepTrajectories;
   std::vector<std::vector<TLorentzVector> > mKeptCoordinates;
   std::vector<std::vector<TLorentzVector> > mKeptFourMomenta;
+
+  // Settings, see ReadParameters()
+  bool m_UseSpectators;         // add the spectator nucleons of a Glauber MC event
+  bool m_ExtrapolateSpectators; // extrapolate spectators back in time before their creation when needed
+  bool m_ExtrapolateFireball;   // extrapolate primary fireball particles back in time before freeze-out when needed
+  bool m_FindProblem;           // debugging printouts, and storing of large pair contributions for every step
+  double m_LargeTerm;           // with m_FindProblem, pair contributions with a Coulomb term larger than this (GeV/fm)
+                                // are stored, so that a particle getting faster than light can be traced back
+  int m_DebugStep;              // time step, eid and eid of the other particle for detailed debugging printouts
+  int m_DebugEid;
+  int m_DebugOtherEid;
 
 };
 

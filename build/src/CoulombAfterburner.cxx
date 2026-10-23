@@ -10,24 +10,6 @@
 using namespace std;
 extern TString sModelINI;
 
-static const bool USE_SPECTATORS = true;
-static const bool EXTRAPOLATE_SPECTATORS = true;
-static const bool EXTRAPOLATE_FIREBALL = true;
-
-static const bool FIND_PROBLEM = true;
-// With FIND_PROBLEM, pair contributions with a Coulomb term larger than this (GeV/fm) are stored for every step,
-// so that a particle getting faster than light can be traced back to the interactions that caused it
-static const double LARGE_TERM = 1.0;
-/*
-static const int DEBUG_STEP = 3;
-//static const int DEBUG_EID = 269;
-static const int DEBUG_EID = 350;
-static const int DEBUG_OTHER_EID = 320;
-*/
-static const int DEBUG_STEP = -2;
-static const int DEBUG_EID = -2;
-static const int DEBUG_OTHER_EID = -2;
-
 double CoulombAfterburner::Interval(TVector3 tX1, double tT1, TVector3 tX2, double tT2, bool debug) {
     if (debug) {
         cout << tT1 << " " << tT2 << " " << TMath::Power(tT1 - tT2, 2) << " " << (tX1 - tX2).Mag2() << " ";
@@ -100,17 +82,17 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
         TVector3 tPartOtherPos, tPartOtherVel, tPartOtherAcc;
         if (!RetardedSource(tPartIter, tPartOtherIter, tPartPos, tCurrentTime, tBestIs, iStep,
                     tPartOtherPos, tPartOtherVel, tPartOtherAcc,
-                    FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID))
+                    m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep && tPartOtherIter->eid == m_DebugOtherEid))
         {
             continue;
         }
-        if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID) {
+        if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep && tPartOtherIter->eid == m_DebugOtherEid) {
             cout << "v_x here = " << tPartOtherVel.X() << endl;
         }
 
         TVector3 tPosDiff = tPartPos - tPartOtherPos;
         TVector3 tDirection = tPosDiff.Unit();
-        if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP && tPartOtherIter->eid == DEBUG_OTHER_EID) {
+        if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep && tPartOtherIter->eid == m_DebugOtherEid) {
             cout << "v_x here = " << tPartOtherVel.X() << endl;
         }
 
@@ -125,7 +107,7 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
         Double_t Rdota = vecR.Dot(a); // ()
         Double_t v2 = v.Mag2();       // ()
 
-        if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP/* && tPartOtherIter->eid == DEBUG_OTHER_EID*/)
+        if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep/* && tPartOtherIter->eid == m_DebugOtherEid*/)
        // if (!TMath::Finite(Rdotu))
         {
             cout << endl << "Size of other coords " << m_coordinates[tPartOtherIter->eid].size()
@@ -168,7 +150,7 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
         }
 
         // Storing all pairs at all steps would take many GB, keep only the large contributions
-        if (FIND_PROBLEM && tTermCoul.Mag() > LARGE_TERM) {
+        if (m_FindProblem && tTermCoul.Mag() > m_LargeTerm) {
             m_termsCoul->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermCoul;
             m_termsVelo->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermVelo;
             m_termsAcce->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermAcce;
@@ -178,7 +160,7 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
             m_vs->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = v;
         }
 
-        if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP) {
+        if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep) {
             cout << " -- other pid = " << tPartOtherIter->pid << " other eid = " << tPartOtherIter->eid << endl;;
             cout << " -- R = " << R << endl;
             cout << " --- TermCoul = (" << tTermCoul.X() << "," << tTermCoul.Y() << "," << tTermCoul.Z() << ")" << endl;
@@ -191,7 +173,7 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
         tTermVeloTotal += tTermVelo;
         tTermAcceTotal += tTermAcce;
         tTermMagnTotal += tTermMagn;
-        if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID && iStep == DEBUG_STEP) {
+        if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep) {
             cout << " --- TermCoulTotal = (" << tTermCoulTotal.X() << "," << tTermCoulTotal.Y() << "," << tTermCoulTotal.Z() << ")" << endl;
             cout << " --- TermVeloTotal = (" << tTermVeloTotal.X() << "," << tTermVeloTotal.Y() << "," << tTermVeloTotal.Z() << ")" << endl;
             cout << " --- TermAcceTotal = (" << tTermAcceTotal.X() << "," << tTermAcceTotal.Y() << "," << tTermAcceTotal.Z() << ")" << endl;
@@ -344,9 +326,9 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
         // Primary particle and the crossing is close to or before freeze-out:
         // extrapolate the trajectory backwards from freeze-out with the initial velocity
         bool tOtherIsSpectator = IsSpectator(tPartOtherIter);
-        if (tOtherIsSpectator && !EXTRAPOLATE_SPECTATORS) {
+        if (tOtherIsSpectator && !m_ExtrapolateSpectators) {
             return false;
-        } else if (!tOtherIsSpectator && !EXTRAPOLATE_FIREBALL) {
+        } else if (!tOtherIsSpectator && !m_ExtrapolateFireball) {
             return false;
         }
         double tZeroTime = tTrajectory[0].T();
@@ -392,7 +374,9 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
 
 
 CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize, Double_t aR, AbstractEventSaver *aEventSaver, ParticleDB *tPartDB) 
-    : m_nSteps(aSteps), m_StepSize(aStepSize / kHbarC), mR(aR), mEventSaver(aEventSaver), m_hNpartImpB(nullptr), mKeepTrajectories(false)
+    : m_nSteps(aSteps), m_StepSize(aStepSize / kHbarC), mR(aR), mEventSaver(aEventSaver), m_hNpartImpB(nullptr), mKeepTrajectories(false),
+      m_UseSpectators(true), m_ExtrapolateSpectators(true), m_ExtrapolateFireball(true),
+      m_FindProblem(true), m_LargeTerm(1.0), m_DebugStep(-2), m_DebugEid(-2), m_DebugOtherEid(-2)
 {
     m_mcg=new TGlauberMC("Au","Au",23.8,0);
     ParticleType *tProtonType = tPartDB->FindByPID(2212);
@@ -414,6 +398,33 @@ CoulombAfterburner::~CoulombAfterburner()
     delete mProtonSpectatorBType;
     delete mNeutronSpectatorBType;
 
+}
+void CoulombAfterburner::ReadParameters(Configurator *aMainConfig)
+{
+    if (aMainConfig->HasParameter("CoulombUseSpectators")) {
+        m_UseSpectators = aMainConfig->GetParameter("CoulombUseSpectators").Atoi() != 0;
+    }
+    if (aMainConfig->HasParameter("CoulombExtrapolateSpectators")) {
+        m_ExtrapolateSpectators = aMainConfig->GetParameter("CoulombExtrapolateSpectators").Atoi() != 0;
+    }
+    if (aMainConfig->HasParameter("CoulombExtrapolateFireball")) {
+        m_ExtrapolateFireball = aMainConfig->GetParameter("CoulombExtrapolateFireball").Atoi() != 0;
+    }
+    if (aMainConfig->HasParameter("CoulombFindProblem")) {
+        m_FindProblem = aMainConfig->GetParameter("CoulombFindProblem").Atoi() != 0;
+    }
+    if (aMainConfig->HasParameter("CoulombLargeTerm")) {
+        m_LargeTerm = aMainConfig->GetParameter("CoulombLargeTerm").Atof();
+    }
+    if (aMainConfig->HasParameter("CoulombDebugStep")) {
+        m_DebugStep = aMainConfig->GetParameter("CoulombDebugStep").Atoi();
+    }
+    if (aMainConfig->HasParameter("CoulombDebugEid")) {
+        m_DebugEid = aMainConfig->GetParameter("CoulombDebugEid").Atoi();
+    }
+    if (aMainConfig->HasParameter("CoulombDebugOtherEid")) {
+        m_DebugOtherEid = aMainConfig->GetParameter("CoulombDebugOtherEid").Atoi();
+    }
 }
 void CoulombAfterburner::Init() {
    // cout << "BEGIN INIT " << endl;
@@ -776,7 +787,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
         }
     }
 
-    if (USE_SPECTATORS) {
+    if (m_UseSpectators) {
         AddSpectators(tParticles, tEarliestTime);
     }
     // All arrays below are indexed by eid
@@ -833,7 +844,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
         m_LastStepExists[tPartIter->eid] = (unsigned int)tLastStep;
     }
     cout << "End setting initial coordinates" << endl;
-    // if (USE_SPECTATORS) {
+    // if (m_UseSpectators) {
     //     Int_t tNspec = AddSpectators(tParticles, tEarliestTime);
     // }
     int **tBestIs = new int *[N];
@@ -967,7 +978,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
                     tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime, iStep);
                 }
             }
-            if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
+            if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "total force at old pos, step " << iStep << ", eid = " << tPartIter->eid
                     << ", F = (" << tForceTotal.X() << "," << tForceTotal.Y() << "," << tForceTotal.Z() << ") "  << endl;
             }
@@ -1014,7 +1025,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
             {
                 tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime + m_StepSize, iStep);
             }
-            if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
+            if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "total force at new pos, step " << iStep << ", eid = " << tPartIter->eid
                     << ", F = (" << tForceTotal.X() << "," << tForceTotal.Y() << "," << tForceTotal.Z() << ") "  << endl;
             }
@@ -1031,7 +1042,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
             TVector3 tPartMom = tPartIter->VecP();
             TVector3 tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesNew[tPartIter->eid]);
             TVector3 tImpulse = (m_StepSize * kHbarC) * tForceTotal; // GeV/fm * (1/GeV) * GeV*fm = GeV
-            if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
+            if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "total force " << iStep << ", eid = " << tPartIter->eid
                     << ", F = (" << tForceTotal.X() << "," << tForceTotal.Y() << "," << tForceTotal.Z() << ") "  << endl;
             }
@@ -1043,28 +1054,28 @@ void CoulombAfterburner::Apply(Event *tEvent)
 
             double tP2 = tPartMom.Mag2();
             double tE = TMath::Sqrt(tM2 + tP2);
-            if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
+            if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "before updating momenta " << iStep << ", eid = " << tPartIter->eid
                     << ", p = (" << tPartIter->Px() << "," << tPartIter->Py() << "," << tPartIter->Pz() << "), |p| = " 
                     << tPartIter->GetP() << ", E = " << tPartIter->E() << ", mass = " << tPartIter->mass << endl;
             }
 
             tPartIter->SetEPxPyPz(tE, tPartMom.X(), tPartMom.Y(), tPartMom.Z());
-            if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
+            if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "after updating momenta " << iStep << ", eid = " << tPartIter->eid
                     << ", p = (" << tPartIter->Px() << "," << tPartIter->Py() << "," << tPartIter->Pz() << "), |p| = " 
                     << tPartIter->GetP() << ", E = " << tPartIter->E() << ", mass = " << tPartIter->mass << endl;
             }
 
             TVector3 tVnew = tPartMom.Mag() / tE * tPartMom.Unit();
-            if (FIND_PROBLEM && (!TMath::Finite(tVnew.Mag()) || tVnew.Mag() >= 1))
+            if (m_FindProblem && (!TMath::Finite(tVnew.Mag()) || tVnew.Mag() >= 1))
             {
                 cout << "In step " << iStep << " ERROR, wrong velocity eid " << tPartIter->eid << ", pid " << tPartIter->pid << endl;
                 cout << "In step " << iStep << " p = " << tPartMom.X() << " " << tPartMom.Y() << " " << tPartMom.Z() << endl;
                 cout << "In step " << iStep << " v = " << tVnew.X() << " " << tVnew.Y() << " " << tVnew.Z() << endl;
                 cout << "In step " << iStep << " |p| = " << tPartMom.Mag() << ", E = " << tE << endl;
                 for (auto mapping : m_termsCoul->back()) {
-                    if (mapping.first.first == tPartIter->eid && mapping.second.Mag() > LARGE_TERM) {
+                    if (mapping.first.first == tPartIter->eid && mapping.second.Mag() > m_LargeTerm) {
                         cout << "possible reason: " << mapping.second.X() << " " << mapping.second.Y() << " " << mapping.second.Z() << endl;
                         cout << "other eid: " << mapping.first.second << endl;
                     } 
@@ -1130,7 +1141,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
                 }
                 tTotalRadPower += tRadPower;
             }
-            if (FIND_PROBLEM && tPartIter->eid == DEBUG_EID) {
+            if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "at end of step " << iStep << ", eid = " << tPartIter->eid
                     << ", p = (" << tPartIter->Px() << "," << tPartIter->Py() << "," << tPartIter->Pz() << "), |p| = "
                     << tPartIter->GetP() << ", E = " << tPartIter->E() << ", mass = " << tPartIter->mass << endl;
@@ -1254,7 +1265,7 @@ void CoulombAfterburner::PrintProblem(Int_t eid, Int_t step, TString indent, Int
     cout << indent.Data() << "|p| = " << tPartFourMom.Vect().Mag() << ", E = " << tPartFourMom.E() << endl;
     for (int is = 0; is < m_termsCoul->size(); ++is) {
         for (auto mapping : m_termsCoul->at(is)) {
-            if (mapping.first.first == eid && mapping.second.Mag() > LARGE_TERM) {
+            if (mapping.first.first == eid && mapping.second.Mag() > m_LargeTerm) {
                 cout << indent.Data() << "possible reason: " << mapping.second.X() << " " << mapping.second.Y() << " " << mapping.second.Z() << endl;
                 cout << indent.Data() << "step number " << is << ", other eid: " << mapping.first.second << endl;
                 cout << indent.Data() << "R: " << m_Rs->at(is)[std::make_pair(mapping.first.first, mapping.first.second)].Mag() << endl;
