@@ -282,6 +282,19 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
             << " best interval " << tBestInterval << endl;
     }
 
+    // Accelerations are backward differences of the velocities, a_k = (v_k - v_{k-1}) / dt, so they belong to the
+    // middle of the time step, t_k - dt/2: interpolate linearly between these midpoints. a_0 is not used, it is set
+    // to 0 at the first step, when there is no previous velocity.
+    auto tAccelerationAt = [&](double aT) {
+        if (tSize < 2) return TVector3(0, 0, 0);
+        double tK = (aT - tTrajectory[0].T()) / m_StepSize + 0.5;
+        if (tK <= 1) return tAccelerations[1];
+        if (tK >= tSize - 1) return tAccelerations[tSize - 1];
+        long k = (long)TMath::Floor(tK);
+        double w = tK - k;
+        return (1 - w) * tAccelerations[k] + w * tAccelerations[k + 1];
+    };
+
     // The whole trajectory is inside the past light cone, the crossing would be after its last point
     if (tBestI + 1 == tSize && tBestInterval > 0) {
         bool tOtherExistsNow = (Int_t)m_FirstStepExists[tOtherEid] <= iStep && iStep <= (Int_t)m_LastStepExists[tOtherEid];
@@ -299,7 +312,7 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
         }
         tOtherPos = tX0 + (tTimeRet - tT0) * tV0;
         tOtherVel = tV0;
-        tOtherAcc = tAccelerations[tBestI];
+        tOtherAcc = tAccelerationAt(tTimeRet);
         return true;
     }
 
@@ -355,9 +368,7 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
             tOtherVel =
                 tZeroV * tInterpolatingWeight +
                 tVelocities[tZeroI-1] * (1-tInterpolatingWeight);
-            tOtherAcc =
-                tAccelerations[tZeroI] * tInterpolatingWeight +
-                tAccelerations[tZeroI-1] * (1-tInterpolatingWeight);
+            tOtherAcc = tAccelerationAt(tTimeBest);
             if (debug) {
                 cout << "RetardedSource: zeroI " << tZeroI << " weight " << tInterpolatingWeight
                     << " v_x " << tOtherVel.X() << endl;
