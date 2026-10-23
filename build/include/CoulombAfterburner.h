@@ -123,6 +123,9 @@ class CoulombAfterburner : public AbstractAfterburner {
     static constexpr double k = 1/(4*TMath::Pi()*epsilon_0); // GeV * fm
 
   unsigned int *m_FirstStepExists;
+  // Creation and decay times of the particles (GeV^-1, infinity for particles that do not decay), indexed by eid
+  double *m_CreationTimes;
+  double *m_DecayTimes;
   unsigned int *m_LastStepExists;
 
   std::vector< std::map< std::pair< int, int>, TVector3> > *m_termsCoul;

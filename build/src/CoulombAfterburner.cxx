@@ -295,19 +295,20 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
         return (1 - w) * tAccelerations[k] + w * tAccelerations[k + 1];
     };
 
-    // The whole trajectory is inside the past light cone, the crossing would be after its last point
+    // The whole trajectory is inside the past light cone, the crossing would be after its last point: extrapolate
+    // forwards from the last point. Either the trajectory is recorded only up to the current step, or the particle
+    // decayed between its last time step and its decay time.
     if (tBestI + 1 == tSize && tBestInterval > 0) {
         bool tOtherExistsNow = (Int_t)m_FirstStepExists[tOtherEid] <= iStep && iStep <= (Int_t)m_LastStepExists[tOtherEid];
-        if (!tOtherExistsNow) {
-            // The other particle decayed before the crossing, its field is taken over by its decay products
-            return false;
-        }
-        // The trajectory is recorded only up to the current step: extrapolate forwards from its last point
         TVector3 tX0 = tTrajectory[tBestI].Vect();
         TVector3 tV0 = tVelocities[tBestI];
         double tT0 = tTrajectory[tBestI].T();
         double tTimeRet = NearestPreFreezeoutIntervalTime(tX0, tV0, tPos, tT0, tTime);
         if (!TMath::Finite(tTimeRet)) {
+            return false;
+        }
+        if (!tOtherExistsNow && tTimeRet >= m_DecayTimes[tOtherEid]) {
+            // The other particle decayed before the crossing, its field is taken over by its decay products
             return false;
         }
         tOtherPos = tX0 + (tTimeRet - tT0) * tV0;
@@ -317,10 +318,21 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
     }
 
     bool tIsPrimary = tPartOtherIter->pid == tPartOtherIter->fatherpid;
-    // The whole trajectory is outside the past light cone, the crossing would be before its first point
+    // The whole trajectory of a decay product is outside the past light cone, the crossing would be before its first
+    // point: extrapolate backwards to its creation, between the creation time and the first time step
     if (tBestI == 0 && tBestInterval < 0 && !tIsPrimary) {
-        // The decay product is not created yet, as seen from (tPos, tTime)
-        return false;
+        TVector3 tX0 = tTrajectory[0].Vect();
+        TVector3 tV0 = tVelocities[0];
+        double tT0 = tTrajectory[0].T();
+        double tTimeRet = NearestPreFreezeoutIntervalTime(tX0, tV0, tPos, tT0, tTime);
+        if (!TMath::Finite(tTimeRet) || tTimeRet < m_CreationTimes[tOtherEid]) {
+            // The decay product is not created yet, as seen from (tPos, tTime)
+            return false;
+        }
+        tOtherPos = tX0 + (tTimeRet - tT0) * tV0;
+        tOtherVel = tV0;
+        tOtherAcc = tAccelerationAt(tTimeRet);
+        return true;
     }
 
     tOtherPos = tTrajectory[tBestI].Vect();
@@ -779,7 +791,8 @@ void CoulombAfterburner::Apply(Event *tEvent)
     m_velocities = new std::vector<TVector3>[N];
     m_accelerations = new std::vector<TVector3>[N];
     m_pids = new std::map<int, int>();
-    double *tDecayTimes = new double[N];
+    m_DecayTimes = new double[N];
+    m_CreationTimes = new double[N];
     m_FirstStepExists = new unsigned int[N];
     m_LastStepExists = new unsigned int[N];
     TLorentzVector *tOriginalCoordinates = new TLorentzVector[N];
@@ -788,7 +801,8 @@ void CoulombAfterburner::Apply(Event *tEvent)
     {
         m_coordinates[tPartIter->eid] = std::vector<TLorentzVector>();
         tOriginalCoordinates[tPartIter->eid] = TLorentzVector(tPartIter->VecX(), tPartIter->T());
-        tDecayTimes[tPartIter->eid] = std::numeric_limits<double>::infinity();
+        m_CreationTimes[tPartIter->eid] = tPartIter->T();
+        m_DecayTimes[tPartIter->eid] = std::numeric_limits<double>::infinity();
         if (tPartIter->decayed)
         {
             std::list<Particle>::iterator tChildPartIter = tParticles->begin();
@@ -796,7 +810,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
             {
                 if (tChildPartIter->fathereid == tPartIter->eid)
                 {
-                    tDecayTimes[tPartIter->eid] = tChildPartIter->T();
+                    m_DecayTimes[tPartIter->eid] = tChildPartIter->T();
                     break;
                 }
             }
@@ -805,9 +819,9 @@ void CoulombAfterburner::Apply(Event *tEvent)
         // of a decay product directly follows the last step of its father
         double tFirstStep = TMath::Min((double)m_nSteps, TMath::Ceil((tPartIter->T() - tEarliestTime) / m_StepSize));
         double tLastStep = m_nSteps - 1;
-        if (TMath::Finite(tDecayTimes[tPartIter->eid]))
+        if (TMath::Finite(m_DecayTimes[tPartIter->eid]))
         {
-            tLastStep = TMath::Min(tLastStep, TMath::Ceil((tDecayTimes[tPartIter->eid] - tEarliestTime) / m_StepSize) - 1);
+            tLastStep = TMath::Min(tLastStep, TMath::Ceil((m_DecayTimes[tPartIter->eid] - tEarliestTime) / m_StepSize) - 1);
         }
         if (tFirstStep > tLastStep)
         {
@@ -1199,7 +1213,8 @@ void CoulombAfterburner::Apply(Event *tEvent)
     delete[] m_fourmomenta;
     delete[] m_velocities;
     delete[] m_accelerations;
-    delete[] tDecayTimes;
+    delete[] m_DecayTimes;
+    delete[] m_CreationTimes;
     delete[] m_FirstStepExists;
     delete[] m_LastStepExists;
     delete[] tOriginalCoordinates;
