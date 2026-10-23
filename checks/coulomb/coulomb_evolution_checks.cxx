@@ -4,31 +4,57 @@
 // Units as in THERMINATOR: inside the afterburner lengths and times are in GeV^-1, momenta in GeV.
 // Here positions and times are given in fm (fm/c) and converted with kHbarC.
 //
+//   A. free motion                          F. decay of a static source during Rutherford scattering
+//   B. relativistic Rutherford scattering   G. decay of a moving source passing a probe
+//   C. two charges released from rest       H. Platonic solids of charges released from rest
+//   D. the pair of C boosted to beta = 0.9  I. a hexagon of charges, at rest and boosted to beta = 0.9
+//   E. acceleration (radiation) term        J. random cluster of 20 charges vs instantaneous Coulomb N-body
+//
 // Besides the pass/fail checks, trajectories of the code and of the exact solutions are written as TGraphs
 // to a ROOT file (first argument, default coulomb_checks.root), one directory per check:
 //   <label>_code, <label>_exact, <label>_diff (= code - exact) as functions of t (fm/c),
-//   and for B the paths in the scattering plane (path_code, path_rk4, path_exact).
+//   and a few other graphs described where they are made.
 
-#include "CoulombAfterburner.h"
-#include "Event.h"
-#include "Particle.h"
-#include "ParticleDB.h"
-#include "ParticleType.h"
-#include "THGlobal.h"
-#include "TDirectory.h"
-#include "TFile.h"
-#include "TGraph.h"
-#include "TMath.h"
-#include "TVector3.h"
-
+// The radiation check (E) evaluates the force for a prescribed source trajectory, which needs the internal state
+// of CoulombAfterburner: everything its header includes is included first, then the header itself with private
+// members made public.
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <functional>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
+
+#include "AbstractAfterburner.h"
+#include "AbstractEventSaver.h"
+#include "Event.h"
+#include "Particle.h"
+#include "ParticleDB.h"
+#include "ParticleType.h"
+#include "TDirectory.h"
+#include "TFile.h"
+#include "TGlauberMC.h"
+#include "TGraph.h"
+#include "THGlobal.h"
+#include "TLorentzVector.h"
+#include "TMath.h"
+#include "TProfile.h"
+#include "TRandom3.h"
+#include "TVector3.h"
+
+#define private public
+#define protected public
+#include "CoulombAfterburner.h"
+#undef private
+#undef protected
 
 TString sModelINI;   // globals expected by the library code
 TString sTimeStamp;
@@ -88,13 +114,23 @@ static void WriteGraphs(const char *aFileName)
     sGraphs.clear();
 }
 
+static double MaxAbs(const std::vector<double> &aV)
+{
+    double tMax = 0;
+    for (double x : aV) tMax = std::max(tMax, std::fabs(x));
+    return tMax;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Running the afterburner
 
 struct PartInit {
     ParticleType *type;
-    TVector3 x; // fm
-    TVector3 p; // GeV
+    TVector3 x;           // fm
+    TVector3 p;           // GeV
+    double t = 0;         // creation time, fm/c
+    int father = -1;      // index of the father in the list, -1 for primary particles
+    bool decayed = false; // the particle decays (its daughters follow in the list)
 };
 
 struct RunResult {
@@ -104,7 +140,8 @@ struct RunResult {
     bool restored;                                         // positions and times restored after Apply()
 };
 
-// Runs CoulombAfterburner::Apply on one event made of the given particles, all created at t = 0
+// Runs CoulombAfterburner::Apply on one event made of the given particles. The time steps start at the earliest
+// creation time; daughters are created like in ParticleDecayer, with SetParticlePX(..., father).
 static RunResult RunCoulomb(const char *aDir, int aSteps, double aStepFm, const std::vector<PartInit> &aInit, ParticleDB *aDB)
 {
     mkdir(aDir, 0755);
@@ -115,20 +152,24 @@ static RunResult RunCoulomb(const char *aDir, int aSteps, double aStepFm, const 
         tCoulomb.SetKeepTrajectories(true);
         tCoulomb.Init();
         Event tEvent; // resets the eid counter
+        std::list<Particle> *tList = tEvent.GetParticleList();
         for (const PartInit &tInit : aInit) {
             Particle tParticle(tInit.type);
             double tE = std::sqrt(tParticle.mass * tParticle.mass + tInit.p.Mag2());
+            Particle *tFather = tInit.father >= 0 ? &*std::next(tList->begin(), tInit.father) : nullptr;
             tParticle.SetParticlePX(tE, tInit.p.X(), tInit.p.Y(), tInit.p.Z(),
-                                    0., tInit.x.X() / kHbarC, tInit.x.Y() / kHbarC, tInit.x.Z() / kHbarC);
-            tEvent.GetParticleList()->push_back(tParticle);
+                                    tInit.t / kHbarC, tInit.x.X() / kHbarC, tInit.x.Y() / kHbarC, tInit.x.Z() / kHbarC, tFather);
+            if (tInit.decayed) tParticle.SetDecayed();
+            tList->push_back(tParticle);
         }
         tCoulomb.Apply(&tEvent);
         tResult.restored = true;
         size_t i = 0;
-        for (Particle &tParticle : *tEvent.GetParticleList()) {
+        for (Particle &tParticle : *tList) {
             tResult.finalMomenta.push_back(tParticle.VecP());
             TVector3 tX0 = (1 / kHbarC) * aInit[i].x;
-            if (tParticle.T() != 0. || (tParticle.VecX() - tX0).Mag() > 1e-6 * (1 + tX0.Mag())) tResult.restored = false;
+            if (std::fabs(tParticle.T() - aInit[i].t / kHbarC) > 1e-6 * (1 + aInit[i].t / kHbarC)
+                || (tParticle.VecX() - tX0).Mag() > 1e-6 * (1 + tX0.Mag())) tResult.restored = false;
             std::vector<TLorentzVector> tTrajectory;
             for (const TLorentzVector &tX : tCoulomb.GetTrajectory(tParticle.eid)) tTrajectory.push_back(kHbarC * tX);
             tResult.trajectory.push_back(tTrajectory);
@@ -206,8 +247,9 @@ struct ExactOrbit {
     }
 };
 
-// Two equal charges released from rest at distance r0 (non-relativistic): time to reach distance x*r0 is
-// t(x) = sqrt(mu r0^3 / (2 kappa)) [sqrt(x(x-1)) + ln(sqrt(x) + sqrt(x-1))].
+// Radial motion r'' = K / r^2 from rest at r0 (two charges with K = kappa/mu, or a symmetric configuration):
+// the time to reach r = x r0 is t(x) = sqrt(r0^3 / (2K)) [sqrt(x(x-1)) + ln(sqrt(x) + sqrt(x-1))].
+// The functions take (mu, kappa) with K = kappa / mu.
 static double NonRelRepulsionX(double aMu, double aKappa, double aR0, double aT)
 {
     auto tOfX = [&](double x) {
@@ -225,7 +267,72 @@ static double NonRelRepulsionDistance(double aMu, double aKappa, double aR0, dou
 static double NonRelRepulsionMomentum(double aMu, double aKappa, double aR0, double aT)
 {
     double x = NonRelRepulsionX(aMu, aKappa, aR0, aT);
-    return std::sqrt(2 * aMu * aKappa / aR0 * (1 - 1 / x)); // momentum of each particle = mu * v_rel
+    return std::sqrt(2 * aMu * aKappa / aR0 * (1 - 1 / x)); // mu * dr/dt
+}
+
+// Lienard-Wiechert force on a unit test charge at rest, kappa = k q Q, from a source at retarded distance vector R (fm)
+// with velocity v and acceleration a (fm^-1) at the retarded time: velocity and acceleration parts, GeV/fm.
+static std::pair<TVector3, TVector3> ExactLienardWiechert(double aKappa, const TVector3 &aR, const TVector3 &aV, const TVector3 &aA)
+{
+    double tR = aR.Mag();
+    TVector3 tU = (1 / tR) * aR - aV;
+    double tRdotU = aR.Dot(tU);
+    double tPre = aKappa * tR / (tRdotU * tRdotU * tRdotU);
+    TVector3 tVel = (tPre * (1 - aV.Mag2())) * tU;
+    TVector3 tAcc = tPre * (aR.Dot(aA) * tU - tRdotU * aA);
+    return std::make_pair(tVel, tAcc);
+}
+
+// Instantaneous Coulomb forces between N charges with relativistic kinematics, by RK4 (x in fm, p in GeV, t in fm/c)
+struct NBody {
+    std::vector<double> mass, charge;
+    std::vector<TVector3> x, p;
+    void Derivative(const std::vector<TVector3> &aX, const std::vector<TVector3> &aP,
+                    std::vector<TVector3> &aDX, std::vector<TVector3> &aDP) const
+    {
+        size_t n = aX.size();
+        aDX.assign(n, TVector3());
+        aDP.assign(n, TVector3());
+        for (size_t i = 0; i < n; ++i) {
+            aDX[i] = (1 / std::sqrt(mass[i] * mass[i] + aP[i].Mag2())) * aP[i];
+            for (size_t j = 0; j < n; ++j) {
+                if (i == j) continue;
+                TVector3 tD = aX[i] - aX[j];
+                double tR = tD.Mag();
+                aDP[i] += (kAlphaHbarC * charge[i] * charge[j] / (tR * tR * tR)) * tD;
+            }
+        }
+    }
+    void Step(double aH)
+    {
+        size_t n = x.size();
+        std::vector<TVector3> k1x, k1p, k2x, k2p, k3x, k3p, k4x, k4p, tX(n), tP(n);
+        Derivative(x, p, k1x, k1p);
+        for (size_t i = 0; i < n; ++i) { tX[i] = x[i] + (aH / 2) * k1x[i]; tP[i] = p[i] + (aH / 2) * k1p[i]; }
+        Derivative(tX, tP, k2x, k2p);
+        for (size_t i = 0; i < n; ++i) { tX[i] = x[i] + (aH / 2) * k2x[i]; tP[i] = p[i] + (aH / 2) * k2p[i]; }
+        Derivative(tX, tP, k3x, k3p);
+        for (size_t i = 0; i < n; ++i) { tX[i] = x[i] + aH * k3x[i]; tP[i] = p[i] + aH * k3p[i]; }
+        Derivative(tX, tP, k4x, k4p);
+        for (size_t i = 0; i < n; ++i) {
+            x[i] += (aH / 6) * (k1x[i] + 2 * k2x[i] + 2 * k3x[i] + k4x[i]);
+            p[i] += (aH / 6) * (k1p[i] + 2 * k2p[i] + 2 * k3p[i] + k4p[i]);
+        }
+    }
+};
+
+// Coulomb force constant S of a configuration of unit charges at the given positions (unit circumradius):
+// the force on the charge at aVertices[0] is S kappa / R^2 directed radially. Returns S, and the sine of the
+// angle between that force and the radial direction (0 for a symmetric configuration).
+static double ConfigurationS(const std::vector<TVector3> &aVertices, double &aSinAngle)
+{
+    TVector3 tF;
+    for (size_t j = 1; j < aVertices.size(); ++j) {
+        TVector3 tD = aVertices[0] - aVertices[j];
+        tF += (1 / std::pow(tD.Mag(), 3)) * tD;
+    }
+    aSinAngle = std::sin(tF.Angle(aVertices[0]));
+    return tF.Mag();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -235,18 +342,25 @@ int main(int argc, char **argv)
     const char *tOutputFile = argc > 1 ? argv[1] : "coulomb_checks.root";
 
     ParticleDB tDB;
-    ParticleType tProtonType = MakeType("proton", 2212, 0.938272, 1);   // also needed by the constructor
-    ParticleType tNeutronType = MakeType("neutron", 2112, 0.939565, 0);
-    ParticleType tHeavyType = MakeType("heavyZ79", 9079, 1.0e5, 79);   // practically fixed source
-    ParticleType tSlowType = MakeType("slowQ1", 9001, 10.0, 1);        // heavy unit charge, slow motion
-    tDB.AddParticleType(&tProtonType);
-    tDB.AddParticleType(&tNeutronType);
-    tDB.AddParticleType(&tHeavyType);
-    tDB.AddParticleType(&tSlowType);
-    ParticleType *tProton = tDB.FindByPID(2212); // pointers are valid only after all types are added
-    ParticleType *tNeutron = tDB.FindByPID(2112);
-    ParticleType *tHeavy = tDB.FindByPID(9079);
-    ParticleType *tSlow = tDB.FindByPID(9001);
+    ParticleType tTypes[] = {
+        MakeType("proton", 2212, 0.938272, 1),        // also needed by the constructor
+        MakeType("neutron", 2112, 0.939565, 0),       // also needed by the constructor; neutral decay product
+        MakeType("heavyZ79", 9079, 1.0e5, 79),        // practically fixed source
+        MakeType("heavyZ79daughter", 9080, 1.0e5, 79),
+        MakeType("slowQ1", 9001, 10.0, 1),            // heavy unit charge, slow motion
+        MakeType("probeQ1", 9002, 1.0e5, 1),          // practically fixed probe
+        MakeType("platonicQ1", 9003, 100.0, 1),
+        MakeType("clusterQ1", 9004, 20.0, 1),
+        MakeType("movingZ10", 9010, 1.0e5, 10),
+        MakeType("movingZ10daughter", 9011, 1.0e5, 10),
+    };
+    for (ParticleType &tType : tTypes) tDB.AddParticleType(&tType);
+    // pointers into the database are valid only after all types are added
+    ParticleType *tProton = tDB.FindByPID(2212), *tNeutron = tDB.FindByPID(2112);
+    ParticleType *tHeavy = tDB.FindByPID(9079), *tHeavyDaughter = tDB.FindByPID(9080);
+    ParticleType *tSlow = tDB.FindByPID(9001), *tProbe = tDB.FindByPID(9002);
+    ParticleType *tPlatonic = tDB.FindByPID(9003), *tClusterType = tDB.FindByPID(9004);
+    ParticleType *tMoving = tDB.FindByPID(9010), *tMovingDaughter = tDB.FindByPID(9011);
     char tBuf[300];
 
     // ----- A. No interaction: one charged and one neutral particle
@@ -277,95 +391,104 @@ int main(int argc, char **argv)
         Check("A: positions and times restored (1 = yes)", tRun.restored, 1, 0, false);
     }
 
+    // ----- Setup of the Rutherford scattering, used in B (no decay) and F (decay of the source)
+    const double tRuthM = tProton->GetMass(); // as used by the code (float)
+    const double tRuthKappa = 79 * kAlphaHbarC;
+    const double tRuthB = 4.0, tRuthZ0 = 40.0;
+    const double tRuthP0 = std::sqrt(std::pow(tRuthM + 0.200, 2) - tRuthM * tRuthM);
+    const double tRuthR0 = std::hypot(tRuthB, tRuthZ0);
+    const ExactOrbit tRuthOrbit(tRuthM, tRuthKappa, tRuthR0, tRuthP0, tRuthB);
+    const double tRuthStep = 0.1;
+    // Scattering plane: horizontal z, vertical x; polar angle psi = atan2(x, z). The orbit is traversed clockwise
+    // (L_y < 0) and starts at phi = -phi0, so psi = psi_peri - phi.
+    const double tRuthPsiPeri = std::atan2(tRuthB, -tRuthZ0) - tRuthOrbit.Phi(tRuthR0);
+    int tRuthSteps;
+    State tRuthRefFinal;
+    std::vector<State> tRuthRefAtSteps;
+    {
+        // Time at which the proton is back at distance r0, from a fine RK4 integration
+        State tS{TVector3(tRuthB, 0, -tRuthZ0), TVector3(0, 0, tRuthP0)};
+        double tH = 1e-3, t = 0, tPrevR = tRuthR0;
+        bool tPastPeriapsis = false;
+        double tTReturn = 0;
+        while (true) {
+            State tNext = RK4Step(tS, tH, tRuthM, tRuthKappa);
+            double tR = tNext.x.Mag();
+            if (tR > tPrevR) tPastPeriapsis = true;
+            if (tPastPeriapsis && tR >= tRuthR0) { tTReturn = t + tH * (tRuthR0 - tPrevR) / (tR - tPrevR); break; }
+            tS = tNext; tPrevR = tR; t += tH;
+        }
+        tRuthSteps = (int)std::lround(tTReturn / tRuthStep);
+        snprintf(tBuf, sizeof(tBuf), "Rutherford setup: back at r0 = %.2f fm after %.2f fm/c, run %d steps of %.1f fm/c",
+                 tRuthR0, tTReturn, tRuthSteps, tRuthStep);
+        Info(tBuf);
+        // RK4 reference at the time steps of the code (100 substeps per step) and at the final time
+        State tRef{TVector3(tRuthB, 0, -tRuthZ0), TVector3(0, 0, tRuthP0)};
+        for (int n = 0; n < tRuthSteps; ++n) {
+            tRuthRefAtSteps.push_back(tRef);
+            for (int k = 0; k < 100; ++k) tRef = RK4Step(tRef, tRuthStep / 100, tRuthM, tRuthKappa);
+        }
+        tRuthRefFinal = tRef;
+    }
+    // Distance of the proton from the exact orbit at the same polar angle, along a trajectory
+    auto tDistanceFromOrbit = [&](const std::vector<TLorentzVector> &aTraj, std::vector<double> &aT, std::vector<double> &aDr) {
+        for (const TLorentzVector &tX : aTraj) {
+            double tPsi = std::atan2(tX.X(), tX.Z());
+            aT.push_back(tX.T());
+            aDr.push_back(std::hypot(tX.X(), tX.Z()) - tRuthOrbit.R(tRuthPsiPeri - tPsi));
+        }
+    };
+    const double tThetaExact = tRuthOrbit.DeflectionAtDistance(tRuthR0);
+    RunResult tRunB;
+
     // ----- B. Relativistic Rutherford scattering on a fixed Z = 79 charge
     Info("B. proton, T = 200 MeV, b = 4 fm, on a fixed Z = 79 charge: exact relativistic orbit");
     {
         const char *tDir = "B_rutherford";
-        double tM = tProton->GetMass(); // as used by the code (float)
-        double tKappa = 79 * kAlphaHbarC;
-        double tB = 4.0, tZ0 = 40.0;
-        double tP0 = std::sqrt(std::pow(tM + 0.200, 2) - tM * tM);
-        double tR0 = std::hypot(tB, tZ0);
-        ExactOrbit tOrbit(tM, tKappa, tR0, tP0, tB);
-        // Time at which the proton is back at distance r0, from a fine RK4 integration
-        State tS{TVector3(tB, 0, -tZ0), TVector3(0, 0, tP0)};
-        double tH = 1e-3, t = 0, tPrevR = tR0;
-        bool tPastPeriapsis = false;
-        double tTReturn = 0;
-        while (true) {
-            State tNext = RK4Step(tS, tH, tM, tKappa);
-            double tR = tNext.x.Mag();
-            if (tR > tPrevR) tPastPeriapsis = true;
-            if (tPastPeriapsis && tR >= tR0) { tTReturn = t + tH * (tR0 - tPrevR) / (tR - tPrevR); break; }
-            tS = tNext; tPrevR = tR; t += tH;
-        }
-        double tStep = 0.1;
-        int tSteps = (int)std::lround(tTReturn / tStep);
-        double tT = tSteps * tStep;
-        snprintf(tBuf, sizeof(tBuf), "B: back at r0 = %.2f fm after %.2f fm/c, run %d steps of %.1f fm/c", tR0, tTReturn, tSteps, tStep);
-        Info(tBuf);
-
-        std::vector<PartInit> tInit = {{tProton, TVector3(tB, 0, -tZ0), TVector3(0, 0, tP0)},
+        std::vector<PartInit> tInit = {{tProton, TVector3(tRuthB, 0, -tRuthZ0), TVector3(0, 0, tRuthP0)},
                                        {tHeavy, TVector3(0, 0, 0), TVector3(0, 0, 0)}};
-        RunResult tRun = RunCoulomb(tDir, tSteps, tStep, tInit, &tDB);
-
-        // RK4 reference at the time steps of the code (100 substeps per step) and at the final time
-        int tSub = 100;
-        State tRef{TVector3(tB, 0, -tZ0), TVector3(0, 0, tP0)};
-        std::vector<State> tRefAtSteps;
-        for (int n = 0; n < tSteps; ++n) {
-            tRefAtSteps.push_back(tRef);
-            for (int k = 0; k < tSub; ++k) tRef = RK4Step(tRef, tStep / tSub, tM, tKappa);
-        }
-
-        double tThetaExact = tOrbit.DeflectionAtDistance(tR0);
-        double tThetaRef = TVector3(0, 0, 1).Angle(tRef.p);
-        double tThetaCode = TVector3(0, 0, 1).Angle(tRun.finalMomenta[0]);
+        tRunB = RunCoulomb(tDir, tRuthSteps, tRuthStep, tInit, &tDB);
+        double tThetaRef = TVector3(0, 0, 1).Angle(tRuthRefFinal.p);
+        double tThetaCode = TVector3(0, 0, 1).Angle(tRunB.finalMomenta[0]);
         Check("B: reference RK4 deflection vs exact orbit [rad]", tThetaRef, tThetaExact, 1e-4);
         Check("B: code deflection vs exact orbit [rad]", tThetaCode, tThetaExact, 3e-5);
-        Check("B: code |p| vs initial |p| (energy conservation) [GeV]", tRun.finalMomenta[0].Mag(), tP0, 3e-5);
-        Check("B: code |p - p_RK4| / |p|", (tRun.finalMomenta[0] - tRef.p).Mag() / tP0, 0, 1e-5, false);
-        Check("B: positions and times restored (1 = yes)", tRun.restored, 1, 0, false);
+        Check("B: code |p| vs initial |p| (energy conservation) [GeV]", tRunB.finalMomenta[0].Mag(), tRuthP0, 3e-5);
+        Check("B: code |p - p_RK4| / |p|", (tRunB.finalMomenta[0] - tRuthRefFinal.p).Mag() / tRuthP0, 0, 1e-5, false);
+        Check("B: positions and times restored (1 = yes)", tRunB.restored, 1, 0, false);
 
-        // Graphs. Scattering plane: horizontal z, vertical x; polar angle psi = atan2(x, z).
-        // The orbit is traversed clockwise (L_y < 0); the start is at phi = -phi0, so psi = psi_peri - phi.
-        double tPhi0 = tOrbit.Phi(tR0);
-        double tPsiPeri = std::atan2(tB, -tZ0) - tPhi0;
+        // Graphs: paths in the scattering plane, distance from the exact orbit, and x, z, p_x, p_z vs RK4
         std::vector<double> tPathZ, tPathX;
+        double tPhi0 = tRuthOrbit.Phi(tRuthR0);
         for (int k = 0; k <= 1000; ++k) {
             double tPhi = -tPhi0 + 2 * tPhi0 * k / 1000;
-            double tR = tOrbit.R(tPhi), tPsi = tPsiPeri - tPhi;
+            double tR = tRuthOrbit.R(tPhi), tPsi = tRuthPsiPeri - tPhi;
             tPathZ.push_back(tR * std::cos(tPsi));
             tPathX.push_back(tR * std::sin(tPsi));
         }
         AddGraph(tDir, "path_exact", "Exact relativistic Coulomb orbit;z (fm);x (fm)", tPathZ, tPathX);
-        std::vector<double> tTimes, tCodeZ, tCodeX, tRefZ, tRefX, tCodePx, tRefPx, tCodePz, tRefPz, tDrOrbit;
-        const std::vector<TLorentzVector> &tTraj = tRun.trajectory[0];
-        const std::vector<TLorentzVector> &tMom = tRun.fourMomenta[0];
+        std::vector<double> tTimes, tCodeZ, tCodeX, tRefZ, tRefX, tCodePx, tRefPx, tCodePz, tRefPz, tDrT, tDrOrbit;
+        const std::vector<TLorentzVector> &tTraj = tRunB.trajectory[0];
+        const std::vector<TLorentzVector> &tMom = tRunB.fourMomenta[0];
         for (size_t n = 0; n < tTraj.size(); ++n) {
             tTimes.push_back(tTraj[n].T());
             tCodeZ.push_back(tTraj[n].Z());
             tCodeX.push_back(tTraj[n].X());
-            tRefZ.push_back(tRefAtSteps[n].x.Z());
-            tRefX.push_back(tRefAtSteps[n].x.X());
+            tRefZ.push_back(tRuthRefAtSteps[n].x.Z());
+            tRefX.push_back(tRuthRefAtSteps[n].x.X());
             tCodePx.push_back(tMom[n].Px());
-            tRefPx.push_back(tRefAtSteps[n].p.X());
+            tRefPx.push_back(tRuthRefAtSteps[n].p.X());
             tCodePz.push_back(tMom[n].Pz());
-            tRefPz.push_back(tRefAtSteps[n].p.Z());
-            // distance from the exact orbit at the same polar angle (independent of timing)
-            double tPsi = std::atan2(tTraj[n].X(), tTraj[n].Z());
-            tDrOrbit.push_back(std::hypot(tTraj[n].X(), tTraj[n].Z()) - tOrbit.R(tPsiPeri - tPsi));
+            tRefPz.push_back(tRuthRefAtSteps[n].p.Z());
         }
+        tDistanceFromOrbit(tTraj, tDrT, tDrOrbit);
         AddGraph(tDir, "path_code", "Trajectory (code);z (fm);x (fm)", tCodeZ, tCodeX);
         AddGraph(tDir, "path_rk4", "Trajectory (RK4 of the exact equation of motion);z (fm);x (fm)", tRefZ, tRefX);
-        AddGraph(tDir, "dr_orbit", "r(code) - r(exact orbit) at the same polar angle;t (fm/c);#Deltar (fm)", tTimes, tDrOrbit);
+        AddGraph(tDir, "dr_orbit", "r(code) - r(exact orbit) at the same polar angle;t (fm/c);#Deltar (fm)", tDrT, tDrOrbit);
         AddCodeExact(tDir, "x", "proton x, exact = RK4", "x (fm)", tTimes, tCodeX, tRefX);
         AddCodeExact(tDir, "z", "proton z, exact = RK4", "z (fm)", tTimes, tCodeZ, tRefZ);
         AddCodeExact(tDir, "px", "proton p_{x}, exact = RK4", "p_{x} (GeV)", tTimes, tCodePx, tRefPx);
         AddCodeExact(tDir, "pz", "proton p_{z}, exact = RK4", "p_{z} (GeV)", tTimes, tCodePz, tRefPz);
-        double tMaxDr = 0;
-        for (double tDr : tDrOrbit) tMaxDr = std::max(tMaxDr, std::fabs(tDr));
-        Check("B: max |r(code) - r(exact orbit)| along the path [fm]", tMaxDr, 0, 1e-3, false);
+        Check("B: max |r(code) - r(exact orbit)| along the path [fm]", MaxAbs(tDrOrbit), 0, 1e-3, false);
     }
 
     // ----- C. Two equal charges released from rest (slow, heavy)
@@ -419,10 +542,10 @@ int main(int argc, char **argv)
         Check("D: p_x(lab) vs p_x(rest frame run C) [GeV]", tP[1].X(), tPRest[1].X(), 1e-5);
         Check("D: p_x(lab) vs non-relativistic solution in rest frame [GeV]", tP[1].X(),
               NonRelRepulsionMomentum(tMSlow / 2, tKappa1, 1.0, tStepsC * tStepC), 5e-4);
-        // p_z(lab) = gamma beta E'(rest): the kinetic energy gained in the rest frame shows up in p_z.
-        // Loose tolerance: the change per step (~1e-6 GeV) is comparable to the Float_t spacing at p_z = 20.6 GeV.
+        // p_z(lab) = gamma beta E'(rest): the kinetic energy gained in the rest frame shows up in p_z. This is sensitive
+        // to the acceleration term. The change, 4.6e-4 GeV, is small compared to p_z = 20.6 GeV stored as Float_t.
         double tDPzExpected = tGamma * tBeta * (std::sqrt(tMSlow * tMSlow + tPRest[1].Mag2()) - tMSlow);
-        Check("D: change of p_z(lab) vs gamma beta x kinetic energy(rest) [GeV]", tP[1].Z() - tPz, tDPzExpected, 2e-2);
+        Check("D: change of p_z(lab) vs gamma beta x kinetic energy(rest) [GeV]", tP[1].Z() - tPz, tDPzExpected, 3e-3);
         Check("D: p_x of particle 1 = -p_x of particle 2 [GeV]", tP[0].X(), -tP[1].X(), 1e-5);
 
         // Lorentz transformation of the rest frame motion (t', x', z' = 0): t = gamma t', x = x'(t/gamma), z = beta t.
@@ -443,6 +566,355 @@ int main(int argc, char **argv)
         AddCodeExact(tDir, "p2_x_covariance", "x of particle 2 (lab), exact = run C at t/#gamma", "x (fm)", tT, tX2, tX2RunC);
         AddCodeExact(tDir, "p2_z", "z of particle 2 (lab), exact = #beta t", "z (fm)", tT, tZ2, tZ2Exact);
         AddCodeExact(tDir, "p2_px_covariance", "p_{x} of particle 2 (lab), exact = run C at t/#gamma", "p_{x} (GeV)", tT, tPx2, tPx2RunC);
+    }
+
+    // ----- E. Acceleration (radiation) term in isolation
+    // A charge in hyperbolic motion z(t) = sqrt(alpha^2 + t^2) along z (proper acceleration 1/alpha), recorded on the
+    // time grid like in Apply() (accelerations as backward differences of velocities), seen by a test charge at rest
+    // at x = 30 fm. The acceleration part of the code's force is F(recorded accelerations) - F(accelerations = 0);
+    // the reference is the exact Lienard-Wiechert field with the exact retarded time.
+    Info("E. acceleration term: charge in hyperbolic motion (alpha = 2 fm) seen from 30 fm, exact Lienard-Wiechert field");
+    {
+        const char *tDir = "E_radiation";
+        mkdir(tDir, 0755);
+        if (chdir(tDir) != 0) { perror(tDir); exit(2); }
+        {
+            const double tAlpha = 2.0, tT0 = -40.0, tStep = 0.1;
+            const unsigned int tNPoints = 801;
+            auto tSourceZ = [&](double t) { return std::sqrt(tAlpha * tAlpha + t * t); };
+            auto tSourceV = [&](double t) { return t / std::sqrt(tAlpha * tAlpha + t * t); };
+            auto tSourceA = [&](double t) { return tAlpha * tAlpha / std::pow(tAlpha * tAlpha + t * t, 1.5); };
+
+            CoulombAfterburner tCoulomb(1, tStep, 0., nullptr, &tDB);
+            tCoulomb.Init();
+            tCoulomb.m_coordinates = new std::vector<TLorentzVector>[2];
+            tCoulomb.m_velocities = new std::vector<TVector3>[2];
+            tCoulomb.m_accelerations = new std::vector<TVector3>[2];
+            tCoulomb.m_FirstStepExists = new unsigned int[2]{0, 0};
+            tCoulomb.m_LastStepExists = new unsigned int[2]{tNPoints - 1, tNPoints - 1};
+            tCoulomb.m_CreationTimes = new double[2]{tT0 / kHbarC, tT0 / kHbarC};
+            tCoulomb.m_DecayTimes = new double[2]{std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
+            for (auto *tTerms : {tCoulomb.m_termsCoul, tCoulomb.m_termsVelo, tCoulomb.m_termsAcce, tCoulomb.m_termsMagn,
+                                 tCoulomb.m_Rs, tCoulomb.m_us, tCoulomb.m_vs})
+                tTerms->push_back(std::map<std::pair<int, int>, TVector3>());
+            for (unsigned int n = 0; n < tNPoints; ++n) {
+                double t = tT0 + n * tStep;
+                tCoulomb.m_coordinates[1].push_back(TLorentzVector(0, 0, tSourceZ(t) / kHbarC, t / kHbarC));
+                tCoulomb.m_velocities[1].push_back(TVector3(0, 0, tSourceV(t)));
+                tCoulomb.m_accelerations[1].push_back(n == 0 ? TVector3()
+                    : (kHbarC / tStep) * (tCoulomb.m_velocities[1][n] - tCoulomb.m_velocities[1][n - 1])); // GeV
+            }
+            Particle::ZeroEID();
+            std::list<Particle> tList;
+            for (int i = 0; i < 2; ++i) {
+                Particle tParticle(tProton);
+                tParticle.SetParticlePX(tProton->GetMass(), 0, 0, 0, tT0 / kHbarC, 0, 0, tSourceZ(tT0) / kHbarC);
+                tList.push_back(tParticle);
+            }
+            auto tObserver = tList.begin();
+            int **tBestIs = new int *[2];
+            for (int i = 0; i < 2; ++i) tBestIs[i] = new int[2]{-1, -1};
+
+            const TVector3 tX(30, 0, 0); // fm
+            std::vector<double> tTObs, tAccX[2], tAccZ[2], tVelX[2], tVelZ[2], tTRet;
+            for (double t = 15; t <= 45 + 1e-9; t += 0.25) {
+                tObserver->SetTXYZ(t / kHbarC, tX.X() / kHbarC, tX.Y() / kHbarC, tX.Z() / kHbarC);
+                TVector3 tFull = tCoulomb.CalculateTotalForce(tObserver, &tList, tBestIs, t / kHbarC, tNPoints - 1);
+                std::vector<TVector3> tSaved(tNPoints);
+                tSaved.swap(tCoulomb.m_accelerations[1]); // now zero accelerations
+                TVector3 tVel = tCoulomb.CalculateTotalForce(tObserver, &tList, tBestIs, t / kHbarC, tNPoints - 1);
+                tSaved.swap(tCoulomb.m_accelerations[1]);
+                TVector3 tAcc = tFull - tVel;
+                // Exact retarded time: (t - t') = |x - z(t')|, the left minus right side decreases with t'
+                double lo = t - 200, hi = t;
+                for (int k = 0; k < 200; ++k) {
+                    double m = 0.5 * (lo + hi);
+                    double f = (t - m) - (tX - TVector3(0, 0, tSourceZ(m))).Mag();
+                    (f > 0 ? lo : hi) = m;
+                }
+                double tR = 0.5 * (lo + hi);
+                std::pair<TVector3, TVector3> tExact = ExactLienardWiechert(
+                    kAlphaHbarC, tX - TVector3(0, 0, tSourceZ(tR)), TVector3(0, 0, tSourceV(tR)), TVector3(0, 0, tSourceA(tR)));
+                tTObs.push_back(t);
+                tTRet.push_back(tR);
+                tAccX[0].push_back(tAcc.X()); tAccX[1].push_back(tExact.second.X());
+                tAccZ[0].push_back(tAcc.Z()); tAccZ[1].push_back(tExact.second.Z());
+                tVelX[0].push_back(tVel.X()); tVelX[1].push_back(tExact.first.X());
+                tVelZ[0].push_back(tVel.Z()); tVelZ[1].push_back(tExact.first.Z());
+            }
+            for (int i = 0; i < 2; ++i) delete[] tBestIs[i];
+            delete[] tBestIs;
+            delete[] tCoulomb.m_coordinates;
+            delete[] tCoulomb.m_velocities;
+            delete[] tCoulomb.m_accelerations;
+            delete[] tCoulomb.m_FirstStepExists;
+            delete[] tCoulomb.m_LastStepExists;
+            delete[] tCoulomb.m_CreationTimes;
+            delete[] tCoulomb.m_DecayTimes;
+            tCoulomb.Finalize();
+
+            auto tMaxDiff = [](const std::vector<double> &a, const std::vector<double> &b) {
+                double tMax = 0;
+                for (size_t i = 0; i < a.size(); ++i) tMax = std::max(tMax, std::fabs(a[i] - b[i]));
+                return tMax;
+            };
+            double tScaleAcc = std::max(MaxAbs(tAccX[1]), MaxAbs(tAccZ[1]));
+            double tScaleVel = std::max(MaxAbs(tVelX[1]), MaxAbs(tVelZ[1]));
+            snprintf(tBuf, sizeof(tBuf), "E: retarded times %.1f to %.1f fm/c (source speed up to %.3f), max |F_acc| / max |F_vel| = %.1f",
+                     tTRet.front(), tTRet.back(), std::max(std::fabs(tSourceV(tTRet.front())), std::fabs(tSourceV(tTRet.back()))),
+                     tScaleAcc / tScaleVel);
+            Info(tBuf);
+            Check("E: acceleration term dominates (max |F_acc| / max |F_vel| > 3)", tScaleAcc / tScaleVel > 3, 1, 0, false);
+            Check("E: acceleration part, max |code - exact| / max |exact|",
+                  std::max(tMaxDiff(tAccX[0], tAccX[1]), tMaxDiff(tAccZ[0], tAccZ[1])) / tScaleAcc, 0, 3e-3, false);
+            Check("E: velocity part, max |code - exact| / max |exact|",
+                  std::max(tMaxDiff(tVelX[0], tVelX[1]), tMaxDiff(tVelZ[0], tVelZ[1])) / tScaleVel, 0, 1e-3, false);
+            AddCodeExact(tDir, "Fx_acc", "acceleration part of F_{x} on the observer", "F_{x} (GeV/fm)", tTObs, tAccX[0], tAccX[1]);
+            AddCodeExact(tDir, "Fz_acc", "acceleration part of F_{z} on the observer", "F_{z} (GeV/fm)", tTObs, tAccZ[0], tAccZ[1]);
+            AddCodeExact(tDir, "Fx_vel", "velocity part of F_{x} on the observer", "F_{x} (GeV/fm)", tTObs, tVelX[0], tVelX[1]);
+            AddCodeExact(tDir, "Fz_vel", "velocity part of F_{z} on the observer", "F_{z} (GeV/fm)", tTObs, tVelZ[0], tVelZ[1]);
+            AddGraph(tDir, "t_retarded", "Exact retarded time of the source;t observer (fm/c);t retarded (fm/c)", tTObs, tTRet);
+        }
+        if (chdir("..") != 0) { perror(".."); exit(2); }
+    }
+
+    // ----- F. Decay of the static source during the Rutherford scattering
+    // The Z = 79 source decays into a daughter with the same charge and mass at rest at the same point, and a neutral
+    // particle, close to the proton's closest approach. The proton must not notice: exact orbit of B.
+    Info("F. Rutherford scattering of B, the source decays into an identical charged + a neutral daughter at closest approach");
+    {
+        const char *tDir = "F_decay_static";
+        const double tDecayTimes[2] = {70.0, 70.05}; // on and between time steps
+        for (int iDecay = 0; iDecay < 2; ++iDecay) {
+            double tTD = tDecayTimes[iDecay];
+            std::vector<PartInit> tInit = {{tProton, TVector3(tRuthB, 0, -tRuthZ0), TVector3(0, 0, tRuthP0)},
+                                           {tHeavy, TVector3(0, 0, 0), TVector3(0, 0, 0), 0., -1, true},
+                                           {tHeavyDaughter, TVector3(0, 0, 0), TVector3(0, 0, 0), tTD, 1},
+                                           {tNeutron, TVector3(0, 0, 0), TVector3(0, 0, 0), tTD, 1}};
+            std::string tSub = std::string(tDir) + "_" + std::to_string(iDecay);
+            RunResult tRun = RunCoulomb(tSub.c_str(), tRuthSteps, tRuthStep, tInit, &tDB);
+            std::string tWhat = Form("F (decay at %.2f fm/c): ", tTD);
+            Check((tWhat + "code deflection vs exact orbit [rad]").c_str(), TVector3(0, 0, 1).Angle(tRun.finalMomenta[0]), tThetaExact, 3e-5);
+            Check((tWhat + "|p| vs initial |p| [GeV]").c_str(), tRun.finalMomenta[0].Mag(), tRuthP0, 3e-5);
+            Check((tWhat + "|p - p(B, no decay)| / |p|").c_str(), (tRun.finalMomenta[0] - tRunB.finalMomenta[0]).Mag() / tRuthP0, 0, 1e-5, false);
+            Check((tWhat + "positions and times restored (1 = yes)").c_str(), tRun.restored, 1, 0, false);
+            std::vector<double> tDrT, tDr, tT, tPx, tPxB;
+            tDistanceFromOrbit(tRun.trajectory[0], tDrT, tDr);
+            Check((tWhat + "max |r(code) - r(exact orbit)| [fm]").c_str(), MaxAbs(tDr), 0, 1e-3, false);
+            for (size_t n = 0; n < tRun.fourMomenta[0].size(); ++n) {
+                tT.push_back(tRun.trajectory[0][n].T());
+                tPx.push_back(tRun.fourMomenta[0][n].Px());
+                tPxB.push_back(tRunB.fourMomenta[0][n].Px());
+            }
+            std::string tLabel = Form("td%.2f", tTD);
+            AddGraph(tDir, tLabel + "_dr_orbit", Form("decay at %.2f fm/c: r(code) - r(exact orbit) at the same polar angle;t (fm/c);#Deltar (fm)", tTD), tDrT, tDr);
+            AddCodeExact(tDir, tLabel + "_px", Form("proton p_{x}, source decays at %.2f fm/c, exact = run B without decay", tTD),
+                         "p_{x} (GeV)", tT, tPx, tPxB);
+        }
+    }
+
+    // ----- G. Decay of a moving source passing a probe
+    // A Z = 10 source moves with v = 0.5 along z at impact parameter b = 2 fm from a practically fixed unit-charge
+    // probe, from 60 fm/c before to 60 fm/c after the closest approach; it decays at the closest approach into a
+    // daughter with the same charge, mass and velocity, and a neutral particle. Exact transverse impulse on the probe
+    // from the field of a uniformly moving charge: dp_x(t) = kappa/(b v) [g v s/sqrt(b^2 + g^2 v^2 s^2)]_{s=-60}^{t-60}.
+    Info("G. Z = 10 source, v = 0.5, passes a probe at b = 2 fm and decays at closest approach: exact impulse");
+    {
+        const char *tDir = "G_decay_moving";
+        const double tV = 0.5, tGamma = 1 / std::sqrt(1 - tV * tV), tB = 2.0, tTC = 60.0, tStep = 0.1;
+        const int tSteps = 1200;
+        const double tKappa = 10 * kAlphaHbarC;
+        const double tPz = tGamma * tMoving->GetMass() * tV;
+        auto tImpulse = [&](double t) {
+            auto tF = [&](double s) { return tGamma * tV * s / std::sqrt(tB * tB + tGamma * tGamma * tV * tV * s * s); };
+            return tKappa / (tB * tV) * (tF(t - tTC) - tF(-tTC));
+        };
+        std::vector<PartInit> tNoDecay = {{tProbe, TVector3(tB, 0, 0), TVector3()},
+                                          {tMoving, TVector3(0, 0, -tV * tTC), TVector3(0, 0, tPz)}};
+        RunResult tRunNoDecay = RunCoulomb((std::string(tDir) + "_nodecay").c_str(), tSteps, tStep, tNoDecay, &tDB);
+        const double tTD = 60.05;
+        std::vector<PartInit> tDecay = {{tProbe, TVector3(tB, 0, 0), TVector3()},
+                                        {tMoving, TVector3(0, 0, -tV * tTC), TVector3(0, 0, tPz), 0., -1, true},
+                                        {tMovingDaughter, TVector3(0, 0, tV * (tTD - tTC)), TVector3(0, 0, tPz), tTD, 1},
+                                        {tNeutron, TVector3(0, 0, tV * (tTD - tTC)), TVector3(), tTD, 1}};
+        RunResult tRun = RunCoulomb(tDir, tSteps, tStep, tDecay, &tDB);
+        double tExact = tImpulse(tSteps * tStep);
+        Check("G: no decay, probe p_x vs exact impulse [GeV]", tRunNoDecay.finalMomenta[0].X(), tExact, 3e-4);
+        Check("G: decay, probe p_x vs exact impulse [GeV]", tRun.finalMomenta[0].X(), tExact, 3e-4);
+        Check("G: decay, probe |p_z| / p_x (exact 0 by symmetry)", std::fabs(tRun.finalMomenta[0].Z()) / tExact, 0, 1e-4, false);
+        // Tolerance: moving from z = -30 fm, the Float_t position of the father drifts ~1e-4 fm ahead of the exact line,
+        // while the daughter is created at the exact position; the source jumping back changes the impulse by ~2e-5.
+        Check("G: |p(decay) - p(no decay)| / p_x", (tRun.finalMomenta[0] - tRunNoDecay.finalMomenta[0]).Mag() / tExact, 0, 5e-5, false);
+        std::vector<double> tT, tPx, tPxExact, tPxNoDecay;
+        for (size_t n = 0; n < tRun.fourMomenta[0].size(); ++n) {
+            double t = tRun.trajectory[0][n].T();
+            tT.push_back(t);
+            tPx.push_back(tRun.fourMomenta[0][n].Px());
+            tPxExact.push_back(tImpulse(t));
+            tPxNoDecay.push_back(tRunNoDecay.fourMomenta[0][n].Px());
+        }
+        AddCodeExact(tDir, "probe_px", "probe p_{x}, source decays at closest approach, exact = uniformly moving charge",
+                     "p_{x} (GeV)", tT, tPx, tPxExact);
+        AddCodeExact(tDir, "probe_px_vs_nodecay", "probe p_{x}, source decays at closest approach, exact = run without decay",
+                     "p_{x} (GeV)", tT, tPx, tPxNoDecay);
+    }
+
+    // ----- H. Platonic solids of like charges released from rest
+    // All vertices are equivalent, so the expansion is radial and self-similar: r'' = S kappa / (m r^2), with S from
+    // the geometry. Heavy charges (100 GeV) keep the motion non-relativistic.
+    Info("H. like charges (m = 100 GeV) at the vertices of Platonic solids, circumradius 2 fm, released from rest, 100 fm/c");
+    {
+        const char *tDir = "H_platonic";
+        const double tPhi = (1 + std::sqrt(5.)) / 2;
+        std::vector<std::pair<std::string, std::vector<TVector3> > > tSolids;
+        tSolids.push_back({"tetrahedron", {{1, 1, 1}, {1, -1, -1}, {-1, 1, -1}, {-1, -1, 1}}});
+        tSolids.push_back({"octahedron", {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}});
+        std::vector<TVector3> tCube, tIcosahedron;
+        for (int i = 0; i < 8; ++i) tCube.push_back(TVector3(i & 1 ? 1 : -1, i & 2 ? 1 : -1, i & 4 ? 1 : -1));
+        for (int s1 : {-1, 1}) for (int s2 : {-1, 1}) {
+            tIcosahedron.push_back(TVector3(0, s1, s2 * tPhi));
+            tIcosahedron.push_back(TVector3(s1, s2 * tPhi, 0));
+            tIcosahedron.push_back(TVector3(s2 * tPhi, 0, s1));
+        }
+        tSolids.push_back({"cube", tCube});
+        tSolids.push_back({"icosahedron", tIcosahedron});
+        const double tR0 = 2.0, tStep = 0.1, tM = tPlatonic->GetMass();
+        const int tSteps = 1000;
+        for (auto &tSolid : tSolids) {
+            std::vector<TVector3> &tVertices = tSolid.second;
+            for (TVector3 &tV : tVertices) tV = tV.Unit();
+            double tSinAngle;
+            double tS = ConfigurationS(tVertices, tSinAngle);
+            std::vector<PartInit> tInit;
+            for (const TVector3 &tV : tVertices) tInit.push_back({tPlatonic, tR0 * tV, TVector3()});
+            std::string tName = tSolid.first;
+            RunResult tRun = RunCoulomb((std::string(tDir) + "_" + tName).c_str(), tSteps, tStep, tInit, &tDB);
+            double tPExact = NonRelRepulsionMomentum(tM, tS * kAlphaHbarC, tR0, tSteps * tStep);
+            double tPMean = 0, tPMin = 1e30, tPMax = 0, tMaxAngle = 0;
+            TVector3 tPSum;
+            for (size_t i = 0; i < tVertices.size(); ++i) {
+                const TVector3 &tP = tRun.finalMomenta[i];
+                tPMean += tP.Mag() / tVertices.size();
+                tPMin = std::min(tPMin, tP.Mag());
+                tPMax = std::max(tPMax, tP.Mag());
+                tMaxAngle = std::max(tMaxAngle, tP.Angle(tVertices[i]));
+                tPSum += tP;
+            }
+            snprintf(tBuf, sizeof(tBuf), "H: %s, %zu charges, S = %.5f (symmetry: sin of force angle %.1e), final v = %.4f",
+                     tName.c_str(), tVertices.size(), tS, tSinAngle, tPExact / tM);
+            Info(tBuf);
+            Check(("H: " + tName + ", mean |p| vs non-relativistic radial solution [GeV]").c_str(), tPMean, tPExact, 1e-3);
+            Check(("H: " + tName + ", spread (max - min) / mean of |p|").c_str(), (tPMax - tPMin) / tPMean, 0, 1e-5, false);
+            Check(("H: " + tName + ", max angle between p and radial direction [rad]").c_str(), tMaxAngle, 0, 1e-5, false);
+            Check(("H: " + tName + ", |sum of p| / mean |p|").c_str(), tPSum.Mag() / tPMean, 0, 1e-5, false);
+            std::vector<double> tT, tRCode, tRExact, tPrCode, tPrExact;
+            for (size_t n = 0; n < tRun.trajectory[0].size(); ++n) {
+                double t = tRun.trajectory[0][n].T();
+                tT.push_back(t);
+                tRCode.push_back(tRun.trajectory[0][n].Vect().Mag());
+                tRExact.push_back(NonRelRepulsionDistance(tM, tS * kAlphaHbarC, tR0, t));
+                tPrCode.push_back(tRun.fourMomenta[0][n].Vect().Dot(tVertices[0]));
+                tPrExact.push_back(NonRelRepulsionMomentum(tM, tS * kAlphaHbarC, tR0, t));
+            }
+            AddCodeExact(tDir, tName + "_r", tName + ": distance of charge 0 from the centre, exact = non-relativistic", "r (fm)", tT, tRCode, tRExact);
+            AddCodeExact(tDir, tName + "_pr", tName + ": radial momentum of charge 0, exact = non-relativistic", "p_{r} (GeV)", tT, tPrCode, tPrExact);
+        }
+    }
+
+    // ----- I. Hexagon of charges, at rest and boosted to beta = 0.9 along its axis (Lorentz covariance)
+    Info("I. hexagon of charges (m = 10 GeV), radius 1 fm, at rest and boosted to beta = 0.9 along z, 600 steps");
+    {
+        const char *tDir = "I_hexagon";
+        const int tN = 6, tSteps = 600;
+        const double tR0 = 1.0, tStep = 0.1, tBeta = 0.9, tGamma = 1 / std::sqrt(1 - tBeta * tBeta);
+        std::vector<TVector3> tVertices;
+        for (int i = 0; i < tN; ++i) tVertices.push_back(TVector3(std::cos(2 * M_PI * i / tN), std::sin(2 * M_PI * i / tN), 0));
+        double tSinAngle;
+        double tS = ConfigurationS(tVertices, tSinAngle);
+        std::vector<PartInit> tRest, tLab;
+        for (const TVector3 &tV : tVertices) {
+            tRest.push_back({tSlow, tR0 * tV, TVector3()});
+            tLab.push_back({tSlow, tR0 * tV, TVector3(0, 0, tGamma * tMSlow * tBeta)});
+        }
+        RunResult tRunRestHex = RunCoulomb((std::string(tDir) + "_rest").c_str(), tSteps, tStep, tRest, &tDB);
+        RunResult tRunLab = RunCoulomb((std::string(tDir) + "_lab").c_str(), tSteps, tGamma * tStep, tLab, &tDB);
+        double tPExact = NonRelRepulsionMomentum(tMSlow, tS * kAlphaHbarC, tR0, tSteps * tStep);
+        double tMaxRel = 0, tMaxCov = 0;
+        for (int i = 0; i < tN; ++i) {
+            TVector3 tPRest = tRunRestHex.finalMomenta[i], tPLab = tRunLab.finalMomenta[i];
+            tMaxRel = std::max(tMaxRel, std::fabs(tPRest.Mag() - tPExact) / tPExact);
+            tMaxCov = std::max(tMaxCov, (TVector3(tPLab.X(), tPLab.Y(), 0) - TVector3(tPRest.X(), tPRest.Y(), 0)).Mag() / tPRest.Mag());
+        }
+        snprintf(tBuf, sizeof(tBuf), "I: S = %.5f, final v = %.4f", tS, tPExact / tMSlow);
+        Info(tBuf);
+        Check("I: rest frame, max | |p| - exact | / exact over the charges", tMaxRel, 0, 2e-3, false);
+        Check("I: max |p_T(lab) - p_T(rest)| / |p| over the charges", tMaxCov, 0, 1e-5, false);
+        std::vector<double> tT, tPrLab, tPrRest, tPrExact;
+        for (size_t n = 0; n < tRunLab.fourMomenta[0].size(); ++n) {
+            double t = tRunLab.trajectory[0][n].T();
+            tT.push_back(t);
+            tPrLab.push_back(tRunLab.fourMomenta[0][n].Vect().Dot(tVertices[0]));
+            tPrRest.push_back(tRunRestHex.fourMomenta[0][n].Vect().Dot(tVertices[0]));
+            tPrExact.push_back(NonRelRepulsionMomentum(tMSlow, tS * kAlphaHbarC, tR0, t / tGamma));
+        }
+        AddCodeExact(tDir, "pr_covariance", "radial momentum of charge 0 (lab), exact = rest frame run at t/#gamma", "p_{r} (GeV)", tT, tPrLab, tPrRest);
+        AddCodeExact(tDir, "pr", "radial momentum of charge 0 (lab), exact = non-relativistic at t/#gamma", "p_{r} (GeV)", tT, tPrLab, tPrExact);
+    }
+
+    // ----- J. Random cluster of like charges vs instantaneous Coulomb N-body integration
+    // No symmetry; the retarded interaction differs from the instantaneous one by O(v^2) effects.
+    Info("J. 20 like charges (m = 20 GeV) at random in a sphere of 4 fm, from rest, 60 fm/c: instantaneous Coulomb N-body RK4");
+    {
+        const char *tDir = "J_cluster";
+        const int tN = 20, tSteps = 600;
+        const double tStep = 0.1, tM = tClusterType->GetMass();
+        TRandom3 tRandom(4357);
+        std::vector<TVector3> tPositions;
+        while ((int)tPositions.size() < tN) {
+            TVector3 tX(tRandom.Uniform(-4, 4), tRandom.Uniform(-4, 4), tRandom.Uniform(-4, 4));
+            if (tX.Mag() > 4) continue;
+            bool tTooClose = false;
+            for (const TVector3 &tY : tPositions) if ((tX - tY).Mag() < 1.0) tTooClose = true;
+            if (!tTooClose) tPositions.push_back(tX);
+        }
+        std::vector<PartInit> tInit;
+        NBody tRef;
+        for (const TVector3 &tX : tPositions) {
+            tInit.push_back({tClusterType, tX, TVector3()});
+            tRef.mass.push_back(tM);
+            tRef.charge.push_back(1);
+            tRef.x.push_back(tX);
+            tRef.p.push_back(TVector3());
+        }
+        RunResult tRun = RunCoulomb(tDir, tSteps, tStep, tInit, &tDB);
+        const int tSub = 20;
+        std::vector<double> tT, tX0Code, tX0Ref, tPx0Code, tPx0Ref;
+        for (int n = 0; n < tSteps; ++n) {
+            tT.push_back(tRun.trajectory[0][n].T());
+            tX0Code.push_back(tRun.trajectory[0][n].X());
+            tX0Ref.push_back(tRef.x[0].X());
+            tPx0Code.push_back(tRun.fourMomenta[0][n].Px());
+            tPx0Ref.push_back(tRef.p[0].X());
+            for (int k = 0; k < tSub; ++k) tRef.Step(tStep / tSub);
+        }
+        double tPMax = 0, tVMax = 0, tErrMax = 0;
+        std::vector<double> tIndex, tRelErr;
+        for (int i = 0; i < tN; ++i) {
+            tPMax = std::max(tPMax, tRef.p[i].Mag());
+            tVMax = std::max(tVMax, tRef.p[i].Mag() / std::sqrt(tM * tM + tRef.p[i].Mag2()));
+        }
+        for (int i = 0; i < tN; ++i) {
+            double tErr = (tRun.finalMomenta[i] - tRef.p[i]).Mag() / tPMax;
+            tErrMax = std::max(tErrMax, tErr);
+            tIndex.push_back(i);
+            tRelErr.push_back(tErr);
+        }
+        snprintf(tBuf, sizeof(tBuf), "J: max final speed %.4f, v^2 = %.1e (size of retardation effects)", tVMax, tVMax * tVMax);
+        Info(tBuf);
+        Check("J: max |p(code) - p(instantaneous)| / max |p| over the charges", tErrMax, 0, 3 * tVMax * tVMax, false);
+        AddGraph(tDir, "final_p_diff", "|p(code) - p(instantaneous Coulomb)| / max|p| at the end;charge;relative difference", tIndex, tRelErr);
+        AddCodeExact(tDir, "p0_x", "x of charge 0, exact = instantaneous Coulomb N-body", "x (fm)", tT, tX0Code, tX0Ref);
+        AddCodeExact(tDir, "p0_px", "p_{x} of charge 0, exact = instantaneous Coulomb N-body", "p_{x} (GeV)", tT, tPx0Code, tPx0Ref);
     }
 
     WriteGraphs(tOutputFile);
