@@ -1,5 +1,6 @@
 // Full-evolution checks of CoulombAfterburner::Apply on simple systems with known solutions.
-// Build and run with checks/coulomb/run.sh (spectators are switched off in the copy that is tested).
+// Build and run with checks/coulomb/run.sh. Spectators are switched off through the configuration
+// (CoulombUseSpectators = 0), so that the test events contain only the particles defined here.
 //
 // Units as in THERMINATOR: inside the afterburner lengths and times are in GeV^-1, momenta in GeV.
 // Here positions and times are given in fm (fm/c) and converted with kHbarC.
@@ -9,9 +10,11 @@
 //   C. two charges released from rest       H. Platonic solids of charges released from rest
 //   D. the pair of C boosted to beta = 0.9  I. a hexagon of charges, at rest and boosted to beta = 0.9
 //   E. acceleration (radiation) term        J. random cluster of 20 charges vs instantaneous Coulomb N-body
+//   K. settings of the afterburner from the configuration (events.ini, events_template)
 //
 // Besides the pass/fail checks, trajectories of the code and of the exact solutions are written as TGraphs
-// to a ROOT file (first argument, default coulomb_checks.root), one directory per check:
+// to a ROOT file (first argument, default coulomb_checks.root), one directory per check. The second argument is
+// the top directory of the repository, with events.ini and events_template for K.
 //   <label>_code, <label>_exact, <label>_diff (= code - exact) as functions of t (fm/c),
 //   and a few other graphs described where they are made.
 
@@ -35,10 +38,12 @@
 
 #include "AbstractAfterburner.h"
 #include "AbstractEventSaver.h"
+#include "Configurator.h"
 #include "Event.h"
 #include "Particle.h"
 #include "ParticleDB.h"
 #include "ParticleType.h"
+#include "Parser.h"
 #include "TDirectory.h"
 #include "TFile.h"
 #include "TGlauberMC.h"
@@ -62,6 +67,9 @@ TString sTimeStamp;
 static const double kAlphaHbarC = 1.439964e-3; // GeV fm, alpha * hbar * c (CODATA)
 
 static int sFailures = 0;
+
+// Configuration of the afterburner in all runs: no spectators
+static Configurator sChecksConfig;
 
 static void Check(const char *aName, double aGot, double aExpected, double aTolerance, bool aRelative = true)
 {
@@ -149,6 +157,7 @@ static RunResult RunCoulomb(const char *aDir, int aSteps, double aStepFm, const 
     RunResult tResult;
     {
         CoulombAfterburner tCoulomb(aSteps, aStepFm, 0., nullptr, aDB);
+        tCoulomb.ReadParameters(&sChecksConfig);
         tCoulomb.SetKeepTrajectories(true);
         tCoulomb.Init();
         Event tEvent; // resets the eid counter
@@ -340,6 +349,9 @@ static double ConfigurationS(const std::vector<TVector3> &aVertices, double &aSi
 int main(int argc, char **argv)
 {
     const char *tOutputFile = argc > 1 ? argv[1] : "coulomb_checks.root";
+    const char *tTopDir = argc > 2 ? argv[2] : nullptr;
+    Parameter tNoSpectators{"CoulombUseSpectators", "0"};
+    sChecksConfig.AddParameter(&tNoSpectators);
 
     ParticleDB tDB;
     ParticleType tTypes[] = {
@@ -915,6 +927,77 @@ int main(int argc, char **argv)
         AddGraph(tDir, "final_p_diff", "|p(code) - p(instantaneous Coulomb)| / max|p| at the end;charge;relative difference", tIndex, tRelErr);
         AddCodeExact(tDir, "p0_x", "x of charge 0, exact = instantaneous Coulomb N-body", "x (fm)", tT, tX0Code, tX0Ref);
         AddCodeExact(tDir, "p0_px", "p_{x} of charge 0, exact = instantaneous Coulomb N-body", "p_{x} (GeV)", tT, tPx0Code, tPx0Ref);
+    }
+
+    // ----- K. Settings of the afterburner from the configuration
+    // The defaults must be the values of the former constants, events.ini and events_template must contain all keys
+    // with these values, all keys must be read, and missing keys must keep the defaults.
+    Info("K. settings of the afterburner from the configuration: defaults, events.ini, events_template, all keys, no keys");
+    {
+        const std::vector<std::string> tKeys = {"CoulombUseSpectators", "CoulombExtrapolateSpectators", "CoulombExtrapolateFireball",
+                                                "CoulombFindProblem", "CoulombLargeTerm", "CoulombDebugStep", "CoulombDebugEid",
+                                                "CoulombDebugOtherEid"};
+        const std::vector<double> tFormerConstants = {1, 1, 1, 1, 1.0, -2, -2, -2};
+        auto tSettings = [](const CoulombAfterburner &aCoulomb) {
+            return std::vector<double>{(double)aCoulomb.m_UseSpectators, (double)aCoulomb.m_ExtrapolateSpectators,
+                                       (double)aCoulomb.m_ExtrapolateFireball, (double)aCoulomb.m_FindProblem, aCoulomb.m_LargeTerm,
+                                       (double)aCoulomb.m_DebugStep, (double)aCoulomb.m_DebugEid, (double)aCoulomb.m_DebugOtherEid};
+        };
+        // Number of settings different from the expected values, printing them
+        auto tMismatches = [&](const char *aWhat, const std::vector<double> &aGot, const std::vector<double> &aExpected) {
+            int tN = 0;
+            for (size_t i = 0; i < tKeys.size(); ++i) {
+                if (aGot[i] != aExpected[i]) {
+                    printf("INFO  K: %s: %s = %g, expected %g\n", aWhat, tKeys[i].c_str(), aGot[i], aExpected[i]);
+                    ++tN;
+                }
+            }
+            return tN;
+        };
+        {
+            CoulombAfterburner tCoulomb(1, 0.1, 0., nullptr, &tDB);
+            Check("K: defaults different from the former constants", tMismatches("defaults", tSettings(tCoulomb), tFormerConstants), 0, 0, false);
+        }
+        if (tTopDir) {
+            for (const char *tFile : {"events.ini", "events_template"}) {
+                std::string tPath = std::string(tTopDir) + "/" + tFile;
+                Configurator tConfig;
+                Parser tParser(tPath.c_str());
+                tParser.ReadINI(&tConfig);
+                int tMissing = 0;
+                for (const std::string &tKey : tKeys) {
+                    if (!tConfig.HasParameter(tKey.c_str())) {
+                        printf("INFO  K: %s: key %s missing\n", tFile, tKey.c_str());
+                        ++tMissing;
+                    }
+                }
+                Check((std::string("K: keys missing in ") + tFile).c_str(), tMissing, 0, 0, false);
+                CoulombAfterburner tCoulomb(1, 0.1, 0., nullptr, &tDB);
+                tCoulomb.ReadParameters(&tConfig);
+                Check((std::string("K: settings from ") + tFile + " different from the former constants").c_str(),
+                      tMismatches(tFile, tSettings(tCoulomb), tFormerConstants), 0, 0, false);
+            }
+        } else {
+            Info("K: no repository directory given, events.ini and events_template not checked");
+        }
+        {
+            const std::vector<std::string> tValues = {"0", "0", "0", "0", "2.5", "7", "11", "13"};
+            Configurator tConfig;
+            for (size_t i = 0; i < tKeys.size(); ++i) {
+                Parameter tPar{tKeys[i].c_str(), tValues[i].c_str()};
+                tConfig.AddParameter(&tPar);
+            }
+            CoulombAfterburner tCoulomb(1, 0.1, 0., nullptr, &tDB);
+            tCoulomb.ReadParameters(&tConfig);
+            Check("K: settings not taken from a configuration with all keys",
+                  tMismatches("all keys", tSettings(tCoulomb), {0, 0, 0, 0, 2.5, 7, 11, 13}), 0, 0, false);
+        }
+        {
+            Configurator tConfig;
+            CoulombAfterburner tCoulomb(1, 0.1, 0., nullptr, &tDB);
+            tCoulomb.ReadParameters(&tConfig);
+            Check("K: defaults not kept with an empty configuration", tMismatches("no keys", tSettings(tCoulomb), tFormerConstants), 0, 0, false);
+        }
     }
 
     WriteGraphs(tOutputFile);
