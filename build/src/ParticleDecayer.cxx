@@ -70,11 +70,32 @@ void ParticleDecayer::DecayParticle(Particle* aFather)
   mTypeF  = mFather->GetParticleType();
   tTable  = mTypeF->GetTable();
   
+  // With a finite width the mass of the father can be below the threshold of some of its channels (sum of the
+  // daughter masses): choose only among the channels open at its actual mass, computed like in the decays below
+  double tPe, tPx, tPy, tPz;
+  mFather->GetMomentum(&tPe, &tPx, &tPy, &tPz);
+  double tMass = TMath::Sqrt(tPe*tPe - tPx*tPx - tPy*tPy - tPz*tPz);
+  std::vector<bool> tOpen(tTable->GetChannelCount() + 1);
+  bool tAnyOpen = false;
+  for (int tIter=0; tIter<=tTable->GetChannelCount(); tIter++) {
+    const DecayChannel *tChannel = tTable->GetDecayChannel(tIter);
+    double tThreshold = mDB->GetParticleType(tChannel->GetParticle1())->GetMass();
+    tThreshold += mDB->GetParticleType(tChannel->GetParticle2())->GetMass();
+    if (tChannel->Is3Particle())
+      tThreshold += mDB->GetParticleType(tChannel->GetParticle3())->GetMass();
+    tOpen[tIter] = tThreshold < tMass;
+    tAnyOpen = tAnyOpen || tOpen[tIter];
+  }
+
   tProb = mRandom->Rndm();
+  if (!tAnyOpen) {
+    PRINT_MESSAGE("<ParticleDecayer::DecayParticle>\tNo decay channel of " << mTypeF->GetName() << " open at mass " << tMass << ", not decaying");
+    return;
+  }
 #ifdef _PARTICLE_DECAYER_RESCALE_CHANNELS_
-  tChannelIndex = tTable->ChooseDecayChannel(tProb);
+  tChannelIndex = tTable->ChooseDecayChannel(tProb, tOpen);
 #else
-  tChannelIndex = tTable->ChooseDecayChannelOrNot(tProb);
+  tChannelIndex = tTable->ChooseDecayChannelOrNot(tProb, tOpen);
   if (tChannelIndex == -1) {
     PRINT_DEBUG_3("<ParticleDecayer::DecayParticle>\tNot decaying " << mTypeF->GetName() << " for prob " << tProb);
     for (int tIter=0; tIter<=tTable->GetChannelCount(); tIter++) {

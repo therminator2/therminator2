@@ -257,7 +257,15 @@ double Model::CalcMassDistr(ParticleType *aPartType, double &statWeight) {
     int pdg = aPartType->GetPDGCode();
     if (Abs(pdg) == 2224 || Abs(pdg) == 2214 || Abs(pdg) == 2114 || Abs(pdg) == 1114) {
         TH1F *distr = p33();
-        double m = distr->GetRandom();
+        // The tabulated distribution starts at 1.078 GeV, below the threshold of n pi (1.0791 GeV), the only decay of
+        // Delta-: redraw masses below the lowest decay threshold of the particle. The margin keeps the mass, which the
+        // decay recomputes from single-precision momenta, safely above the threshold.
+        const double tMargin = 1e-5; // GeV
+        double tThreshold = aPartType->GetDecayThreshold() + tMargin;
+        double m;
+        do {
+            m = distr->GetRandom();
+        } while (aPartType->GetDecayThreshold() > 0.0 && m < tThreshold && tThreshold < distr->GetXaxis()->GetXmax());
         statWeight = distr->Interpolate(m);
         return m;
     } else {

@@ -185,6 +185,7 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB)
 	DecayChannel* newChannel = new DecayChannel(tBRatio, aDB->GetParticleTypeIndex(tDaughter1), aDB->GetParticleTypeIndex(tDaughter2), aDB->GetParticleTypeIndex(tDaughter3));
 	aDB->GetParticleType(tFather)->AddDecayChannel(*newChannel);
 	aDB->GetParticleType(tFather)->SetDecayChannelCount3( aDB->GetParticleType(tFather)->GetDecayChannelCount3() + 1 );
+	aDB->GetParticleType(tFather)->UpdateDecayThreshold((double)aDB->GetParticleType(tDaughter1)->GetMass() + aDB->GetParticleType(tDaughter2)->GetMass() + aDB->GetParticleType(tDaughter3)->GetMass());
 	PRINT_DEBUG_2("\t\tAdding 3-body decay channel:     "<< tDaughter1 <<" + "<< tDaughter2 <<" + "<< tDaughter3);
       } else
         PRINT_DEBUG_2("\t\tNOT adding 3-body decay channel: "<< tDaughter1 <<" + "<< tDaughter2 <<" + "<< tDaughter3 <<", extra mass = "<< aDB->GetParticleType(tDaughter1)->GetMass() + aDB->GetParticleType(tDaughter2)->GetMass() + aDB->GetParticleType(tDaughter3)->GetMass() - aDB->GetParticleType(tFather)->GetMass());
@@ -225,6 +226,7 @@ void Parser::ReadSHAREDecays(ParticleDB* aDB)
 	DecayChannel *newChannel = new DecayChannel(tRatio, aDB->GetParticleTypeIndex(tDaughter1), aDB->GetParticleTypeIndex(tDaughter2), -1);
         aDB->GetParticleType(tFather)->AddDecayChannel(*newChannel);
         aDB->GetParticleType(tFather)->SetDecayChannelCount2( aDB->GetParticleType(tFather)->GetDecayChannelCount2() + 1 );
+        aDB->GetParticleType(tFather)->UpdateDecayThreshold((double)aDB->GetParticleType(tDaughter1)->GetMass() + aDB->GetParticleType(tDaughter2)->GetMass());
         PRINT_DEBUG_2("\t\tAdding 2-body decay channel:     "<< tDaughter1 <<" + "<< tDaughter2);
       } else
         PRINT_DEBUG_2("\t\tNOT adding 2-body decay channel: "<< tDaughter1 <<" + "<< tDaughter2 <<", extra mass = "<< aDB->GetParticleType(tDaughter1)->GetMass() + aDB->GetParticleType(tDaughter2)->GetMass() - aDB->GetParticleType(tFather)->GetMass());

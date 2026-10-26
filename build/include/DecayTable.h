@@ -44,6 +44,8 @@ class DecayTable {
     float		GetDecayStep(int aIndex);
     int			ChooseDecayChannel(double aProb);
     int			ChooseDecayChannelOrNot(double aProb);
+    int			ChooseDecayChannel(double aProb, const std::vector<bool> &aOpen);
+    int			ChooseDecayChannelOrNot(double aProb, const std::vector<bool> &aOpen);
 
   private:  
     void RecalculateBranchingRatios();

@@ -64,6 +64,7 @@ class ParticleType {
     double GetMultiplicity()	const;
     int    GetDecayChannelCount2() const;
     int    GetDecayChannelCount3() const;
+    double GetDecayThreshold() const;
     
     void  SetNumber(int aNumber);
     void  SetName(const char *aName);
@@ -86,6 +87,7 @@ class ParticleType {
     void  SetMultiplicity(double aMulti);
     void  SetDecayChannelCount2(int aDCCount2);
     void  SetDecayChannelCount3(int aDCCount3);
+    void  UpdateDecayThreshold(double aThreshold);
 
     DecayTable* GetTable() const;
     void        AddDecayChannel(DecayChannel aChannel);
@@ -112,6 +114,7 @@ class ParticleType {
     double	mMultiplicity;	// average multiplicity
     int		mDecayChannelCount2;      //number of channels in this case
     int		mDecayChannelCount3;      //number of channels in this case
+    double	mDecayThreshold;	// lowest sum of the daughter masses over the decay channels, 0 without channels
     DecayTable*	mTable;
     std::map<TString, int> mPrefixToUrQMDCode;
     void InitUrQMDCodes();

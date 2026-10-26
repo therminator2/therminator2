@@ -39,7 +39,7 @@ ParticleType::ParticleType()
   mNq(-1), mNaq(-1), mNs(-1), mNas(-1), mNc(-1), mNac(-1),
   mPDGCode(0),
   mMaxIntegrand(0.0), mMultiplicity(0.0),
-  mDecayChannelCount2(0), mDecayChannelCount3(0)
+  mDecayChannelCount2(0), mDecayChannelCount3(0), mDecayThreshold(0.0)
 {
   mTable	= new DecayTable();
 }
@@ -67,6 +67,7 @@ ParticleType::ParticleType(const ParticleType& aParticleType)
   mMultiplicity = aParticleType.GetMultiplicity();
   mDecayChannelCount2 = aParticleType.GetDecayChannelCount2();
   mDecayChannelCount3 = aParticleType.GetDecayChannelCount3();
+  mDecayThreshold = aParticleType.GetDecayThreshold();
   mTable	= new DecayTable(*(aParticleType.GetTable()));
 
   InitUrQMDCodes();
@@ -99,6 +100,7 @@ double	ParticleType::GetMaxIntegrand() const	{ return mMaxIntegrand; }
 double	ParticleType::GetMultiplicity() const	{ return mMultiplicity; }
 int	ParticleType::GetDecayChannelCount2() const { return mDecayChannelCount2; }
 int	ParticleType::GetDecayChannelCount3() const { return mDecayChannelCount3; }
+double	ParticleType::GetDecayThreshold() const { return mDecayThreshold; }
 int	ParticleType::GetCharge() const		{ return static_cast<int> (mI3+(mBarionN+mStrangeN)/2.); }
 
 void	ParticleType::SetNumber(int aNumber)		{ mNumber = aNumber; }
@@ -122,6 +124,11 @@ void	ParticleType::SetMaxIntegrand(double aMaxInt)	{ mMaxIntegrand = aMaxInt; }
 void	ParticleType::SetMultiplicity(double aMulti)	{ mMultiplicity = aMulti; }
 void	ParticleType::SetDecayChannelCount2(int aDCCount2) { mDecayChannelCount2 = aDCCount2; }
 void	ParticleType::SetDecayChannelCount3(int aDCCount3) { mDecayChannelCount3 = aDCCount3; }
+void	ParticleType::UpdateDecayThreshold(double aThreshold)
+{
+  if ((mDecayThreshold <= 0.0) || (aThreshold < mDecayThreshold))
+    mDecayThreshold = aThreshold;
+}
 
 DecayTable* ParticleType::GetTable() const
 {

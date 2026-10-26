@@ -107,3 +107,55 @@ int DecayTable::ChooseDecayChannelOrNot(double aProb)
   }
   return -1;
 }
+
+// Like ChooseDecayChannel(), but only among the channels with aOpen true (e.g. kinematically allowed), with their
+// branching ratios renormalised. Returns -1 if no channel is open.
+int DecayTable::ChooseDecayChannel(double aProb, const std::vector<bool> &aOpen)
+{
+  double tSumOpen = 0.0;
+  for (unsigned long tIter=0; tIter<mDecayChannels.size(); tIter++)
+    if (aOpen[tIter])
+      tSumOpen += mDecayChannels[tIter].GetBranchingRatio();
+  if (tSumOpen <= 0.0)
+    return -1;
+
+  double tCurRatio = 0.0;
+  int tLastOpen = -1;
+  for (unsigned long tIter=0; tIter<mDecayChannels.size(); tIter++) {
+    if (!aOpen[tIter])
+      continue;
+    tCurRatio += mDecayChannels[tIter].GetBranchingRatio() / tSumOpen;
+    tLastOpen = tIter;
+    if (aProb <= tCurRatio)
+      return tIter;
+  }
+  return tLastOpen;
+}
+
+// Like ChooseDecayChannelOrNot(), but only among the channels with aOpen true: the total probability to decay stays
+// the sum of all branching ratios and is shared by the open channels in proportion to their branching ratios.
+// Returns -1 for no decay, or if no channel is open.
+int DecayTable::ChooseDecayChannelOrNot(double aProb, const std::vector<bool> &aOpen)
+{
+  double tSumAll = 0.0;
+  double tSumOpen = 0.0;
+  for (unsigned long tIter=0; tIter<mDecayChannels.size(); tIter++) {
+    tSumAll += mDecayChannels[tIter].GetBranchingRatio();
+    if (aOpen[tIter])
+      tSumOpen += mDecayChannels[tIter].GetBranchingRatio();
+  }
+  if (tSumOpen <= 0.0)
+    return -1;
+
+  double tScale = tSumAll / tSumOpen;
+  double tSumRatio = 0.0;
+  for (unsigned long tIter=0; tIter<mDecayChannels.size(); tIter++) {
+    if (!aOpen[tIter])
+      continue;
+    double tRatio = mDecayChannels[tIter].GetBranchingRatio() * tScale;
+    if ((aProb > tSumRatio) && (aProb <= tSumRatio + tRatio))
+      return tIter;
+    tSumRatio += tRatio;
+  }
+  return -1;
+}
