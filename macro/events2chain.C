@@ -34,7 +34,7 @@
 
 using namespace std;
 
-TChain* events2chain(TString aEventDir, Int_t aEventFiles, ParticleCoor* aParticle, Int_t* aEvents)
+TChain* events2chain(TString aEventDir, Int_t aEventFiles, StructParticle* aParticle, Int_t* aEvents)
 {
 // ##########################################################################
 // WHICH ROOT FILES TO READ
@@ -62,11 +62,11 @@ TChain* events2chain(TString aEventDir, Int_t aEventFiles, ParticleCoor* aPartic
 /*! @file events2chain.C
  * @brief ROOT macro with events2chain() function.
  */
-/*! @fn TChain* events2chain(TString aEventDir, Int_t aEventFiles, ParticleCoor* aParticle, Int_t* aEvents)
+/*! @fn TChain* events2chain(TString aEventDir, Int_t aEventFiles, StructParticle* aParticle, Int_t* aEvents)
  * @brief ROOT macro. Function adds a number of <b>eventXXX.root</b> files, links the given Particle_t object to the TChain.
  * @param [in] aEventDir directory with event files
  * @param [in] aEventFiles number of event files to add to TChain
- * @param [out] aParticle pointer to ParticleCoor object  
+ * @param [out] aParticle pointer to StructParticle object  
  * @param [out] aEvents total number of events added
  * @retval TChain* pointer to TChain
  */

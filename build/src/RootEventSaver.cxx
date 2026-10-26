@@ -20,7 +20,7 @@ void RootEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
   
   char	  tEventFName[kFileNameMaxChar];
   char	  tTempFName[kFileNameMaxChar];
-  static ParticleCoor	tPartCoor;
+  static StructParticle	tStructParticle;
   static StructEvent	tStructEvent;
   list<Particle>::iterator	tParticle_i;
   
@@ -32,7 +32,7 @@ void RootEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
     mParticleTree  = new TTree(_PARTICLES_TREE_, "particle tree");    
     mEventTree     = new TTree(_EVENTS_TREE_,    "event tree");
 
-    mParticleTree ->Branch(_PARTICLE_BRANCH_,		&tPartCoor,							 _PARTICLE_FORMAT_	);
+    mParticleTree ->Branch(_PARTICLE_BRANCH_,		&tStructParticle,						 _PARTICLE_FORMAT_	);
     mEventTree    ->Branch(_EVENTS_BRANCH_,		&tStructEvent,							 _EVENTS_FORMAT_	);   
 
     SaveParameters(tModel);
@@ -41,14 +41,12 @@ void RootEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
 // add all Particle entries to file and Event information
   if(mFile) {
     for(tParticle_i = tEvent->GetParticleList()->begin(); tParticle_i != tEvent->GetParticleList()->end(); tParticle_i++) {
-      tPartCoor = (*tParticle_i);
-      tPartCoor.SetTXYZ(
-              tPartCoor.T() * kHbarC,
-              tPartCoor.X() * kHbarC,
-              tPartCoor.Y() * kHbarC,
-              tPartCoor.Z() * kHbarC
-              );
-      tPartCoor.eventid = tEvent->GetEventID();
+      tParticle_i->ToStruct(tStructParticle);
+      tStructParticle.t *= kHbarC;
+      tStructParticle.x *= kHbarC;
+      tStructParticle.y *= kHbarC;
+      tStructParticle.z *= kHbarC;
+      tStructParticle.eventid = tEvent->GetEventID();
       mParticleTree->Fill();
     }
     tStructEvent.eventID     = tEvent->GetEventID();

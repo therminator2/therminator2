@@ -15,6 +15,7 @@ public:
 
         TChain* mChainParts;
         TChain* mChainEvent;
+        StructParticle mStructParticle;
 
 
 

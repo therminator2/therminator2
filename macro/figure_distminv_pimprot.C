@@ -59,7 +59,7 @@ void figure_distminv_pimprot(TString aEventDir = "./", Int_t aEventFiles = 100)
 // ##########################################################################
 // # READ ROOT FILES
 // ##########################################################################
-  static ParticleCoor Particle;
+  static StructParticle Particle;
   Int_t   Events;
   TChain* Chain = events2chain(aEventDir, aEventFiles, &Particle, &Events);
 

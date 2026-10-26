@@ -40,7 +40,7 @@ void figure_hsret(TString aEventDir = "./events/", Int_t aEventFiles = 1)
 // ##########################################################################
 // # READ ROOT FILES
 // ##########################################################################
-  static ParticleCoor Particle;
+  static StructParticle Particle;
   Int_t   Events;
   TChain* Chain = events2chain(aEventDir, aEventFiles, &Particle, &Events);
 

@@ -36,6 +36,15 @@
 #define _PARTICLE_BRANCH_ "particle"
 #define _PARTICLE_FORMAT_ "mass/F:t:x:y:z:e:px:py:pz:decayed/I:pid:fatherpid:rootpid:eid:fathereid:eventid/i"
 
+// A particle in the ROOT event files, member by member as in _PARTICLE_FORMAT_. The files are written and read
+// through this plain struct, so that they do not depend on the layout of ParticleCoor.
+struct StructParticle
+{
+  Float_t mass, t, x, y, z, e, px, py, pz;
+  Int_t   decayed, pid, fatherpid, rootpid, eid, fathereid;
+  UInt_t  eventid;
+};
+
 class ParticleCoor {
   public:
     ParticleCoor()
@@ -121,6 +130,9 @@ class ParticleCoor {
     void    TransformToLCMS(Float_t aBetaZ);
     void    TransformRotateZ(Float_t aPhi);
     void    TransformToPRF(Float_t aBetaT);
+
+    void    ToStruct(StructParticle &aStruct) const;
+    void    FromStruct(const StructParticle &aStruct);
 
     Float_t mass;
     Int_t   decayed;

@@ -72,6 +72,7 @@ TString sTimeStamp;
 int     sParentPID;
 
 static ParticleCoor particle1, particle2, particle1lcms, particle2lcms, particle1prf, particle2prf, buf;
+static StructParticle bufStruct; // read from the ROOT files, converted to buf
 ParticleCoor **evbuf;
 ParticleCoor **evbuf2;
 
@@ -676,7 +677,7 @@ int main(int argc, char **argv)
   int   tNumberOfEvents	= chnEv->GetEntries(); 
   PRINT_DEBUG_1("Particle entries: "<<npart);
   //it must be initialized
-  chn->SetBranchAddress(_PARTICLE_BRANCH_,&buf);
+  chn->SetBranchAddress(_PARTICLE_BRANCH_,&bufStruct);
 
   if(tNumberOfEvents<20000) {
     PRINT_MESSAGE("WARNING The number of events read ("<<tNumberOfEvents<<") may be not sufficient, statistics is too low.");
@@ -727,6 +728,7 @@ int main(int argc, char **argv)
    
   for (int iter=0; iter<npart; iter++) {
     chn->GetEntry(iter);
+    buf.FromStruct(bufStruct);
     if (buf.eventid != curev) {
       if (eviter>-1) {
 	if (partpid2 == 0) {

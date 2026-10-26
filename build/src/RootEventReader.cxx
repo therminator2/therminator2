@@ -8,7 +8,7 @@ void RootEventReader::SetupInput(TString aEventDir, Int_t aEventFiles) {
   mChainParts = new TChain(_PARTICLES_TREE_);
   mChainEvent = new TChain(_EVENTS_TREE_);
 
-  mChainParts->SetBranchAddress(_PARTICLE_BRANCH_, &mParticleCoor);
+  mChainParts->SetBranchAddress(_PARTICLE_BRANCH_, &mStructParticle);
   mChainEvent->SetBranchAddress(_EVENTS_BRANCH_,   &mStructEvent);
   
   for(Int_t i=0; i<aEventFiles; i++) {
@@ -39,6 +39,7 @@ bool RootEventReader::NextEvent() {
 }
 void RootEventReader::GetParticle(int aIter) {
   mChainParts->GetEntry(aIter);
+  mParticleCoor.FromStruct(mStructParticle);
 }
 
 
