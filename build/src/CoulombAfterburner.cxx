@@ -715,6 +715,12 @@ ParticleType *CoulombAfterburner::SpectatorType(std::list<Particle> *tParticles,
 Int_t CoulombAfterburner::AddSpectators(std::list<Particle> *tParticles, Double_t tEarliestTime)
 {
     Int_t tNspec = 0;
+    // The spectators get the eids after the largest one in the event: particles read from a file keep their eids,
+    // while the counter of Particle starts again from 0 with every event
+    Int_t tNextEid = 0;
+    for (const Particle &tParticle : *tParticles) {
+        tNextEid = TMath::Max(tNextEid, tParticle.eid + 1);
+    }
 
     if (m_hNpartImpB == nullptr) {
         cout << "POINTER " << m_mcg << endl;
@@ -769,6 +775,7 @@ Int_t CoulombAfterburner::AddSpectators(std::list<Particle> *tParticles, Double_
 
             Particle tSpectator(tSpectatorType);
             tSpectator.SetParticlePX(tSpectatorE, 0, 0, tSpectatorPz, tEarliestTime, tSpectatorX, tSpectatorY, tSpectatorZ);
+            tSpectator.eid = tNextEid++;
             tParticles->push_back(tSpectator);
             ++tNspec;
         }
