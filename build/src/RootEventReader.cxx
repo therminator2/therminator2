@@ -1,3 +1,4 @@
+#include "THGlobal.h"
 #include "RootEventReader.h"
 
 void RootEventReader::SetupInput(TString aEventDir, Int_t aEventFiles) {
@@ -40,6 +41,8 @@ bool RootEventReader::NextEvent() {
 void RootEventReader::GetParticle(int aIter) {
   mChainParts->GetEntry(aIter);
   mParticleCoor.FromStruct(mStructParticle);
+  // The files contain positions and times in fm, like the text files (see TextEventReader)
+  mParticleCoor.SetTXYZ(mParticleCoor.T() / kHbarC, mParticleCoor.X() / kHbarC, mParticleCoor.Y() / kHbarC, mParticleCoor.Z() / kHbarC);
 }
 
 
