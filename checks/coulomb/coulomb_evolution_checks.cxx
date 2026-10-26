@@ -11,6 +11,7 @@
 //   D. the pair of C boosted to beta = 0.9  I. a hexagon of charges, at rest and boosted to beta = 0.9
 //   E. acceleration (radiation) term        J. random cluster of 20 charges vs instantaneous Coulomb N-body
 //   K. settings of the afterburner from the configuration (events.ini, events_template)
+//   L. a particle with NaN momentum does not affect the others
 //
 // Besides the pass/fail checks, trajectories of the code and of the exact solutions are written as TGraphs
 // to a ROOT file (first argument, default coulomb_checks.root), one directory per check. The second argument is
@@ -927,6 +928,22 @@ int main(int argc, char **argv)
         AddGraph(tDir, "final_p_diff", "|p(code) - p(instantaneous Coulomb)| / max|p| at the end;charge;relative difference", tIndex, tRelErr);
         AddCodeExact(tDir, "p0_x", "x of charge 0, exact = instantaneous Coulomb N-body", "x (fm)", tT, tX0Code, tX0Ref);
         AddCodeExact(tDir, "p0_px", "p_{x} of charge 0, exact = instantaneous Coulomb N-body", "p_{x} (GeV)", tT, tPx0Code, tPx0Ref);
+    }
+
+    // ----- L. A particle with a non-finite momentum must not affect the others
+    // The Rutherford scattering of B with an additional charged particle with NaN momentum: it must be left out of the
+    // propagation, so the proton must come out exactly as in B, and the bad particle must be left unchanged.
+    Info("L. Rutherford scattering of B with an additional charged particle with NaN momentum");
+    {
+        const double tNaN = std::numeric_limits<double>::quiet_NaN();
+        std::vector<PartInit> tInit = {{tProton, TVector3(tRuthB, 0, -tRuthZ0), TVector3(0, 0, tRuthP0)},
+                                       {tHeavy, TVector3(0, 0, 0), TVector3(0, 0, 0)},
+                                       {tProton, TVector3(-3, 1, 2), TVector3(tNaN, 0.1, 0.2)}};
+        RunResult tRun = RunCoulomb("L_nan_particle", tRuthSteps, tRuthStep, tInit, &tDB);
+        Check("L: proton |p - p(B)| / |p|", (tRun.finalMomenta[0] - tRunB.finalMomenta[0]).Mag() / tRuthP0, 0, 0, false);
+        Check("L: bad particle left unchanged (p_y, p_z) [GeV]",
+              std::fabs(tRun.finalMomenta[2].Y() - 0.1) + std::fabs(tRun.finalMomenta[2].Z() - 0.2), 0, 1e-7, false);
+        Check("L: positions and times restored (1 = yes)", tRun.restored, 1, 0, false);
     }
 
     // ----- K. Settings of the afterburner from the configuration
