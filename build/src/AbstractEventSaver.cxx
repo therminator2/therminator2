@@ -86,6 +86,11 @@ void AbstractEventSaver::ReadParameters()
 
 void AbstractEventSaver::SaveParameters(Model *tModel)
 {
+  // Events read from files (therm2_coulomb) come without a model
+  if (tModel == nullptr) {
+    PRINT_MESSAGE("<AbstractEventSaver::SaveParameters>\tNo model, the parameters tree is not written");
+    return;
+  }
   Configurator *aMainConfig = tModel->GetMainConfig();
         mParameterTree = new TTree(_PARAMETERS_TREE_,"parameters and model description tree");
 char tTimeStamp[21];

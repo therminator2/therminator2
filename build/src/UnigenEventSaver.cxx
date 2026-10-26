@@ -36,8 +36,6 @@ void UnigenEventSaver::Save(Event *tEvent, Model *tModel, int tEventCounter)
 
     // open new file every _EVENTS_PER_FILE_ events
 
-    Configurator *aMainConfig = tModel->GetMainConfig();
-
     if( !((tEventCounter - 1) % kEventsPerFile)) { 
         sprintf(tTempFName,"%sunigen%03i.tmp", sEventDIR.Data(), mFileCounter);
         mFile = new TFile(tTempFName,"RECREATE");
