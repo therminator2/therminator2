@@ -78,6 +78,7 @@ ParticleCoor& Particle::operator= (Particle& aParticle)
   fathereid	= aParticle.fathereid;
   decayed	= aParticle.decayed;
   eventid	= aParticle.eventid;
+  ptot_valid	= kFALSE;
   return *this;
 }
 

@@ -49,6 +49,7 @@ class ParticleCoor {
   public:
     ParticleCoor()
     : mass(0.0), decayed(0), pid(0), fatherpid(0), rootpid(0), eid(0), fathereid(0), eventid(0),
+      ptot(0.0), ptot_valid(kFALSE),
       t(0.0), x(0.0), y(0.0), z(0.0), e(0.0), px(0.0), py(0.0), pz(0.0)
     { }
     ~ParticleCoor()

@@ -50,6 +50,7 @@ ParticleCoor& ParticleCoor::operator= (ParticleCoor& aPartCoor)
   fathereid	= aPartCoor.fathereid;
   decayed	= aPartCoor.decayed;
   eventid	= aPartCoor.eventid;
+  ptot_valid	= kFALSE;
   return *this;
 }
 
@@ -71,6 +72,7 @@ ParticleCoor& ParticleCoor::operator= (ParticleCoor* aPartCoor)
   fathereid	= aPartCoor->fathereid;
   decayed	= aPartCoor->decayed;
   eventid	= aPartCoor->eventid;
+  ptot_valid	= kFALSE;
   return *this;
 }
 
