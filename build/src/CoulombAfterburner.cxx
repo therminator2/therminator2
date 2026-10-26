@@ -238,6 +238,13 @@ bool CoulombAfterburner::IsSpectator(std::list<Particle>::iterator &tPartIter)
     return tPDG == 72212 || tPDG == 72112;
 }
 
+bool CoulombAfterburner::HasFiniteKinematics(const Particle &aParticle)
+{
+    return TMath::Finite(aParticle.E()) && TMath::Finite(aParticle.Px()) && TMath::Finite(aParticle.Py())
+        && TMath::Finite(aParticle.Pz()) && TMath::Finite(aParticle.mass) && TMath::Finite(aParticle.T())
+        && TMath::Finite(aParticle.X()) && TMath::Finite(aParticle.Y()) && TMath::Finite(aParticle.Z());
+}
+
 // Finds the position, velocity and acceleration of tPartOtherIter at the point where its trajectory crosses
 // the past light cone of the space-time point (tPos, tTime). Returns false if there is no such point,
 // i.e. the two particles are not causally connected.
@@ -781,6 +788,8 @@ void CoulombAfterburner::Apply(Event *tEvent)
     std::list<Particle> *tParticles = tEvent->GetParticleList();
     double tEarliestTime = std::numeric_limits<double>::quiet_NaN();
     for (auto tPartIter = tParticles->begin(); tPartIter != tParticles->end(); ++tPartIter) {
+        if (!HasFiniteKinematics(*tPartIter))
+            continue;
         if (std::isnan(tEarliestTime) || tPartIter->T() < tEarliestTime)
         {
             tEarliestTime = tPartIter->T();
@@ -834,7 +843,15 @@ void CoulombAfterburner::Apply(Event *tEvent)
         {
             tLastStep = TMath::Min(tLastStep, TMath::Ceil((m_DecayTimes[tPartIter->eid] - tEarliestTime) / m_StepSize) - 1);
         }
-        if (tFirstStep > tLastStep)
+        if (!HasFiniteKinematics(*tPartIter))
+        {
+            // A single particle with NaN momentum or position would turn the forces on all charged particles to NaN
+            cout << "<CoulombAfterburner::Apply>\tParticle eid " << tPartIter->eid << ", pid " << tPartIter->pid
+                << " has a non-finite momentum, mass or position: not propagated and not a source of the field" << endl;
+            tFirstStep = m_nSteps;
+            tLastStep = 0;
+        }
+        else if (tFirstStep > tLastStep)
         {
             // The particle doesn't exist at any time step
             tFirstStep = m_nSteps;

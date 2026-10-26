@@ -49,6 +49,7 @@ class CoulombAfterburner : public AbstractAfterburner {
             TVector3 &tPos, double tTime, int **tBestIs, Int_t iStep,
             TVector3 &tOtherPos, TVector3 &tOtherVel, TVector3 &tOtherAcc, bool debug = false);
     static bool IsSpectator(std::list<Particle>::iterator &);
+    static bool HasFiniteKinematics(const Particle &);
     double Interval(TVector3, double, TVector3, double, bool debug = false);
     double Interval(TVector3, double, TLorentzVector, bool debug = false);
     double Interval(TLorentzVector, TLorentzVector, bool debug = false);
