@@ -132,8 +132,31 @@ class ParticleCoor {
     void    TransformRotateZ(Float_t aPhi);
     void    TransformToPRF(Float_t aBetaT);
 
-    void    ToStruct(StructParticle &aStruct) const;
-    void    FromStruct(const StructParticle &aStruct);
+    // Inline, so that programs that do not link ParticleCoor.cxx (therm2_femto) can use them
+    void    ToStruct(StructParticle &aStruct) const {
+        aStruct.mass = mass;
+        aStruct.t = t; aStruct.x = x; aStruct.y = y; aStruct.z = z;
+        aStruct.e = e; aStruct.px = px; aStruct.py = py; aStruct.pz = pz;
+        aStruct.decayed = decayed;
+        aStruct.pid = pid;
+        aStruct.fatherpid = fatherpid;
+        aStruct.rootpid = rootpid;
+        aStruct.eid = eid;
+        aStruct.fathereid = fathereid;
+        aStruct.eventid = eventid;
+    }
+    void    FromStruct(const StructParticle &aStruct) {
+        mass = aStruct.mass;
+        SetTXYZ(aStruct.t, aStruct.x, aStruct.y, aStruct.z);
+        SetEPxPyPz(aStruct.e, aStruct.px, aStruct.py, aStruct.pz);
+        decayed = aStruct.decayed;
+        pid = aStruct.pid;
+        fatherpid = aStruct.fatherpid;
+        rootpid = aStruct.rootpid;
+        eid = aStruct.eid;
+        fathereid = aStruct.fathereid;
+        eventid = aStruct.eventid;
+    }
 
     Float_t mass;
     Int_t   decayed;

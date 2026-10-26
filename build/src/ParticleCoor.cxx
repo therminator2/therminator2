@@ -76,34 +76,6 @@ ParticleCoor& ParticleCoor::operator= (ParticleCoor* aPartCoor)
   return *this;
 }
 
-void ParticleCoor::ToStruct(StructParticle &aStruct) const
-{
-  aStruct.mass = mass;
-  aStruct.t = t; aStruct.x = x; aStruct.y = y; aStruct.z = z;
-  aStruct.e = e; aStruct.px = px; aStruct.py = py; aStruct.pz = pz;
-  aStruct.decayed = decayed;
-  aStruct.pid = pid;
-  aStruct.fatherpid = fatherpid;
-  aStruct.rootpid = rootpid;
-  aStruct.eid = eid;
-  aStruct.fathereid = fathereid;
-  aStruct.eventid = eventid;
-}
-
-void ParticleCoor::FromStruct(const StructParticle &aStruct)
-{
-  mass = aStruct.mass;
-  SetTXYZ(aStruct.t, aStruct.x, aStruct.y, aStruct.z);
-  SetEPxPyPz(aStruct.e, aStruct.px, aStruct.py, aStruct.pz);
-  decayed = aStruct.decayed;
-  pid = aStruct.pid;
-  fatherpid = aStruct.fatherpid;
-  rootpid = aStruct.rootpid;
-  eid = aStruct.eid;
-  fathereid = aStruct.fathereid;
-  eventid = aStruct.eventid;
-}
-
 void ParticleCoor::GetMomentum(double* aPe, double* aPx, double* aPy, double* aPz) const
 {
   *aPe = e; *aPx = px; *aPy = py; *aPz = pz;
