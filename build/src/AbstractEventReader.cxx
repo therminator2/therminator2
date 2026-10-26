@@ -85,7 +85,7 @@ void AbstractEventReader::ReadEvents()
   mAfterburners->Init();
   while (NextEvent()) {
 
-    mEventCounter = mEventIter+1;
+    mEventCounter = mEventIter; // NextEvent() has already advanced mEventIter, the counter starts from 1
     mEvent->Reset(mEventIter);
     delete tSpectatorType;
 
