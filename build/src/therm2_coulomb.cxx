@@ -28,6 +28,7 @@
 
 #include <fstream>
 #include <TString.h>
+#include <TRandom.h>
 #include "THGlobal.h"
 #include "Configurator.h"
 #include "Parser.h"
@@ -109,6 +110,9 @@ That information can be passed to other programs i.e. ROOT figures or HBT in one
 
   sMainConfig = new Configurator;
   ReadParameters();
+  // ROOT's global generator draws the masses of resonances with a finite width (TH1::GetRandom) and the impact
+  // parameters and spectators of the Coulomb afterburner (TGlauberMC): seed it from the configuration as well
+  gRandom->SetSeed(sRandomize ? 0 : 7919 + sSeed);
   
   {
     char tBuff[2*kFileNameMaxChar];
