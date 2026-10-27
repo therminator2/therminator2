@@ -1,0 +1,12 @@
+mp-units 2.5.0 (https://github.com/mpusz/mp-units), header-only C++20 library of physical units, used by the
+Coulomb afterburner (build/include/CoulombUnits.h). MIT license, see LICENSE.md.
+
+Only the headers are included here, unchanged:
+  core/include     <- src/core/include     of the release
+  systems/include  <- src/systems/include  of the release
+Source: https://github.com/mpusz/mp-units/archive/refs/tags/v2.5.0.tar.gz
+        sha256 a6bd48bee699f11f0ed5b04b8c5006d15f76e6d898e058db3880554d2e47a400
+
+Used without CMake: the Makefile adds both include directories and -DMP_UNITS_API_CONTRACTS=1 (no contract
+checking, so that gsl-lite is not needed); std::format support is detected automatically. Needs a C++20
+compiler (gcc 12 or newer, clang 16 or newer except 19).
