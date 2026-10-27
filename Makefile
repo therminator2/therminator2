@@ -179,6 +179,10 @@ $(DIR_OBJ)%.o: %.cxx
 	echo "Compiling: $< ($(CXX))"
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
+# The quantities with units (mp-units) of the Coulomb afterburner need optimisation to be fast: without it the
+# afterburner is about 60% slower, with it about 40% faster than with plain numbers. The last -O option counts.
+$(DIR_OBJ)CoulombAfterburner.o: CXXFLAGS += -O2
+
 doc:
 	$(DIR_DOXYGEN)filecont.sh $(DIR_DOXYGEN)
 	doxygen
