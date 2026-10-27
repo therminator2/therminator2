@@ -43,6 +43,8 @@ DIR_FOMODEL = $(DIR_MAIN)fomodel/
 DIR_MACRO   = $(DIR_MAIN)macro/
 DIR_SHARE   = $(DIR_MAIN)share/
 # DIR_UNIGEN  = ${HOME}/unigen/v2.1/
+# mp-units 2.5.0, header-only library of physical units used by the Coulomb afterburner (see its README.therminator)
+DIR_MPUNITS = $(DIR_MAIN)external/mp-units/
 $(info DIR_UNIGEN is $(DIR_UNIGEN))
 
 # search paths
@@ -60,6 +62,7 @@ F_SHARE     = $(DIR_SHARE)*.data
 F_INI       = $(DIR_MAIN)*.ini
 F_BASsages.cxx       = $(DIR_MAIN)*.sh
 F_ADDONS    = $(DIR_ADDONS)*.cxx $(DIR_ADDONS)*.mk
+F_MPUNITS   = $(shell find $(DIR_MPUNITS) -type f)
 F_PACK      = therminator2_$(TH2_VERSION).tar.gz
 
 # file lists
@@ -130,7 +133,9 @@ endif
 # compilation
 CXX         = g++
 LD          = g++
-CXXFLAGS    = -std=c++14 -O0 -g -Wall -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags`
+# C++20 is needed by mp-units: -std=c++20 comes after the flags of root-config, which contain -std of the ROOT build
+CXXFLAGS    = -O0 -g -Wall -Wno-deprecated -I $(DIR_H) $(PREPROCESS) `root-config --cflags` -std=c++20 \
+              -I $(DIR_MPUNITS)core/include -I $(DIR_MPUNITS)systems/include -DMP_UNITS_API_CONTRACTS=1
 LFLAGS      = -lm -g `root-config --libs`
 ifdef DIR_UNIGEN
 CXXFLAGS    += -DUSE_UNIGEN -I $(DIR_UNIGEN)/base/include
@@ -189,7 +194,7 @@ doc:
 	echo "- manual.html"
 	echo "- manual.pdf"
 
-package: $(F_INCLUDE) $(F_SOURCE) $(F_MACRO) $(F_FOMODEL) $(F_SHARE) $(F_DOXYGEN) $(F_INI) $(F_BASH) $(F_ADDONS) Makefile
+package: $(F_INCLUDE) $(F_SOURCE) $(F_MACRO) $(F_FOMODEL) $(F_SHARE) $(F_DOXYGEN) $(F_INI) $(F_BASH) $(F_ADDONS) $(F_MPUNITS) Makefile
 	echo "$(TH2_VERSION)" > version
 	tar zcvf $(F_PACK) $^ version
 	echo "Package '$(F_PACK)' created."
