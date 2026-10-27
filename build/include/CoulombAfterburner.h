@@ -4,6 +4,7 @@
 #include "AbstractAfterburner.h"
 #include "AbstractEventSaver.h"
 #include "Configurator.h"
+#include "CoulombUnits.h"
 #include "ParticleDB.h"
 #include "TGlauberMC.h"
 #include "TLorentzVector.h"
@@ -12,8 +13,11 @@
 #include "TGraph.h"
 #include "TProfile.h"
 
+// Quantities with units (CoulombUnits.h) are used throughout; numbers without units only where the class exchanges
+// data with the rest of THERMINATOR, which uses GeV^-1 for positions and times, and GeV for energies and momenta.
 class CoulombAfterburner : public AbstractAfterburner {
   public:
+    // Number of time steps, length of a time step in fm/c
     CoulombAfterburner(int, double, double, AbstractEventSaver *, ParticleDB *);
     virtual ~CoulombAfterburner();
     virtual void Init();
@@ -23,38 +27,52 @@ class CoulombAfterburner : public AbstractAfterburner {
     // For checks: keep the recorded trajectory (t, x, y, z in GeV^-1) and four-momenta (GeV) of every particle
     // at all time steps of the last event, indexed by eid; off by default
     void SetKeepTrajectories(bool aKeep) { mKeepTrajectories = aKeep; }
-    const std::vector<TLorentzVector> &GetTrajectory(Int_t aEid) const { return mKeptCoordinates.at(aEid); }
-    const std::vector<TLorentzVector> &GetFourMomenta(Int_t aEid) const { return mKeptFourMomenta.at(aEid); }
+    std::vector<TLorentzVector> GetTrajectory(Int_t aEid) const;
+    std::vector<TLorentzVector> GetFourMomenta(Int_t aEid) const;
     // Optional settings from the main configuration (events.ini); keys that are not present keep the defaults
     void ReadParameters(Configurator *aMainConfig);
 
+    // A point of a recorded trajectory and the four-momentum there
+    struct SpaceTimePoint {
+        CoulombUnits::Time t;
+        CoulombUnits::Vec3<CoulombUnits::Length> x;
+    };
+    struct FourMomentum {
+        CoulombUnits::Energy e;
+        CoulombUnits::Vec3<CoulombUnits::Momentum> p;
+    };
+
   protected:
     unsigned int m_nSteps;
-    Double_t m_StepSize;
+    CoulombUnits::Time m_StepSize;
 
   private:
     static Int_t TotalCharge(std::list<Particle> *);
     static TGraph *m_gImpBNPart;
 
-    bool ParticleExists(std::list<Particle>::iterator &tPartIter, double tDecayTime, double tTime);
-    unsigned long NearestInterval(TVector3 &tPos, double tTime, std::vector<TLorentzVector> &tTrajectory, unsigned long tLastBestI, double &tInterval, bool debug = false);
-    double NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV,TVector3 &tY,  double tT0, double tU, bool debug = false);
-    TVector3 CalculateTotalForce(std::list<Particle>::iterator &, std::list<Particle> *, int ** tBestIs, double tCurrentTime,
-            Int_t iStep
-            );
-    std::pair<TVector3, Double_t>  CalculatePotentials(std::list<Particle>::iterator &, std::list<Particle> *, int ** tBestIs,
-            double tCurrentTime, Int_t iStep
-            );
+    unsigned long NearestInterval(const CoulombUnits::Vec3<CoulombUnits::Length> &tPos, CoulombUnits::Time tTime,
+            std::vector<SpaceTimePoint> &tTrajectory, unsigned long tLastBestI, CoulombUnits::Length &tInterval, bool debug = false);
+    CoulombUnits::Time NearestPreFreezeoutIntervalTime(const CoulombUnits::Vec3<CoulombUnits::Length> &tX0,
+            const CoulombUnits::Vec3<CoulombUnits::Speed> &tV, const CoulombUnits::Vec3<CoulombUnits::Length> &tY,
+            CoulombUnits::Time tT0, CoulombUnits::Time tU, bool debug = false);
+    CoulombUnits::Vec3<CoulombUnits::Force> CalculateTotalForce(std::list<Particle>::iterator &, std::list<Particle> *,
+            int ** tBestIs, CoulombUnits::Time tCurrentTime, Int_t iStep);
+    // Vector potential (as phi v / c, an energy, like phi) and scalar potential of unit charges, at the particle
+    std::pair<CoulombUnits::Vec3<CoulombUnits::Energy>, CoulombUnits::Energy> CalculatePotentials(std::list<Particle>::iterator &,
+            std::list<Particle> *, int ** tBestIs, CoulombUnits::Time tCurrentTime, Int_t iStep);
     bool RetardedSource(std::list<Particle>::iterator &tPartIter, std::list<Particle>::iterator &tPartOtherIter,
-            TVector3 &tPos, double tTime, int **tBestIs, Int_t iStep,
-            TVector3 &tOtherPos, TVector3 &tOtherVel, TVector3 &tOtherAcc, bool debug = false);
+            const CoulombUnits::Vec3<CoulombUnits::Length> &tPos, CoulombUnits::Time tTime, int **tBestIs, Int_t iStep,
+            CoulombUnits::Vec3<CoulombUnits::Length> &tOtherPos, CoulombUnits::Vec3<CoulombUnits::Speed> &tOtherVel,
+            CoulombUnits::Vec3<CoulombUnits::Acceleration> &tOtherAcc, bool debug = false);
     static bool IsSpectator(std::list<Particle>::iterator &);
     static bool HasFiniteKinematics(const Particle &);
-    double Interval(TVector3, double, TVector3, double, bool debug = false);
-    double Interval(TVector3, double, TLorentzVector, bool debug = false);
-    double Interval(TLorentzVector, TLorentzVector, bool debug = false);
-    Int_t AddSpectators(std::list<Particle> *, Double_t tEarliestTime);
-    Double_t SampleImpB(std::list<Particle> *);
+    // Minkowski interval c^2 (t1 - t2)^2 - |x1 - x2|^2
+    static CoulombUnits::Area Interval(const CoulombUnits::Vec3<CoulombUnits::Length> &tX1, CoulombUnits::Time tT1,
+            const CoulombUnits::Vec3<CoulombUnits::Length> &tX2, CoulombUnits::Time tT2, bool debug = false);
+    static CoulombUnits::Area Interval(const CoulombUnits::Vec3<CoulombUnits::Length> &tX1, CoulombUnits::Time tT1,
+            const SpaceTimePoint &tPoint, bool debug = false);
+    Int_t AddSpectators(std::list<Particle> *, CoulombUnits::Time tEarliestTime);
+    CoulombUnits::Length SampleImpB(std::list<Particle> *);
 
     Double_t mR;
     AbstractEventSaver *mEventSaver;
@@ -121,43 +139,43 @@ class CoulombAfterburner : public AbstractAfterburner {
     TH2F *m_hNpartImpB;
     std::map<Int_t, TH1F *> m_hImpBprojs;
 
-//    static csonstexpr double qe = sqrt(1.4399764e-3); // sqrt(GeV * fm)                                                                  
-    static constexpr double epsilon_0 = 55.26349406; // e^2 / (GeV * fm) = 1 / (GeV * fm) - we assume the unit charge = 1;
-    static constexpr double k = 1/(4*TMath::Pi()*epsilon_0); // GeV * fm
-
   unsigned int *m_FirstStepExists;
-  // Creation and decay times of the particles (GeV^-1, infinity for particles that do not decay), indexed by eid
-  double *m_CreationTimes;
-  double *m_DecayTimes;
+  // Creation and decay times of the particles (infinity for particles that do not decay), indexed by eid
+  CoulombUnits::Time *m_CreationTimes;
+  CoulombUnits::Time *m_DecayTimes;
   unsigned int *m_LastStepExists;
 
-  std::vector< std::map< std::pair< int, int>, TVector3> > *m_termsCoul;
-  std::vector< std::map< std::pair< int, int>, TVector3> > *m_termsVelo;
-  std::vector< std::map< std::pair< int, int>, TVector3> > *m_termsAcce;
-  std::vector< std::map< std::pair< int, int>, TVector3> > *m_termsMagn;
-  std::vector< std::map< std::pair< int, int>, TVector3> > *m_Rs;
-  std::vector< std::map< std::pair< int, int>, TVector3> > *m_us;
-  std::vector< std::map< std::pair< int, int>, TVector3> > *m_vs;
+  // Large pair contributions for every step, (eid, eid of the other particle) -> vector
+  template<typename Q>
+  using PairTerms = std::vector< std::map< std::pair< int, int>, CoulombUnits::Vec3<Q> > >;
+  PairTerms<CoulombUnits::Force> *m_termsCoul;
+  PairTerms<CoulombUnits::Force> *m_termsVelo;
+  PairTerms<CoulombUnits::Force> *m_termsAcce;
+  PairTerms<CoulombUnits::Force> *m_termsMagn;
+  PairTerms<CoulombUnits::Length> *m_Rs;
+  PairTerms<CoulombUnits::Dimensionless> *m_us;
+  PairTerms<CoulombUnits::Speed> *m_vs;
   std::map<int, int> *m_pids;
 
-  std::vector<TLorentzVector> *m_coordinates;
-  std::vector<TLorentzVector> *m_fourmomenta;
-  std::vector<TVector3> *m_velocities;
-  std::vector<TVector3> *m_accelerations;
+  // Recorded trajectories, four-momenta, velocities and accelerations at the time steps, indexed by eid
+  std::vector<SpaceTimePoint> *m_coordinates;
+  std::vector<FourMomentum> *m_fourmomenta;
+  std::vector<CoulombUnits::Vec3<CoulombUnits::Speed> > *m_velocities;
+  std::vector<CoulombUnits::Vec3<CoulombUnits::Acceleration> > *m_accelerations;
 
    void PrintProblem(Int_t eid, Int_t step, TString indent, Int_t depth = 0);
 
   bool mKeepTrajectories;
-  std::vector<std::vector<TLorentzVector> > mKeptCoordinates;
-  std::vector<std::vector<TLorentzVector> > mKeptFourMomenta;
+  std::vector<std::vector<SpaceTimePoint> > mKeptCoordinates;
+  std::vector<std::vector<FourMomentum> > mKeptFourMomenta;
 
   // Settings, see ReadParameters()
   bool m_UseSpectators;         // add the spectator nucleons of a Glauber MC event
   bool m_ExtrapolateSpectators; // extrapolate spectators back in time before their creation when needed
   bool m_ExtrapolateFireball;   // extrapolate primary fireball particles back in time before freeze-out when needed
   bool m_FindProblem;           // debugging printouts, and storing of large pair contributions for every step
-  double m_LargeTerm;           // with m_FindProblem, pair contributions with a Coulomb term larger than this (GeV/fm)
-                                // are stored, so that a particle getting faster than light can be traced back
+  CoulombUnits::Force m_LargeTerm; // with m_FindProblem, pair contributions with a Coulomb term larger than this
+                                   // are stored, so that a particle getting faster than light can be traced back
   int m_DebugStep;              // time step, eid and eid of the other particle for detailed debugging printouts
   int m_DebugEid;
   int m_DebugOtherEid;

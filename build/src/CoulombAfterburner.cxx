@@ -8,56 +8,60 @@
 #include "THGlobal.h"
 
 using namespace std;
+using namespace CoulombUnits;
+// CoulombUnits::Energy is always written in full: THERMINATOR has a class ::Energy
 extern TString sModelINI;
 
-double CoulombAfterburner::Interval(TVector3 tX1, double tT1, TVector3 tX2, double tT2, bool debug) {
+bool CoulombUnits::CheckInternalUnits()
+{
+    return TMath::Abs(Length(1. * inverse_gev_length).numerical_value_in(fm) - kHbarC) < 1e-15;
+}
+
+Area CoulombAfterburner::Interval(const Vec3<Length> &tX1, Time tT1, const Vec3<Length> &tX2, Time tT2, bool debug) {
     if (debug) {
-        cout << tT1 << " " << tT2 << " " << TMath::Power(tT1 - tT2, 2) << " " << (tX1 - tX2).Mag2() << " ";
-        (tX1 - tX2).Print();
+        cout << tT1 << " " << tT2 << " " << pow<2>((tT1 - tT2) * c) << " " << Mag2(tX1 - tX2) << " " << (tX1 - tX2) << endl;
     }
-    return TMath::Power(tT1 - tT2, 2) - (tX1 - tX2).Mag2();
+    return pow<2>((tT1 - tT2) * c) - Mag2(tX1 - tX2);
 }
-double CoulombAfterburner::Interval(TVector3 tX1, double tT1, TLorentzVector tV, bool debug) {
-    return this->Interval(tX1, tT1, tV.Vect(), tV.T(), debug);
-}
-double CoulombAfterburner::Interval(TLorentzVector tV1, TLorentzVector tV2, bool debug) {
-    return this->Interval(tV1.Vect(), tV1.T(), tV2.Vect(), tV2.T(), debug);
+Area CoulombAfterburner::Interval(const Vec3<Length> &tX1, Time tT1, const SpaceTimePoint &tPoint, bool debug) {
+    return Interval(tX1, tT1, tPoint.x, tPoint.t, debug);
 }
 
-TString TVector3toString(TVector3 &v) {
-    return Form("[%f, %f, %f]", v.X(), v.Y(), v.Z());
+std::vector<TLorentzVector> CoulombAfterburner::GetTrajectory(Int_t aEid) const
+{
+    std::vector<TLorentzVector> tResult;
+    for (const SpaceTimePoint &tPoint : mKeptCoordinates.at(aEid)) {
+        tResult.push_back(TLorentzVector(tPoint.x.x.numerical_value_in(inverse_gev_length), tPoint.x.y.numerical_value_in(inverse_gev_length),
+                                         tPoint.x.z.numerical_value_in(inverse_gev_length), tPoint.t.numerical_value_in(inverse_gev_time)));
+    }
+    return tResult;
 }
 
-TVector3 CoulombAfterburner::CalculateTotalForce(
-        std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int **tBestIs, double tCurrentTime,
+std::vector<TLorentzVector> CoulombAfterburner::GetFourMomenta(Int_t aEid) const
+{
+    std::vector<TLorentzVector> tResult;
+    for (const FourMomentum &tMomentum : mKeptFourMomenta.at(aEid)) {
+        tResult.push_back(TLorentzVector(tMomentum.p.x.numerical_value_in(GeV / c), tMomentum.p.y.numerical_value_in(GeV / c),
+                                         tMomentum.p.z.numerical_value_in(GeV / c), tMomentum.e.numerical_value_in(GeV)));
+    }
+    return tResult;
+}
+
+Vec3<Force> CoulombAfterburner::CalculateTotalForce(
+        std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int **tBestIs, Time tCurrentTime,
         Int_t iStep)
 {
     if (IsSpectator(tPartIter)) {
-        return TVector3();
+        return Vec3<Force>();
     }
-    //quantity tQe = 2 * hep::meter;
     Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-    // TVector3 tForceTotal;
-    TVector3 tTermCoulTotal;
-    TVector3 tTermVeloTotal;
-    TVector3 tTermAcceTotal;
-    TVector3 tTermMagnTotal;
-    TVector3 tPartPos = tPartIter->VecX(); // 1/GeV
+    Vec3<Force> tTermCoulTotal;
+    Vec3<Force> tTermVeloTotal;
+    Vec3<Force> tTermAcceTotal;
+    Vec3<Force> tTermMagnTotal;
+    Vec3<Length> tPartPos = PositionOf(*tPartIter);
+    Vec3<Dimensionless> tBeta = VelocityOf(*tPartIter) / c;
 
-    TVector3 tPartMom = tPartIter->VecP();
-    TVector3 tV(0, 0, 0);
-    double tP = tPartIter->GetP();
-    double tE = tPartIter->E();
-    if (tP > 0 && TMath::Finite(tP))
-    {
-        tV = tP / tE * tPartMom.Unit();
-    }
-    // double tP2 = tPartMom.Mag2();
-    // double tM2 = TMath::Power(tPartIter->mass, 2);
-    // if (tP2 > 0 && TMath::Finite(tP2))
-    // {
-    //     tV = 1. / TMath::Sqrt(tM2 / tP2 + 1) * tPartMom.Unit();
-    // }
     std::list<Particle>::iterator tPartOtherIter = tParticles->begin();
     for (; tPartOtherIter != tParticles->end(); ++tPartOtherIter)
     {
@@ -75,11 +79,13 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
         }
 
         // Skip interaction between decay products at the step when they were created
-        if (tPartIter->fathereid != -1 && tPartIter->fathereid == tPartOtherIter->fathereid && iStep == m_FirstStepExists[tPartOtherIter->eid]) {
+        if (tPartIter->fathereid != -1 && tPartIter->fathereid == tPartOtherIter->fathereid && iStep == (Int_t)m_FirstStepExists[tPartOtherIter->eid]) {
             continue;
         }
 
-        TVector3 tPartOtherPos, tPartOtherVel, tPartOtherAcc;
+        Vec3<Length> tPartOtherPos;
+        Vec3<Speed> tPartOtherVel;
+        Vec3<Acceleration> tPartOtherAcc;
         if (!RetardedSource(tPartIter, tPartOtherIter, tPartPos, tCurrentTime, tBestIs, iStep,
                     tPartOtherPos, tPartOtherVel, tPartOtherAcc,
                     m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep && tPartOtherIter->eid == m_DebugOtherEid))
@@ -87,86 +93,70 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
             continue;
         }
         if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep && tPartOtherIter->eid == m_DebugOtherEid) {
-            cout << "v_x here = " << tPartOtherVel.X() << endl;
+            cout << "v_x here = " << tPartOtherVel.x << endl;
         }
 
-        TVector3 tPosDiff = tPartPos - tPartOtherPos;
-        TVector3 tDirection = tPosDiff.Unit();
-        if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep && tPartOtherIter->eid == m_DebugOtherEid) {
-            cout << "v_x here = " << tPartOtherVel.X() << endl;
-        }
-
-        TVector3 v = tPartOtherVel; // ()
-        TVector3 a = tPartOtherAcc; // GeV
-        TVector3 vecR = tPosDiff;   // 1/GeV
-        Double_t R = vecR.Mag();
-        ;                             // 1/GeV
-        TVector3 hatR = tDirection;   // ()
-        TVector3 u = hatR - v;        // ()
-        Double_t Rdotu = vecR.Dot(u); // 1/GeV
-        Double_t Rdota = vecR.Dot(a); // ()
-        Double_t v2 = v.Mag2();       // ()
+        // Lienard-Wiechert field of the other particle at its retarded position, velocity and acceleration
+        Vec3<Length> vecR = tPartPos - tPartOtherPos;
+        Length R = Mag(vecR);
+        Vec3<Dimensionless> hatR = UnitVector(vecR);
+        Vec3<Dimensionless> v = tPartOtherVel / c;
+        Vec3<Dimensionless> u = hatR - v;
+        Length Rdotu = Dot(vecR, u);
+        Dimensionless Rdota = Dot(vecR, tPartOtherAcc) / square(c);
+        Dimensionless v2 = Mag2(v);
 
         if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep/* && tPartOtherIter->eid == m_DebugOtherEid*/)
-       // if (!TMath::Finite(Rdotu))
         {
             cout << endl << "Size of other coords " << m_coordinates[tPartOtherIter->eid].size()
                 << " other pid " << tPartOtherIter->pid << " other eid " << tPartOtherIter->eid
                 << " other father eid " << tPartOtherIter->fathereid << " other father pid " << tPartOtherIter->fatherpid
                 << " n parts " << tParticles->size() << " " << endl;
             cout << "Other exists since step " << m_FirstStepExists[tPartOtherIter->eid] << endl;
-            cout << "first times " << m_coordinates[tPartIter->eid][0].T() << " " << m_coordinates[tPartOtherIter->eid][0].T() << endl;
-            cout << "1/(R.u)**3 = " << 1/TMath::Power(Rdotu, 3) << "other Q " << tOtherQ << endl;
-            cout << "R.u = " << Rdotu << " |v| = " << v.Mag() << ", R.a = " << Rdota << endl;
-            cout << "R = (" << vecR.X() << "," << vecR.Y() << "," << vecR.Z() << "), u = " 
-                << u.X() << "," << u.Y() << "," << u.Z() << ")" << endl;
-            cout << "pos = (" << tPartPos.X() << "," << tPartPos.Y() << "," << tPartPos.Z() << "), other = (" 
-                << tPartOtherPos.X() << "," << tPartOtherPos.Y() << "," << tPartOtherPos.Z() << ")" << endl;
-            cout << "R/(R.u)**3 = " << R / TMath::Power(Rdotu, 3) << endl;
-            cout << "R/(R.u)**3 (1-v2) = " << R / TMath::Power(Rdotu, 3) * (1-v2) << endl;
-            cout << "R/(R.u)**3 (1-v2) u_x = " << R / TMath::Power(Rdotu, 3) * (1-v2) * u.X() << endl;
-            cout << "kQ R/(R.u)**3 (1-v2) u_x = " << k * tOtherQ * R / TMath::Power(Rdotu, 3) * (1-v2) * u.X() << endl;
+            cout << "first times " << m_coordinates[tPartIter->eid][0].t << " " << m_coordinates[tPartOtherIter->eid][0].t << endl;
+            cout << "1/(R.u)**3 = " << 1. / pow<3>(Rdotu) << " other Q " << tOtherQ << endl;
+            cout << "R.u = " << Rdotu << " |v| = " << Mag(v) << ", R.a/c^2 = " << Rdota << endl;
+            cout << "R = " << vecR << ", u = " << u << endl;
+            cout << "pos = " << tPartPos << ", other = " << tPartOtherPos << endl;
+            cout << "R/(R.u)**3 = " << R / pow<3>(Rdotu) << endl;
+            cout << "R/(R.u)**3 (1-v2) = " << R / pow<3>(Rdotu) * (1 - v2) << endl;
+            cout << "R/(R.u)**3 (1-v2) u_x = " << R / pow<3>(Rdotu) * (1 - v2) * u.x << endl;
+            cout << "kQ R/(R.u)**3 (1-v2) u_x = " << kCoulomb * tOtherQ * R / pow<3>(Rdotu) * (1 - v2) * u.x << endl;
             Int_t vel_size = m_velocities[tPartOtherIter->eid].size();
             for (Int_t vel_i = 0; vel_i < vel_size; ++vel_i) {
-                auto vel = m_velocities[tPartOtherIter->eid][vel_i];
-                if (vel.Mag() > 1) {
-                    cout << "---- v(" << vel_i << " of " << vel_size << ") = (" << vel.X() << "," << vel.Y() << "," << vel.Z() << "), |v| = " << vel.Mag() << endl;
+                const Vec3<Speed> &vel = m_velocities[tPartOtherIter->eid][vel_i];
+                if (Mag(vel) > 1. * c) {
+                    cout << "---- v(" << vel_i << " of " << vel_size << ") = " << vel << ", |v| = " << Mag(vel) << endl;
                 }
             }
-           // return TVector3(0, 0, 0);
         }
-        // TVector3 tTermCoul = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * (1 - v2)) * u; // sqrt(GeV*fm) / GeV * GeV**3 = sqrt(GeV*fm) * GeV**2
-        // TVector3 tTermVelo = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * Rdota) * u;    // sqrt(GeV*fm) / GeV * GeV**3 = sqrt(GeV*fm) * GeV**2
-        // TVector3 tTermAcce = (tOtherQ * qe * R / TMath::Power(Rdotu, 3) * (-Rdotu)) * a; // sqrt(GeV*fm) * GeV**2
-        TVector3 tTermCoul = k * (tQ / TMath::Power(kHbarC, 2)) * (tOtherQ * R / TMath::Power(Rdotu, 3) * (1 - v2)) * u; // GeV*fm / GeV * GeV**3 = GeV*fm * GeV**2
-        TVector3 tTermVelo = k * (tQ / TMath::Power(kHbarC, 2)) * (tOtherQ * R / TMath::Power(Rdotu, 3) * Rdota) * u;    // GeV*fm / GeV * GeV**3 = GeV*fm * GeV**2
-        TVector3 tTermAcce = k * (tQ / TMath::Power(kHbarC, 2)) * (tOtherQ * R / TMath::Power(Rdotu, 3) * (-Rdotu)) * a; // GeV*fm * GeV**2
-
-        TVector3 tE = tTermCoul + tTermVelo + tTermAcce; // GeV*fm * GeV**2
-                                                         // Using BAC-CAB rule for tV x tB having c * tB = tDirection x tE
-        TVector3 tTermMagn = hatR * tV.Dot(tE) - hatR.Dot(tV) * tE; // GeV*fm * GeV**2
-        if (tPartIter->eid == 10 && TString(tPartOtherIter->GetParticleType()->GetName()).Contains("Spectator")) {
-            //    cout << "COUL TOTAL " << tTermCoulTotal.Mag() << endl; 
-        }
+        // E = k q' R / (R.u)^3 [(1 - v^2) u + (R.a) u / c^2 - (R.u) a / c^2], force q E + q v x B with c B = hatR x E
+        Force tPrefactor = kCoulomb * tQ * tOtherQ * R / pow<3>(Rdotu);
+        Vec3<Force> tTermCoul = tPrefactor * (1 - v2) * u;
+        Vec3<Force> tTermVelo = tPrefactor * Rdota * u;
+        Vec3<Force> tTermAcce = tPrefactor * (-Rdotu) * tPartOtherAcc / square(c);
+        Vec3<Force> tE = tTermCoul + tTermVelo + tTermAcce;
+        // Using BAC-CAB rule for beta x (hatR x E)
+        Vec3<Force> tTermMagn = hatR * Dot(tBeta, tE) - Dot(hatR, tBeta) * tE;
 
         // Storing all pairs at all steps would take many GB, keep only the large contributions
-        if (m_FindProblem && tTermCoul.Mag() > m_LargeTerm) {
+        if (m_FindProblem && Mag(tTermCoul) > m_LargeTerm) {
             m_termsCoul->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermCoul;
             m_termsVelo->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermVelo;
             m_termsAcce->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermAcce;
             m_termsMagn->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tTermMagn;
             m_Rs->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = vecR;
             m_us->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = u;
-            m_vs->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = v;
+            m_vs->back()[std::make_pair(tPartIter->eid, tPartOtherIter->eid)] = tPartOtherVel;
         }
 
         if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep) {
             cout << " -- other pid = " << tPartOtherIter->pid << " other eid = " << tPartOtherIter->eid << endl;;
             cout << " -- R = " << R << endl;
-            cout << " --- TermCoul = (" << tTermCoul.X() << "," << tTermCoul.Y() << "," << tTermCoul.Z() << ")" << endl;
-            cout << " --- TermVelo = (" << tTermVelo.X() << "," << tTermVelo.Y() << "," << tTermVelo.Z() << ")" << endl;
-            cout << " --- TermAcce = (" << tTermAcce.X() << "," << tTermAcce.Y() << "," << tTermAcce.Z() << ")" << endl;
-            cout << " --- TermMagn = (" << tTermMagn.X() << "," << tTermMagn.Y() << "," << tTermMagn.Z() << ")" << endl;
+            cout << " --- TermCoul = " << tTermCoul << endl;
+            cout << " --- TermVelo = " << tTermVelo << endl;
+            cout << " --- TermAcce = " << tTermAcce << endl;
+            cout << " --- TermMagn = " << tTermMagn << endl;
             cout << " ------- " << endl;
         }
         tTermCoulTotal += tTermCoul;
@@ -174,33 +164,26 @@ TVector3 CoulombAfterburner::CalculateTotalForce(
         tTermAcceTotal += tTermAcce;
         tTermMagnTotal += tTermMagn;
         if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep) {
-            cout << " --- TermCoulTotal = (" << tTermCoulTotal.X() << "," << tTermCoulTotal.Y() << "," << tTermCoulTotal.Z() << ")" << endl;
-            cout << " --- TermVeloTotal = (" << tTermVeloTotal.X() << "," << tTermVeloTotal.Y() << "," << tTermVeloTotal.Z() << ")" << endl;
-            cout << " --- TermAcceTotal = (" << tTermAcceTotal.X() << "," << tTermAcceTotal.Y() << "," << tTermAcceTotal.Z() << ")" << endl;
-            cout << " --- TermMagnTotal = (" << tTermMagnTotal.X() << "," << tTermMagnTotal.Y() << "," << tTermMagnTotal.Z() << ")" << endl;
+            cout << " --- TermCoulTotal = " << tTermCoulTotal << endl;
+            cout << " --- TermVeloTotal = " << tTermVeloTotal << endl;
+            cout << " --- TermAcceTotal = " << tTermAcceTotal << endl;
+            cout << " --- TermMagnTotal = " << tTermMagnTotal << endl;
             cout << " ------- " << endl;
         }
-        if (tPartIter->eid == 10 && TString(tPartOtherIter->GetParticleType()->GetName()).Contains("Spectator")) {
-            //    cout << "SPECTATOR CHARGE " << tPartOtherIter->GetParticleType()->GetCharge() << endl;
-            //    cout << "COUL TOTAL " << tTermCoulTotal.Mag() << " CONTRIB " << tTermCoul.Mag() << endl; 
-        }
-
     }
-    TVector3 tForceTotal = tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal; // GeV**3 * fm / (GeV**2 * fm) = GeV / fm
-
-    return tForceTotal;
+    return tTermCoulTotal + tTermVeloTotal + tTermAcceTotal + tTermMagnTotal;
 }
 
-std::pair<TVector3, Double_t> CoulombAfterburner::CalculatePotentials(
-        std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int **tBestIs, double tCurrentTime,
+std::pair<Vec3<CoulombUnits::Energy>, CoulombUnits::Energy> CoulombAfterburner::CalculatePotentials(
+        std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int **tBestIs, Time tCurrentTime,
         Int_t iStep)
 {
     if (IsSpectator(tPartIter)) {
-        return std::make_pair(TVector3(), 0);
+        return std::make_pair(Vec3<CoulombUnits::Energy>(), CoulombUnits::Energy::zero());
     }
-    Double_t tTermScalarTotal = 0;
-    TVector3 tTermVectorTotal;
-    TVector3 tPartPos = tPartIter->VecX(); // 1/GeV
+    CoulombUnits::Energy tTermScalarTotal = CoulombUnits::Energy::zero();
+    Vec3<CoulombUnits::Energy> tTermVectorTotal;
+    Vec3<Length> tPartPos = PositionOf(*tPartIter);
     std::list<Particle>::iterator tPartOtherIter = tParticles->begin();
     for (; tPartOtherIter != tParticles->end(); ++tPartOtherIter)
     {
@@ -212,19 +195,22 @@ std::pair<TVector3, Double_t> CoulombAfterburner::CalculatePotentials(
         if (tOtherQ == 0)
             continue;
 
-        TVector3 tPartOtherPos, tPartOtherVel, tPartOtherAcc;
+        Vec3<Length> tPartOtherPos;
+        Vec3<Speed> tPartOtherVel;
+        Vec3<Acceleration> tPartOtherAcc;
         if (!RetardedSource(tPartIter, tPartOtherIter, tPartPos, tCurrentTime, tBestIs, iStep,
                     tPartOtherPos, tPartOtherVel, tPartOtherAcc))
         {
             continue;
         }
 
-        TVector3 v = tPartOtherVel;                // ()
-        TVector3 vecR = tPartPos - tPartOtherPos;  // 1/GeV
-        Double_t R = vecR.Mag();                   // 1/GeV
+        Vec3<Dimensionless> v = tPartOtherVel / c;
+        Vec3<Length> vecR = tPartPos - tPartOtherPos;
+        Length R = Mag(vecR);
 
-        Double_t tTermScalar = k * tOtherQ / (R - vecR.Dot(v)) / kHbarC; // GeV * fm / (1/GeV) / (GeV * fm) = GeV
-        TVector3 tTermVector = tTermScalar * v; // GeV
+        // Lienard-Wiechert potentials of a unit charge: phi = k q' / (R - R.v/c), A c = phi v / c
+        CoulombUnits::Energy tTermScalar = kCoulomb * tOtherQ / (R - Dot(vecR, v));
+        Vec3<CoulombUnits::Energy> tTermVector = tTermScalar * v;
         tTermScalarTotal += tTermScalar;
         tTermVectorTotal += tTermVector;
     }
@@ -250,19 +236,19 @@ bool CoulombAfterburner::HasFiniteKinematics(const Particle &aParticle)
 // i.e. the two particles are not causally connected.
 // tTime may be up to one time step after the last recorded point of the trajectories (force at the new position).
 bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter, std::list<Particle>::iterator &tPartOtherIter,
-        TVector3 &tPos, double tTime, int **tBestIs, Int_t iStep,
-        TVector3 &tOtherPos, TVector3 &tOtherVel, TVector3 &tOtherAcc, bool debug)
+        const Vec3<Length> &tPos, Time tTime, int **tBestIs, Int_t iStep,
+        Vec3<Length> &tOtherPos, Vec3<Speed> &tOtherVel, Vec3<Acceleration> &tOtherAcc, bool debug)
 {
     Int_t tOtherEid = tPartOtherIter->eid;
-    std::vector<TLorentzVector> &tTrajectory = m_coordinates[tOtherEid];
-    std::vector<TVector3> &tVelocities = m_velocities[tOtherEid];
-    std::vector<TVector3> &tAccelerations = m_accelerations[tOtherEid];
+    std::vector<SpaceTimePoint> &tTrajectory = m_coordinates[tOtherEid];
+    std::vector<Vec3<Speed> > &tVelocities = m_velocities[tOtherEid];
+    std::vector<Vec3<Acceleration> > &tAccelerations = m_accelerations[tOtherEid];
     unsigned long tSize = tTrajectory.size();
     if (tSize == 0) {
         return false;
     }
 
-    double tBestInterval;
+    Length tBestInterval;
     unsigned long tLastBestI = tBestIs[tPartIter->eid][tOtherEid] > -1 ? tBestIs[tPartIter->eid][tOtherEid] : 0;
     unsigned long tBestI = NearestInterval(tPos, tTime, tTrajectory, tLastBestI, tBestInterval, debug);
     tBestIs[tPartIter->eid][tOtherEid] = tBestI;
@@ -274,33 +260,33 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
     // Accelerations are backward differences of the velocities, a_k = (v_k - v_{k-1}) / dt, so they belong to the
     // middle of the time step, t_k - dt/2: interpolate linearly between these midpoints. a_0 is not used, it is set
     // to 0 at the first step, when there is no previous velocity.
-    auto tAccelerationAt = [&](double aT) {
-        if (tSize < 2) return TVector3(0, 0, 0);
-        double tK = (aT - tTrajectory[0].T()) / m_StepSize + 0.5;
+    auto tAccelerationAt = [&](Time aT) {
+        if (tSize < 2) return Vec3<Acceleration>();
+        double tK = ((aT - tTrajectory[0].t) / m_StepSize).numerical_value_in(one) + 0.5;
         if (tK <= 1) return tAccelerations[1];
         if (tK >= tSize - 1) return tAccelerations[tSize - 1];
         long k = (long)TMath::Floor(tK);
         double w = tK - k;
-        return (1 - w) * tAccelerations[k] + w * tAccelerations[k + 1];
+        return Vec3<Acceleration>((1 - w) * tAccelerations[k] + w * tAccelerations[k + 1]);
     };
 
     // The whole trajectory is inside the past light cone, the crossing would be after its last point: extrapolate
     // forwards from the last point. Either the trajectory is recorded only up to the current step, or the particle
     // decayed between its last time step and its decay time.
-    if (tBestI + 1 == tSize && tBestInterval > 0) {
+    if (tBestI + 1 == tSize && tBestInterval > Length::zero()) {
         bool tOtherExistsNow = (Int_t)m_FirstStepExists[tOtherEid] <= iStep && iStep <= (Int_t)m_LastStepExists[tOtherEid];
-        TVector3 tX0 = tTrajectory[tBestI].Vect();
-        TVector3 tV0 = tVelocities[tBestI];
-        double tT0 = tTrajectory[tBestI].T();
-        double tTimeRet = NearestPreFreezeoutIntervalTime(tX0, tV0, tPos, tT0, tTime);
-        if (!TMath::Finite(tTimeRet)) {
+        const Vec3<Length> &tX0 = tTrajectory[tBestI].x;
+        const Vec3<Speed> &tV0 = tVelocities[tBestI];
+        Time tT0 = tTrajectory[tBestI].t;
+        Time tTimeRet = NearestPreFreezeoutIntervalTime(tX0, tV0, tPos, tT0, tTime);
+        if (!IsFinite(tTimeRet)) {
             return false;
         }
         if (!tOtherExistsNow && tTimeRet >= m_DecayTimes[tOtherEid]) {
             // The other particle decayed before the crossing, its field is taken over by its decay products
             return false;
         }
-        tOtherPos = tX0 + (tTimeRet - tT0) * tV0;
+        tOtherPos = tX0 + tV0 * (tTimeRet - tT0);
         tOtherVel = tV0;
         tOtherAcc = tAccelerationAt(tTimeRet);
         return true;
@@ -309,22 +295,22 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
     bool tIsPrimary = tPartOtherIter->pid == tPartOtherIter->fatherpid;
     // The whole trajectory of a decay product is outside the past light cone, the crossing would be before its first
     // point: extrapolate backwards to its creation, between the creation time and the first time step
-    if (tBestI == 0 && tBestInterval < 0 && !tIsPrimary) {
-        TVector3 tX0 = tTrajectory[0].Vect();
-        TVector3 tV0 = tVelocities[0];
-        double tT0 = tTrajectory[0].T();
-        double tTimeRet = NearestPreFreezeoutIntervalTime(tX0, tV0, tPos, tT0, tTime);
-        if (!TMath::Finite(tTimeRet) || tTimeRet < m_CreationTimes[tOtherEid]) {
+    if (tBestI == 0 && tBestInterval < Length::zero() && !tIsPrimary) {
+        const Vec3<Length> &tX0 = tTrajectory[0].x;
+        const Vec3<Speed> &tV0 = tVelocities[0];
+        Time tT0 = tTrajectory[0].t;
+        Time tTimeRet = NearestPreFreezeoutIntervalTime(tX0, tV0, tPos, tT0, tTime);
+        if (!IsFinite(tTimeRet) || tTimeRet < m_CreationTimes[tOtherEid]) {
             // The decay product is not created yet, as seen from (tPos, tTime)
             return false;
         }
-        tOtherPos = tX0 + (tTimeRet - tT0) * tV0;
+        tOtherPos = tX0 + tV0 * (tTimeRet - tT0);
         tOtherVel = tV0;
         tOtherAcc = tAccelerationAt(tTimeRet);
         return true;
     }
 
-    tOtherPos = tTrajectory[tBestI].Vect();
+    tOtherPos = tTrajectory[tBestI].x;
     tOtherVel = tVelocities[tBestI];
     tOtherAcc = tAccelerations[tBestI];
 
@@ -338,41 +324,39 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
         } else if (!tOtherIsSpectator && !m_ExtrapolateFireball) {
             return false;
         }
-        double tZeroTime = tTrajectory[0].T();
-        TVector3 tX0 = tTrajectory[0].Vect();
-        TVector3 tIniV = tVelocities[0];
-        double tTimePreFreeze = NearestPreFreezeoutIntervalTime(tX0, tIniV, tPos, tZeroTime, tTime);
+        Time tZeroTime = tTrajectory[0].t;
+        const Vec3<Length> &tX0 = tTrajectory[0].x;
+        const Vec3<Speed> &tIniV = tVelocities[0];
+        Time tTimePreFreeze = NearestPreFreezeoutIntervalTime(tX0, tIniV, tPos, tZeroTime, tTime);
         // No solution for extrapolated past trajectory of the other particle crossing the past light cone
         // of the current particle. They are not causaly connected
-        if (!TMath::Finite(tTimePreFreeze)) {
+        if (!IsFinite(tTimePreFreeze)) {
             return false;
         }
-        tOtherPos = tX0 + (tTimePreFreeze - tZeroTime) * tIniV;
+        tOtherPos = tX0 + tIniV * (tTimePreFreeze - tZeroTime);
         tOtherVel = tIniV;
-        tOtherAcc = TVector3(0, 0, 0);
+        tOtherAcc = Vec3<Acceleration>();
     } else {
         // The crossing is between points tZeroI-1 and tZeroI of the trajectory. A non-negative interval at tBestI
         // means tBestI is before the crossing. tZeroI >= 1, because tBestI == 0 with a negative interval was handled above.
-        unsigned long tZeroI = (tBestInterval >= 0 && tBestI + 1 < tSize) ? tBestI + 1 : tBestI;
+        unsigned long tZeroI = (tBestInterval >= Length::zero() && tBestI + 1 < tSize) ? tBestI + 1 : tBestI;
         if (tZeroI == 0) {
             return true;
         }
-        double tZeroTime = tTrajectory[tZeroI].T();
-        TVector3 tX0 = tTrajectory[tZeroI].Vect();
-        TVector3 tZeroV = tVelocities[tZeroI];
-        double tTimeBest = NearestPreFreezeoutIntervalTime(tX0, tZeroV, tPos, tZeroTime, tTime);
-        if (TMath::Finite(tTimeBest)) {
-            tOtherPos = tX0 + (tTimeBest - tZeroTime) * tZeroV;
+        Time tZeroTime = tTrajectory[tZeroI].t;
+        const Vec3<Length> &tX0 = tTrajectory[tZeroI].x;
+        const Vec3<Speed> &tZeroV = tVelocities[tZeroI];
+        Time tTimeBest = NearestPreFreezeoutIntervalTime(tX0, tZeroV, tPos, tZeroTime, tTime);
+        if (IsFinite(tTimeBest)) {
+            tOtherPos = tX0 + tZeroV * (tTimeBest - tZeroTime);
             // Weight of point tZeroI: 0 at its predecessor, 1 at tZeroI itself
-            double tInterpolatingWeight = (tTimeBest - tZeroTime + m_StepSize) / m_StepSize;
+            double tInterpolatingWeight = ((tTimeBest - tZeroTime + m_StepSize) / m_StepSize).numerical_value_in(one);
             tInterpolatingWeight = TMath::Max(0., TMath::Min(1., tInterpolatingWeight));
-            tOtherVel =
-                tZeroV * tInterpolatingWeight +
-                tVelocities[tZeroI-1] * (1-tInterpolatingWeight);
+            tOtherVel = tZeroV * tInterpolatingWeight + tVelocities[tZeroI-1] * (1-tInterpolatingWeight);
             tOtherAcc = tAccelerationAt(tTimeBest);
             if (debug) {
                 cout << "RetardedSource: zeroI " << tZeroI << " weight " << tInterpolatingWeight
-                    << " v_x " << tOtherVel.X() << endl;
+                    << " v_x " << tOtherVel.x << endl;
             }
         }
     }
@@ -380,11 +364,15 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
 }
 
 
-CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize, Double_t aR, AbstractEventSaver *aEventSaver, ParticleDB *tPartDB) 
-    : m_nSteps(aSteps), m_StepSize(aStepSize / kHbarC), mR(aR), mEventSaver(aEventSaver), m_hNpartImpB(nullptr), mKeepTrajectories(false),
+CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize, Double_t aR, AbstractEventSaver *aEventSaver, ParticleDB *tPartDB)
+    : m_nSteps(aSteps), m_StepSize(aStepSize * fm_c), mR(aR), mEventSaver(aEventSaver), m_hNpartImpB(nullptr), mKeepTrajectories(false),
       m_UseSpectators(true), m_ExtrapolateSpectators(true), m_ExtrapolateFireball(true),
-      m_FindProblem(true), m_LargeTerm(1.0), m_DebugStep(-2), m_DebugEid(-2), m_DebugOtherEid(-2)
+      m_FindProblem(true), m_LargeTerm(1.0 * GeV / fm), m_DebugStep(-2), m_DebugEid(-2), m_DebugOtherEid(-2)
 {
+    if (!CheckInternalUnits()) {
+        cout << "<CoulombAfterburner::CoulombAfterburner>\tCoulombUnits::inverse_gev_length is not kHbarC fm" << endl;
+        exit(1);
+    }
     m_mcg=new TGlauberMC("Au","Au",23.8,0);
     ParticleType *tProtonType = tPartDB->FindByPID(2212);
     ParticleType *tNeutronType = tPartDB->FindByPID(2112);
@@ -421,7 +409,7 @@ void CoulombAfterburner::ReadParameters(Configurator *aMainConfig)
         m_FindProblem = aMainConfig->GetParameter("CoulombFindProblem").Atoi() != 0;
     }
     if (aMainConfig->HasParameter("CoulombLargeTerm")) {
-        m_LargeTerm = aMainConfig->GetParameter("CoulombLargeTerm").Atof();
+        m_LargeTerm = aMainConfig->GetParameter("CoulombLargeTerm").Atof() * GeV / fm;
     }
     if (aMainConfig->HasParameter("CoulombDebugStep")) {
         m_DebugStep = aMainConfig->GetParameter("CoulombDebugStep").Atoi();
@@ -434,53 +422,52 @@ void CoulombAfterburner::ReadParameters(Configurator *aMainConfig)
     }
 }
 void CoulombAfterburner::Init() {
-   // cout << "BEGIN INIT " << endl;
+    // The time axes of the control histograms are in GeV^-1
+    const double tTimeRange = (m_nSteps * m_StepSize).numerical_value_in(inverse_gev_time);
     m_fileHistOut = new TFile("controlHists.root","recreate");
-    m_hTotalHamil = new TH1F("hTotalHamil","hTotalHamil",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalMomMS = new TH1F("hTotalMomMS","hTotalMomMS",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalPx = new TH1F("hTotalPx","hTotalPx",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalPy = new TH1F("hTotalPy","hTotalPy",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalPz = new TH1F("hTotalPz","hTotalPz",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalAx = new TH1F("hTotalAx","hTotalAx",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalAy = new TH1F("hTotalAy","hTotalAy",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalAz = new TH1F("hTotalAz","hTotalAz",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalV = new TH1F("hTotalV","hTotalV",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalRadPower = new TH1F("hTotalRadPower","hTotalRadPower",m_nSteps,0,m_nSteps*m_StepSize);
-    m_hTotalPdotA = new TH1F("hTotalPdotA","hTotalPdotA",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalHamil = new TProfile("pTotalHamil","pTotalHamil",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalMomMS = new TProfile("pTotalMomMS","pTotalMomMS",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalPx = new TProfile("pTotalPx","pTotalPx",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalPy = new TProfile("pTotalPy","pTotalPy",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalPz = new TProfile("pTotalPz","pTotalPz",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalAx = new TProfile("pTotalAx","pTotalAx",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalAy = new TProfile("pTotalAy","pTotalAy",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalAz = new TProfile("pTotalAz","pTotalAz",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalV = new TProfile("pTotalV","pTotalV",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalRadPower = new TProfile("pTotalRadPower","pTotalRadPower",m_nSteps,0,m_nSteps*m_StepSize);
-    m_pTotalPdotA = new TProfile("pTotalPdotA","pTotalPdotA",m_nSteps,0,m_nSteps*m_StepSize);
-    m_h2TotalHamil = new TH2F("h2TotalHamil","h2TotalHamil",m_nSteps,0,m_nSteps*m_StepSize,400,-20,20);
-    m_h2TotalMomMS = new TH2F("h2TotalMomMS","h2TotalMomMS",m_nSteps,0,m_nSteps*m_StepSize,400,-20,20);
-    m_h2TotalPx = new TH2F("h2TotalPx","h2TotalPx",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-    m_h2TotalPy = new TH2F("h2TotalPy","h2TotalPy",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-    m_h2TotalPz = new TH2F("h2TotalPz","h2TotalPz",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-    m_h2TotalAx = new TH2F("h2TotalAx","h2TotalAx",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-    m_h2TotalAy = new TH2F("h2TotalAy","h2TotalAy",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-    m_h2TotalAz = new TH2F("h2TotalAz","h2TotalAz",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-    m_h2TotalV = new TH2F("h2TotalV","h2TotalV",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-    m_h2TotalRadPower = new TH2F("h2TotalRadPower","h2TotalRadPower",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-    m_h2TotalPdotA = new TH2F("h2TotalPdotA","h2TotalPdotA",m_nSteps,0,m_nSteps*m_StepSize,400,-2,2);
-   // cout << "MIDDLE INIT " << endl;
+    m_hTotalHamil = new TH1F("hTotalHamil","hTotalHamil",m_nSteps,0,tTimeRange);
+    m_hTotalMomMS = new TH1F("hTotalMomMS","hTotalMomMS",m_nSteps,0,tTimeRange);
+    m_hTotalPx = new TH1F("hTotalPx","hTotalPx",m_nSteps,0,tTimeRange);
+    m_hTotalPy = new TH1F("hTotalPy","hTotalPy",m_nSteps,0,tTimeRange);
+    m_hTotalPz = new TH1F("hTotalPz","hTotalPz",m_nSteps,0,tTimeRange);
+    m_hTotalAx = new TH1F("hTotalAx","hTotalAx",m_nSteps,0,tTimeRange);
+    m_hTotalAy = new TH1F("hTotalAy","hTotalAy",m_nSteps,0,tTimeRange);
+    m_hTotalAz = new TH1F("hTotalAz","hTotalAz",m_nSteps,0,tTimeRange);
+    m_hTotalV = new TH1F("hTotalV","hTotalV",m_nSteps,0,tTimeRange);
+    m_hTotalRadPower = new TH1F("hTotalRadPower","hTotalRadPower",m_nSteps,0,tTimeRange);
+    m_hTotalPdotA = new TH1F("hTotalPdotA","hTotalPdotA",m_nSteps,0,tTimeRange);
+    m_pTotalHamil = new TProfile("pTotalHamil","pTotalHamil",m_nSteps,0,tTimeRange);
+    m_pTotalMomMS = new TProfile("pTotalMomMS","pTotalMomMS",m_nSteps,0,tTimeRange);
+    m_pTotalPx = new TProfile("pTotalPx","pTotalPx",m_nSteps,0,tTimeRange);
+    m_pTotalPy = new TProfile("pTotalPy","pTotalPy",m_nSteps,0,tTimeRange);
+    m_pTotalPz = new TProfile("pTotalPz","pTotalPz",m_nSteps,0,tTimeRange);
+    m_pTotalAx = new TProfile("pTotalAx","pTotalAx",m_nSteps,0,tTimeRange);
+    m_pTotalAy = new TProfile("pTotalAy","pTotalAy",m_nSteps,0,tTimeRange);
+    m_pTotalAz = new TProfile("pTotalAz","pTotalAz",m_nSteps,0,tTimeRange);
+    m_pTotalV = new TProfile("pTotalV","pTotalV",m_nSteps,0,tTimeRange);
+    m_pTotalRadPower = new TProfile("pTotalRadPower","pTotalRadPower",m_nSteps,0,tTimeRange);
+    m_pTotalPdotA = new TProfile("pTotalPdotA","pTotalPdotA",m_nSteps,0,tTimeRange);
+    m_h2TotalHamil = new TH2F("h2TotalHamil","h2TotalHamil",m_nSteps,0,tTimeRange,400,-20,20);
+    m_h2TotalMomMS = new TH2F("h2TotalMomMS","h2TotalMomMS",m_nSteps,0,tTimeRange,400,-20,20);
+    m_h2TotalPx = new TH2F("h2TotalPx","h2TotalPx",m_nSteps,0,tTimeRange,400,-2,2);
+    m_h2TotalPy = new TH2F("h2TotalPy","h2TotalPy",m_nSteps,0,tTimeRange,400,-2,2);
+    m_h2TotalPz = new TH2F("h2TotalPz","h2TotalPz",m_nSteps,0,tTimeRange,400,-2,2);
+    m_h2TotalAx = new TH2F("h2TotalAx","h2TotalAx",m_nSteps,0,tTimeRange,400,-2,2);
+    m_h2TotalAy = new TH2F("h2TotalAy","h2TotalAy",m_nSteps,0,tTimeRange,400,-2,2);
+    m_h2TotalAz = new TH2F("h2TotalAz","h2TotalAz",m_nSteps,0,tTimeRange,400,-2,2);
+    m_h2TotalV = new TH2F("h2TotalV","h2TotalV",m_nSteps,0,tTimeRange,400,-2,2);
+    m_h2TotalRadPower = new TH2F("h2TotalRadPower","h2TotalRadPower",m_nSteps,0,tTimeRange,400,-2,2);
+    m_h2TotalPdotA = new TH2F("h2TotalPdotA","h2TotalPdotA",m_nSteps,0,tTimeRange,400,-2,2);
 
-    m_termsCoul = new std::vector< std::map< std::pair<int, int>, TVector3> >();
-    m_termsVelo = new std::vector< std::map< std::pair<int, int>, TVector3> >();
-    m_termsAcce = new std::vector< std::map< std::pair<int, int>, TVector3> >();
-    m_termsMagn = new std::vector< std::map< std::pair<int, int>, TVector3> >();
-    m_Rs = new std::vector< std::map< std::pair<int, int>, TVector3> >();
-    m_us = new std::vector< std::map< std::pair<int, int>, TVector3> >();
-    m_vs = new std::vector< std::map< std::pair<int, int>, TVector3> >();
-   // cout << "END INIT " << endl;
-
+    m_termsCoul = new PairTerms<Force>();
+    m_termsVelo = new PairTerms<Force>();
+    m_termsAcce = new PairTerms<Force>();
+    m_termsMagn = new PairTerms<Force>();
+    m_Rs = new PairTerms<Length>();
+    m_us = new PairTerms<Dimensionless>();
+    m_vs = new PairTerms<Speed>();
 }
+
 void CoulombAfterburner::Finalize() {
     cout << "Before writing hists to file" << endl;
     m_fileHistOut->cd();
@@ -537,33 +524,23 @@ TGraph *initImpBGraph() {
 
 TGraph *CoulombAfterburner::m_gImpBNPart = initImpBGraph();
 
-bool CoulombAfterburner::ParticleExists(std::list<Particle>::iterator &tPartIter, double tDecayTime, double tTime)
-{
-    if (tPartIter->decayed)
-    {
-        return tPartIter->T() <= tTime && tDecayTime > tTime;
-    }
-    else
-    {
-        return tPartIter->T() <= tTime;
-    }
-}
-// Along a trajectory with |v| < 1 the interval to the point (tPos, tTime) decreases monotonically: it is positive
+// Along a trajectory with |v| < c the interval to the point (tPos, tTime) decreases monotonically: it is positive
 // (time-like) before the crossing with the past light cone and negative (space-like) after it.
 // Points later than tTime are in the future and are treated as space-like.
 // Starting from the previous best index, find the last time-like and the first space-like point and return
 // the one with smaller |interval|, with tBestInterval = sign(interval) * sqrt(|interval|).
 // If the whole trajectory is space-like, returns 0 with tBestInterval < 0;
 // if the whole trajectory is time-like, returns size - 1 with tBestInterval > 0.
-unsigned long CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, std::vector<TLorentzVector> &tTrajectory, unsigned long tLastBestI, double &tBestInterval, bool debug)
+unsigned long CoulombAfterburner::NearestInterval(const Vec3<Length> &tPos, Time tTime, std::vector<SpaceTimePoint> &tTrajectory,
+                                                  unsigned long tLastBestI, Length &tBestInterval, bool debug)
 {
     long tSize = tTrajectory.size();
     if (tSize == 0) {
-        tBestInterval = std::numeric_limits<double>::quiet_NaN();
+        tBestInterval = NaN<Length>();
         return 0;
     }
     auto tIsTimeLikePast = [&](long j) {
-        return tTrajectory[j].T() <= tTime && this->Interval(tPos, tTime, tTrajectory[j]) >= 0;
+        return tTrajectory[j].t <= tTime && Interval(tPos, tTime, tTrajectory[j]) >= Area::zero();
     };
     long i = (long)tLastBestI < tSize ? (long)tLastBestI : tSize - 1;
     long tLastTimeLike; // -1 if none
@@ -586,57 +563,51 @@ unsigned long CoulombAfterburner::NearestInterval(TVector3 &tPos, double tTime, 
     } else if (tFirstSpaceLike >= tSize) {
         tBestI = tSize - 1;
     } else {
-        double tIntervalTimeLike  = this->Interval(tPos, tTime, tTrajectory[tLastTimeLike]);
-        double tIntervalSpaceLike = this->Interval(tPos, tTime, tTrajectory[tFirstSpaceLike]);
-        tBestI = TMath::Abs(tIntervalTimeLike) <= TMath::Abs(tIntervalSpaceLike) ? tLastTimeLike : tFirstSpaceLike;
+        Area tIntervalTimeLike  = Interval(tPos, tTime, tTrajectory[tLastTimeLike]);
+        Area tIntervalSpaceLike = Interval(tPos, tTime, tTrajectory[tFirstSpaceLike]);
+        tBestI = abs(tIntervalTimeLike) <= abs(tIntervalSpaceLike) ? tLastTimeLike : tFirstSpaceLike;
     }
-    double tInterval = this->Interval(tPos, tTime, tTrajectory[tBestI]);
-    tBestInterval = (tInterval >= 0 ? +1 : -1) * TMath::Sqrt(TMath::Abs(tInterval));
+    Area tInterval = Interval(tPos, tTime, tTrajectory[tBestI]);
+    tBestInterval = (tInterval >= Area::zero() ? 1. : -1.) * Length(sqrt(abs(tInterval)));
     if (debug) {
         cout << "NearestInterval: start " << tLastBestI << " size " << tSize << " last time-like " << tLastTimeLike
             << " best " << tBestI << " interval " << tBestInterval << endl;
     }
     return tBestI;
 }
-double CoulombAfterburner::NearestPreFreezeoutIntervalTime(TVector3 &tX0, TVector3 &tV, TVector3 &tY, double tT0, double tU, bool debug)
-{
-    double tX0dotV = tX0.Dot(tV);
-    double tX0dotY = tX0.Dot(tY);
-    double tVdotY = tV.Dot(tY);
-    double tX02 = tX0.Mag2();
-    double tV2 = tV.Mag2();
-    double tY2 = tY.Mag2();
 
-    // A, B, C should be correct now, checked with CAS
-    double tA = 1 - tV2;
-    double tB = 2*(-tU + tV2*tT0 - tX0dotV + tVdotY);
-    double tC = tU*tU - tX02 - tV2*tT0*tT0 - tY2 + 2*tX0dotV*tT0 + 2*tX0dotY - 2*tVdotY*tT0;
-    double tDelta = tB * tB - 4 * tA * tC;
-    double t1 = (-tB - TMath::Sqrt(tDelta)) / (2 * tA);
-    double t2 = (-tB + TMath::Sqrt(tDelta)) / (2 * tA);
-    // if (!TMath::Finite(t1) || !TMath::Finite(t2)) {
+// Time t at which the straight line x(t) = X0 + V (t - T0) crosses the past light cone of the point (Y, U),
+// c^2 (U - t)^2 = |Y - x(t)|^2. With D = Y - X0 + V T0 this is
+// (c^2 - V^2) t^2 - 2 (c^2 U - V.D) t + c^2 U^2 - D^2 = 0, and the earlier of the two solutions is the retarded time.
+// NaN if there is no solution.
+Time CoulombAfterburner::NearestPreFreezeoutIntervalTime(const Vec3<Length> &tX0, const Vec3<Speed> &tV, const Vec3<Length> &tY,
+                                                         Time tT0, Time tU, bool debug)
+{
+    const auto tC2 = pow<2>(1. * c);
+    Vec3<Length> tD = tY - tX0 + tV * tT0;
+    auto tA = tC2 - Mag2(tV);
+    auto tB = -2. * (tC2 * tU - Dot(tV, tD));
+    auto tC = tC2 * pow<2>(tU) - Mag2(tD);
+    auto tDelta = pow<2>(tB) - 4. * tA * tC;
+    if (tDelta < decltype(tDelta)::zero()) {
+        return NaN<Time>();
+    }
+    Time t1 = (-tB - sqrt(tDelta)) / (2. * tA);
+    Time t2 = (-tB + sqrt(tDelta)) / (2. * tA);
     if (debug) {
         cout << "PARAMS tT0 " << tT0 << " tU " << tU << endl;
         cout << "A: " << tA << " B: " << tB << " C: " << tC << " Delta: " << tDelta << endl;
-        cout << "tV:  "; tV.Print();
-        cout << "tX0: "; tX0.Print();
-        cout << "tY:  "; tY.Print();
+        cout << "tV:  " << tV << endl;
+        cout << "tX0: " << tX0 << endl;
+        cout << "tY:  " << tY << endl;
         cout << "tdiff " << t1-tT0 << " " << t2-tT0 << endl;
         cout << "dt " << t1-tU << " " << t2-tU << endl;
-        cout << "tX1: "; (tX0 + tV*(t1-tT0)).Print();
-        cout << "tX2: "; (tX0 + tV*(t2-tT0)).Print();
-        cout << "dX1: "; (tY - (tX0 + tV*(t1-tT0))).Print();
-        cout << "dX2: "; (tY - (tX0 + tV*(t2-tT0))).Print();
-        cout << "|dx1|^2: " << (tY - (tX0 + tV*(t1-tT0))).Mag2() << endl;
-        cout << "|dx2|^2: " << (tY - (tX0 + tV*(t2-tT0))).Mag2() << endl;
-        cout << "t1 " << t1 << " t2 " << t2 << endl; 
-        cout << "sol1 " << t1*t1*tA + t1*tB + tC << " sol2 " << t2*t2*tA + t2*tB + tC << endl;
-        double int1 = this->Interval(tX0 + tV*(t1-tT0), t1, tY, tU, true);
-        double int2 = this->Interval(tX0 + tV*(t2-tT0), t2, tY, tU, true);
-        double int1_a = this->Interval(tX0 + tV*(t1+1/kHbarC-tT0), t1+1/kHbarC, tY, tU);
-        double int1_b = this->Interval(tX0 + tV*(t1-1/kHbarC-tT0), t1-1/kHbarC, tY, tU);
-        cout << "int1 " << int1 << " int2 " << int2 << endl;
-        cout << "int1_a " << int1_a << " int1_b " << int1_b << endl;
+        cout << "tX1: " << Vec3<Length>(tX0 + tV*(t1-tT0)) << endl;
+        cout << "tX2: " << Vec3<Length>(tX0 + tV*(t2-tT0)) << endl;
+        cout << "|dx1|^2: " << Mag2(tY - (tX0 + tV*(t1-tT0))) << endl;
+        cout << "|dx2|^2: " << Mag2(tY - (tX0 + tV*(t2-tT0))) << endl;
+        cout << "t1 " << t1 << " t2 " << t2 << endl;
+        cout << "int1 " << Interval(tX0 + tV*(t1-tT0), t1, tY, tU, true) << " int2 " << Interval(tX0 + tV*(t2-tT0), t2, tY, tU, true) << endl;
     }
     // Absolute time coordinate !
     return t1 <= t2 ? t1 : t2;
@@ -652,19 +623,18 @@ Int_t CoulombAfterburner::TotalCharge(std::list<Particle> *tParticles)
         // Total charge is the charge of primary particles
         if (tParticle.pid != 80000 && tParticle.pid / 10000 != 7 && tParticle.pid == tParticle.fatherpid && tParticle.GetParticleType() != nullptr)
         {
-            // cout << "partial charge " << tResult << " " << tParticle.pid << " " << tParticles->size() << endl;
             tResult += tParticle.GetParticleType()->GetCharge();
         }
     }
     return tResult;
 }
 
-Double_t CoulombAfterburner::SampleImpB(std::list<Particle> *tParticles) {
+Length CoulombAfterburner::SampleImpB(std::list<Particle> *tParticles) {
     Double_t tA = 197.;
     Double_t tZ = 79.; // because they are used in fractions
     Int_t tTotalCharge = TotalCharge(tParticles);
     Int_t tNpart = tTotalCharge * tA / tZ;
-    cout << "total charge " << tTotalCharge << " npart " << tNpart << " all parts " << tParticles->size() << endl;    
+    cout << "total charge " << tTotalCharge << " npart " << tNpart << " all parts " << tParticles->size() << endl;
 
     if (m_hImpBprojs.count(tNpart) <= 0) {
         TString tHistName = Form("%s_%i", m_hNpartImpB->GetName(), tNpart);
@@ -675,10 +645,10 @@ Double_t CoulombAfterburner::SampleImpB(std::list<Particle> *tParticles) {
             cout << "ERROR : integral 0 for projection in bin " << tBin << " Npart " << tNpart << endl;
         }
     }
-    Double_t tImpB = m_hImpBprojs.at(tNpart)->GetRandom() / kHbarC;;
+    // The impact parameters of the Glauber MC are in fm
+    Length tImpB = m_hImpBprojs.at(tNpart)->GetRandom() * fm;
 
     cout << "End sampling b" << endl;
-    // Double_t tImpB = m_gImpBNPart->Eval(tNpart) / kHbarC; // Distances are in 1/MeV during calculations
     return tImpB;
 }
 
@@ -689,15 +659,15 @@ ParticleType *CoulombAfterburner::SpectatorType(std::list<Particle> *tParticles,
     Double_t tZ = 79.; // because they are used in fractions
     Int_t tTotalCharge = TotalCharge(tParticles);
     Int_t tSpectatorCharge = (2 * tZ - tTotalCharge)/2;
-    cout << "TOTAL CHARGE " << tTotalCharge << " SPEC. CHARGE " << tSpectatorCharge << endl; 
+    cout << "TOTAL CHARGE " << tTotalCharge << " SPEC. CHARGE " << tSpectatorCharge << endl;
     Int_t tNp = tSpectatorCharge;
     Int_t tNn = tNp * (tA - tZ) / tZ;
     Int_t tNpart = tTotalCharge * tA / tZ;
-    Double_t tImpB = m_gImpBNPart->Eval(tNpart) / kHbarC; // Distances are in 1/MeV during calculations
-    Double_t tSpectatorMass = tNp * 0.9382720 + tNn * 0.9395653;
+    [[maybe_unused]] Length tImpB = m_gImpBNPart->Eval(tNpart) * fm;
+    Mass tSpectatorMass = (tNp * 0.9382720 + tNn * 0.9395653) * GeV / square(c);
     tSpectatorType->SetNumber(777777);
     tSpectatorType->SetName("Spectator");
-    tSpectatorType->SetMass(tSpectatorMass);
+    tSpectatorType->SetMass(tSpectatorMass.numerical_value_in(GeV / square(c)));
     tSpectatorType->SetBarionN(tNp + tNn);
     tSpectatorType->SetI3((tNp - tNn)/2);
 
@@ -705,14 +675,14 @@ ParticleType *CoulombAfterburner::SpectatorType(std::list<Particle> *tParticles,
     // At Npart -> A, a head on collision, the center of mass of the spectators would also approach
     // the radius of the nucleus. so we assume that the center of mass will always be at x = tR
     Double_t tSpectatorXtoR = 1.;//tNpart / (2 * tA) + tImpB / (2 * tA) * (2 * tA - tNpart);
-    Double_t tR = 1.2 * TMath::Power(tA, 1./3) / kHbarC;
-    tSpectatorX = tSpectatorXtoR * tR;
-    cout << "DEFINING SPECTATOR X " << tR << " x " << tSpectatorXtoR << " -> " << tSpectatorX << endl;
+    Length tR = 1.2 * TMath::Power(tA, 1./3) * fm;
+    tSpectatorX = (tSpectatorXtoR * tR).numerical_value_in(inverse_gev_length); // GeV^-1, like the positions of particles
+    cout << "DEFINING SPECTATOR X " << tR << " x " << tSpectatorXtoR << " -> " << tSpectatorX << " GeV^-1" << endl;
 
     return tSpectatorType;
 }
 
-Int_t CoulombAfterburner::AddSpectators(std::list<Particle> *tParticles, Double_t tEarliestTime)
+Int_t CoulombAfterburner::AddSpectators(std::list<Particle> *tParticles, Time tEarliestTime)
 {
     Int_t tNspec = 0;
     // The spectators get the eids after the largest one in the event: particles read from a file keep their eids,
@@ -736,9 +706,10 @@ Int_t CoulombAfterburner::AddSpectators(std::list<Particle> *tParticles, Double_
         m_hNpartImpB = new TH2F("hNpartImpB","hNpartImpB",100,0,20,400,0,400);
         nt->Project("hNpartImpB","Npart:B");
     }
-    Double_t tImpB = SampleImpB(tParticles) * kHbarC;
-    m_mcg->SetBmin(tImpB);
-    m_mcg->SetBmax(tImpB);
+    // TGlauberMC works in fm
+    Length tImpB = SampleImpB(tParticles);
+    m_mcg->SetBmin(tImpB.numerical_value_in(fm));
+    m_mcg->SetBmax(tImpB.numerical_value_in(fm));
     m_mcg->Run(1);
     TObjArray* tNucleons=m_mcg->GetNucleons();
     Int_t nNucls=tNucleons->GetEntries();
@@ -750,31 +721,31 @@ Int_t CoulombAfterburner::AddSpectators(std::list<Particle> *tParticles, Double_
             if (tNucl->IsInNucleusA()) {
                 if (tNucl->IsProton()) {
                     tSpectatorType = mProtonSpectatorAType;
-                } else {                              
+                } else {
                     tSpectatorType = mNeutronSpectatorAType;
                 }
             } else {
                 if (tNucl->IsProton()) {
                     tSpectatorType = mProtonSpectatorBType;
-                } else {                               
+                } else {
                     tSpectatorType = mNeutronSpectatorBType;
                 }
                 tSpectatorDir = -1;
             }
-            // Double_t tSpectatorMass = tSpectatorType->GetMass();
-            Double_t tSpectatorMass = (79 * 0.9382720 + (197-79) * 0.9395653)/197;
+            Mass tSpectatorMass = (79 * 0.9382720 + (197-79) * 0.9395653)/197 * GeV / square(c);
 
             Double_t tSpectatorBeta = 0.63; // TODO: make an external parameter
             Double_t tSpectatorGamma = 1/TMath::Sqrt(1 - tSpectatorBeta*tSpectatorBeta);
-            Double_t tSpectatorPz = tSpectatorDir * tSpectatorGamma * tSpectatorMass * tSpectatorBeta;
-            Double_t tSpectatorE = tSpectatorGamma * tSpectatorMass;
-            Double_t tSpectatorShift = tSpectatorDir * tSpectatorBeta * tEarliestTime;
-            Double_t tSpectatorX = tNucl->GetX() / kHbarC;
-            Double_t tSpectatorY = tNucl->GetY() / kHbarC;
-            Double_t tSpectatorZ = tNucl->GetZ() / kHbarC / tSpectatorGamma + tSpectatorShift; // Lorentz contraction and shift
+            Momentum tSpectatorPz = tSpectatorDir * tSpectatorGamma * tSpectatorBeta * tSpectatorMass * c;
+            CoulombUnits::Energy tSpectatorE = tSpectatorGamma * tSpectatorMass * square(c);
+            Length tSpectatorShift = tSpectatorDir * tSpectatorBeta * tEarliestTime * c;
+            // Lorentz contraction and shift
+            Vec3<Length> tSpectatorPos(tNucl->GetX() * fm, tNucl->GetY() * fm, tNucl->GetZ() * fm / tSpectatorGamma + tSpectatorShift);
 
             Particle tSpectator(tSpectatorType);
-            tSpectator.SetParticlePX(tSpectatorE, 0, 0, tSpectatorPz, tEarliestTime, tSpectatorX, tSpectatorY, tSpectatorZ);
+            tSpectator.SetParticlePX(tSpectatorE.numerical_value_in(GeV), 0, 0, tSpectatorPz.numerical_value_in(GeV / c),
+                                     tEarliestTime.numerical_value_in(inverse_gev_time), tSpectatorPos.x.numerical_value_in(inverse_gev_length),
+                                     tSpectatorPos.y.numerical_value_in(inverse_gev_length), tSpectatorPos.z.numerical_value_in(inverse_gev_length));
             tSpectator.eid = tNextEid++;
             tParticles->push_back(tSpectator);
             ++tNspec;
@@ -793,13 +764,13 @@ void CoulombAfterburner::Apply(Event *tEvent)
     bool debug = false;
 
     std::list<Particle> *tParticles = tEvent->GetParticleList();
-    double tEarliestTime = std::numeric_limits<double>::quiet_NaN();
+    Time tEarliestTime = NaN<Time>();
     for (auto tPartIter = tParticles->begin(); tPartIter != tParticles->end(); ++tPartIter) {
         if (!HasFiniteKinematics(*tPartIter))
             continue;
-        if (std::isnan(tEarliestTime) || tPartIter->T() < tEarliestTime)
+        if (!IsFinite(tEarliestTime) || TimeOf(*tPartIter) < tEarliestTime)
         {
-            tEarliestTime = tPartIter->T();
+            tEarliestTime = TimeOf(*tPartIter);
         }
     }
 
@@ -813,23 +784,24 @@ void CoulombAfterburner::Apply(Event *tEvent)
             N = tPartIter->eid + 1;
         }
     }
-    m_coordinates = new std::vector<TLorentzVector>[N];
-    m_fourmomenta = new std::vector<TLorentzVector>[N];
-    m_velocities = new std::vector<TVector3>[N];
-    m_accelerations = new std::vector<TVector3>[N];
+    m_coordinates = new std::vector<SpaceTimePoint>[N];
+    m_fourmomenta = new std::vector<FourMomentum>[N];
+    m_velocities = new std::vector<Vec3<Speed> >[N];
+    m_accelerations = new std::vector<Vec3<Acceleration> >[N];
     m_pids = new std::map<int, int>();
-    m_DecayTimes = new double[N];
-    m_CreationTimes = new double[N];
+    m_DecayTimes = new Time[N];
+    m_CreationTimes = new Time[N];
     m_FirstStepExists = new unsigned int[N];
     m_LastStepExists = new unsigned int[N];
+    // The original coordinates as stored in the particles (GeV^-1), restored unchanged at the end
     TLorentzVector *tOriginalCoordinates = new TLorentzVector[N];
 
     for (auto tPartIter = tParticles->begin(); tPartIter != tParticles->end(); ++tPartIter)
     {
-        m_coordinates[tPartIter->eid] = std::vector<TLorentzVector>();
+        m_coordinates[tPartIter->eid] = std::vector<SpaceTimePoint>();
         tOriginalCoordinates[tPartIter->eid] = TLorentzVector(tPartIter->VecX(), tPartIter->T());
-        m_CreationTimes[tPartIter->eid] = tPartIter->T();
-        m_DecayTimes[tPartIter->eid] = std::numeric_limits<double>::infinity();
+        m_CreationTimes[tPartIter->eid] = TimeOf(*tPartIter);
+        m_DecayTimes[tPartIter->eid] = std::numeric_limits<double>::infinity() * fm_c;
         if (tPartIter->decayed)
         {
             std::list<Particle>::iterator tChildPartIter = tParticles->begin();
@@ -837,18 +809,19 @@ void CoulombAfterburner::Apply(Event *tEvent)
             {
                 if (tChildPartIter->fathereid == tPartIter->eid)
                 {
-                    m_DecayTimes[tPartIter->eid] = tChildPartIter->T();
+                    m_DecayTimes[tPartIter->eid] = TimeOf(*tChildPartIter);
                     break;
                 }
             }
         }
         // A particle exists at the time steps t with creation time <= t < decay time, so that the first step
         // of a decay product directly follows the last step of its father
-        double tFirstStep = TMath::Min((double)m_nSteps, TMath::Ceil((tPartIter->T() - tEarliestTime) / m_StepSize));
+        double tFirstStep = TMath::Min((double)m_nSteps,
+                                       TMath::Ceil(((TimeOf(*tPartIter) - tEarliestTime) / m_StepSize).numerical_value_in(one)));
         double tLastStep = m_nSteps - 1;
-        if (TMath::Finite(m_DecayTimes[tPartIter->eid]))
+        if (IsFinite(m_DecayTimes[tPartIter->eid]))
         {
-            tLastStep = TMath::Min(tLastStep, TMath::Ceil((m_DecayTimes[tPartIter->eid] - tEarliestTime) / m_StepSize) - 1);
+            tLastStep = TMath::Min(tLastStep, TMath::Ceil(((m_DecayTimes[tPartIter->eid] - tEarliestTime) / m_StepSize).numerical_value_in(one)) - 1);
         }
         if (!HasFiniteKinematics(*tPartIter))
         {
@@ -868,9 +841,6 @@ void CoulombAfterburner::Apply(Event *tEvent)
         m_LastStepExists[tPartIter->eid] = (unsigned int)tLastStep;
     }
     cout << "End setting initial coordinates" << endl;
-    // if (m_UseSpectators) {
-    //     Int_t tNspec = AddSpectators(tParticles, tEarliestTime);
-    // }
     int **tBestIs = new int *[N];
     for (unsigned int ai = 0; ai < N; ++ai)
     {
@@ -888,99 +858,59 @@ void CoulombAfterburner::Apply(Event *tEvent)
     m_us->clear();
     m_vs->clear();
 
-    // Reference values from the first step, to monitor conservation laws
-    Double_t tTotalHamil_0 = 0;
-    Double_t tTotalMomMS_0 = 0;
-    Double_t tTotalPx_0 = 0;
-    Double_t tTotalPy_0 = 0;
-    Double_t tTotalPz_0 = 0;
-    Double_t tTotalAx_0 = 0;
-    Double_t tTotalAy_0 = 0;
-    Double_t tTotalAz_0 = 0;
-    Double_t tTotalV_0 = 0;
-    Double_t tTotalPdotA_0 = 0;
-    Double_t tRadiatedEnergy = 0;
-    Double_t tRadiatedEnergy_0 = 0;
+    // Sums over the particles, to monitor conservation laws; p.A in GeV/c * GeV
+    using MomentumTimesEnergy = quantity<GeV / c * GeV, double>;
+    // Reference values from the first step
+    CoulombUnits::Energy tTotalHamil_0 = CoulombUnits::Energy::zero();
+    CoulombUnits::Energy tTotalMomMS_0 = CoulombUnits::Energy::zero();
+    Vec3<Momentum> tTotalP_0;
+    Vec3<CoulombUnits::Energy> tTotalA_0;
+    CoulombUnits::Energy tTotalV_0 = CoulombUnits::Energy::zero();
+    MomentumTimesEnergy tTotalPdotA_0 = MomentumTimesEnergy::zero();
+    CoulombUnits::Energy tRadiatedEnergy = CoulombUnits::Energy::zero();
+    CoulombUnits::Energy tRadiatedEnergy_0 = CoulombUnits::Energy::zero();
 
-    TVector3 *tTotalForcesLast = NULL;
+    Vec3<Force> *tTotalForcesLast = NULL;
     for (unsigned int iStep = 0; iStep < m_nSteps; ++iStep)
     {
-       // cout << "1. Step " << iStep << " of " << m_nSteps << " particles: " << tParticles->size() << endl;
+        m_termsCoul->emplace_back();
+        m_termsVelo->emplace_back();
+        m_termsAcce->emplace_back();
+        m_termsMagn->emplace_back();
+        m_Rs->emplace_back();
+        m_us->emplace_back();
+        m_vs->emplace_back();
 
-        m_termsCoul->push_back(std::map< std::pair<int, int>, TVector3>());
-        m_termsVelo->push_back(std::map< std::pair<int, int>, TVector3>());
-        m_termsAcce->push_back(std::map< std::pair<int, int>, TVector3>());
-        m_termsMagn->push_back(std::map< std::pair<int, int>, TVector3>());
-        m_Rs->push_back(std::map< std::pair<int, int>, TVector3>());
-        m_us->push_back(std::map< std::pair<int, int>, TVector3>());
-        m_vs->push_back(std::map< std::pair<int, int>, TVector3>());
-
-        double tCurrentTime = tEarliestTime + iStep * m_StepSize;
-        TVector3 *tTotalForces = new TVector3[N];
+        Time tCurrentTime = tEarliestTime + iStep * m_StepSize;
+        Vec3<Force> *tTotalForces = new Vec3<Force>[N];
         std::list<Particle>::iterator tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
-            /*
-               if (TString(tPartIter->GetParticleType()->GetName()).Contains("Spectator")) {
-               cout << " at step " << iStep << " spectator is ";
-               cout << "x(" << tPartIter->X() << ", " << tPartIter->Y() << ", " << tPartIter->Z() << "), ";
-               cout << "p(" << tPartIter->Px() << ", " << tPartIter->Py() << ", " << tPartIter->Pz() << ")" << endl;
-               }
-               */
             if (iStep >= m_FirstStepExists[tPartIter->eid] && iStep <= m_LastStepExists[tPartIter->eid])
             {
                 if (iStep == m_FirstStepExists[tPartIter->eid])
                 {
                     // Propagate freely from the creation time to the first time step
-                    TVector3 tPos = tPartIter->VecX();
-                    double tP = tPartIter->GetP();
-                    if (tP > 0 && TMath::Finite(tP))
-                    {
-                        tPos += ((tCurrentTime - tPartIter->T()) * tP / tPartIter->E()) * tPartIter->VecP().Unit();
-                    }
-                    tPartIter->SetTXYZ(tCurrentTime, tPos.X(), tPos.Y(), tPos.Z());
+                    SetSpaceTime(*tPartIter, tCurrentTime,
+                                 PositionOf(*tPartIter) + VelocityOf(*tPartIter) * (tCurrentTime - TimeOf(*tPartIter)));
                 }
                 Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-                TVector3 tPartPos = tPartIter->VecX(); // 1/GeV
-                TVector3 tPartMom = tPartIter->VecP();
-                double tE = tPartIter->E();
-                m_coordinates[tPartIter->eid].push_back(TLorentzVector(tPartPos, tCurrentTime)); // 1/GeV
-                m_fourmomenta[tPartIter->eid].push_back(TLorentzVector(tPartMom, tE)); // 1/GeV
+                m_coordinates[tPartIter->eid].push_back(SpaceTimePoint{tCurrentTime, PositionOf(*tPartIter)});
+                m_fourmomenta[tPartIter->eid].push_back(FourMomentum{EnergyOf(*tPartIter), MomentumOf(*tPartIter)});
                 (*m_pids)[tPartIter->eid] = tPartIter->pid;
                 if (tQ != 0)
                 {
-                    // cout << m_coordinates->size() << " " << tPartIter->eid << " " << tPartIter->pid << " " << tParticles->size() << endl;
-                    // cout << m_coordinates[tPartIter->eid].size() << endl;
-                    // cout << "===" << endl;
-                    // m_coordinates[tPartIter->eid].push_back(TLorentzVector(tPartPos, tCurrentTime)); // 1/GeV
-                    // double tP2 = tPartMom.Mag2();
-                    // double tM2 = TMath::Power(tPartIter->mass, 2);
-                    TVector3 tV(0, 0, 0);
-                    // if (tP2 > 0 && TMath::Finite(tP2))
-                    // {
-                    //     tV = 1. / TMath::Sqrt(tM2 / tP2 + 1) * tPartMom.Unit();
-                    // }
-                    double tP = tPartIter->GetP();
-                    if (tP > 0 && TMath::Finite(tP))
-                    {
-                        tV = tP / tE * tPartMom.Unit();
-                    }
-                    m_velocities[tPartIter->eid].push_back(tV); // []
+                    m_velocities[tPartIter->eid].push_back(VelocityOf(*tPartIter));
 
                     if (iStep == m_FirstStepExists[tPartIter->eid])
                     {
-                        m_accelerations[tPartIter->eid].push_back(TVector3(0, 0, 0));
+                        m_accelerations[tPartIter->eid].push_back(Vec3<Acceleration>());
                     }
                     else
                     {
-                        if (m_FirstStepExists[tPartIter->eid] < 0)
-                        {
-                            cerr << tParticles->size() << " " << N << " " << tPartIter->eid << " " << sizeof(m_FirstStepExists) / sizeof(int *) << " " << m_FirstStepExists[tPartIter->eid] << " " << iStep - m_FirstStepExists[tPartIter->eid] << " " << iStep - m_FirstStepExists[tPartIter->eid] - 1 << " " << iStep << " " << m_velocities[tPartIter->eid].size() << endl;
-                        }
-                        TVector3 &tV1 = m_velocities[tPartIter->eid][iStep - m_FirstStepExists[tPartIter->eid] - 1];
-                        TVector3 &tV2 = m_velocities[tPartIter->eid][iStep - m_FirstStepExists[tPartIter->eid]];
-                        TVector3 tAcce = 1. / (m_StepSize) * (tV2 - tV1);
-                        m_accelerations[tPartIter->eid].push_back(tAcce); // GeV
+                        const Vec3<Speed> &tV1 = m_velocities[tPartIter->eid][iStep - m_FirstStepExists[tPartIter->eid] - 1];
+                        const Vec3<Speed> &tV2 = m_velocities[tPartIter->eid][iStep - m_FirstStepExists[tPartIter->eid]];
+                        m_accelerations[tPartIter->eid].push_back((tV2 - tV1) / m_StepSize);
                     }
                 }
             }
@@ -990,7 +920,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
 
-            TVector3 tForceTotal;
+            Vec3<Force> tForceTotal;
             // For spectator nucleons, the force stays zero
             // Reuse the force at the new position from the previous step, unless the particle has just been created
             Int_t tQ = tPartIter->GetParticleType()->GetCharge();
@@ -1003,8 +933,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
                 }
             }
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
-                cout << "total force at old pos, step " << iStep << ", eid = " << tPartIter->eid
-                    << ", F = (" << tForceTotal.X() << "," << tForceTotal.Y() << "," << tForceTotal.Z() << ") "  << endl;
+                cout << "total force at old pos, step " << iStep << ", eid = " << tPartIter->eid << ", F = " << tForceTotal << endl;
             }
             tTotalForces[tPartIter->eid] = tForceTotal;
         }
@@ -1015,43 +944,34 @@ void CoulombAfterburner::Apply(Event *tEvent)
             if (iStep < m_FirstStepExists[tPartIter->eid] || iStep > m_LastStepExists[tPartIter->eid])
                 continue;
 
-            TVector3 tPartPos = tPartIter->VecX();
-            TVector3 tPartMom = tPartIter->VecP();
-            TVector3 tForceTotal = tTotalForces[tPartIter->eid];
-
-            TVector3 tV(0, 0, 0);
-            double tP = tPartIter->GetP();
-            double tE = tPartIter->E();
-            if (tP > 0 && TMath::Finite(tP))
-            {                                                                           // guardian
-                tV = tP / tE * tPartMom.Unit();
-            }
-            // Relativistic acceleration dv/dt = (F - v (v.F)) / E
-            TVector3 tAcc = (kHbarC / tE) * (tForceTotal - tV.Dot(tForceTotal) * tV); // GeV*fm * GeV/fm / GeV = GeV
-            tPartPos += m_StepSize * tV + (0.5 * m_StepSize * m_StepSize) * tAcc; // 1/GeV
-            if (debug && !TMath::Finite(tPartPos.Mag()))
+            const Vec3<Force> &tForceTotal = tTotalForces[tPartIter->eid];
+            Vec3<Speed> tV = VelocityOf(*tPartIter);
+            CoulombUnits::Energy tE = EnergyOf(*tPartIter);
+            // Relativistic acceleration dv/dt = (F - v (v.F) / c^2) c^2 / E
+            Vec3<Acceleration> tAcc = (tForceTotal - tV * Dot(tV, tForceTotal) / square(c)) * square(c) / tE;
+            Vec3<Length> tPartPos = PositionOf(*tPartIter) + tV * m_StepSize + 0.5 * tAcc * pow<2>(m_StepSize);
+            if (debug && !IsFinite(tPartPos))
             {
-                cout << "updating position: " << tE << " " << tP << " " << tPartMom.Mag() << endl;
+                cout << "updating position: " << tE << " " << Mag(MomentumOf(*tPartIter)) << endl;
             }
 
-            tPartIter->SetTXYZ(tCurrentTime + m_StepSize, tPartPos.X(), tPartPos.Y(), tPartPos.Z());
+            SetSpaceTime(*tPartIter, tCurrentTime + m_StepSize, tPartPos);
         }
 
         // Calculate force at new position x_{n+1} and time t_{n+1}
-        TVector3 *tTotalForcesNew = new TVector3[N];
+        Vec3<Force> *tTotalForcesNew = new Vec3<Force>[N];
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
 
-            TVector3 tForceTotal;
+            Vec3<Force> tForceTotal;
             Int_t tQ = tPartIter->GetParticleType()->GetCharge();
             if (tQ != 0 && iStep >= m_FirstStepExists[tPartIter->eid] && iStep <= m_LastStepExists[tPartIter->eid])
             {
                 tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime + m_StepSize, iStep);
             }
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
-                cout << "total force at new pos, step " << iStep << ", eid = " << tPartIter->eid
-                    << ", F = (" << tForceTotal.X() << "," << tForceTotal.Y() << "," << tForceTotal.Z() << ") "  << endl;
+                cout << "total force at new pos, step " << iStep << ", eid = " << tPartIter->eid << ", F = " << tForceTotal << endl;
             }
             tTotalForcesNew[tPartIter->eid] = tForceTotal;
         }
@@ -1062,47 +982,39 @@ void CoulombAfterburner::Apply(Event *tEvent)
             if (iStep < m_FirstStepExists[tPartIter->eid] || iStep > m_LastStepExists[tPartIter->eid])
                 continue;
 
-            TVector3 tPartPos = tPartIter->VecX();
-            TVector3 tPartMom = tPartIter->VecP();
-            TVector3 tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesNew[tPartIter->eid]);
-            TVector3 tImpulse = (m_StepSize * kHbarC) * tForceTotal; // GeV/fm * (1/GeV) * GeV*fm = GeV
+            Vec3<Force> tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesNew[tPartIter->eid]);
+            Vec3<Momentum> tImpulse = tForceTotal * m_StepSize;
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
-                cout << "total force " << iStep << ", eid = " << tPartIter->eid
-                    << ", F = (" << tForceTotal.X() << "," << tForceTotal.Y() << "," << tForceTotal.Z() << ") "  << endl;
+                cout << "total force " << iStep << ", eid = " << tPartIter->eid << ", F = " << tForceTotal << endl;
             }
 
-            double fM = tPartIter->mass;
-            double tM2 = fM*fM;
-
-            tPartMom += tImpulse; // GeV
-
-            double tP2 = tPartMom.Mag2();
-            double tE = TMath::Sqrt(tM2 + tP2);
+            Vec3<Momentum> tPartMom = MomentumOf(*tPartIter) + tImpulse;
+            CoulombUnits::Energy tE = EnergyOf(MassOf(*tPartIter), tPartMom);
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "before updating momenta " << iStep << ", eid = " << tPartIter->eid
-                    << ", p = (" << tPartIter->Px() << "," << tPartIter->Py() << "," << tPartIter->Pz() << "), |p| = " 
-                    << tPartIter->GetP() << ", E = " << tPartIter->E() << ", mass = " << tPartIter->mass << endl;
+                    << ", p = " << MomentumOf(*tPartIter) << ", |p| = " << Mag(MomentumOf(*tPartIter))
+                    << ", E = " << EnergyOf(*tPartIter) << ", mass = " << MassOf(*tPartIter) << endl;
             }
 
-            tPartIter->SetEPxPyPz(tE, tPartMom.X(), tPartMom.Y(), tPartMom.Z());
+            SetFourMomentum(*tPartIter, tE, tPartMom);
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "after updating momenta " << iStep << ", eid = " << tPartIter->eid
-                    << ", p = (" << tPartIter->Px() << "," << tPartIter->Py() << "," << tPartIter->Pz() << "), |p| = " 
-                    << tPartIter->GetP() << ", E = " << tPartIter->E() << ", mass = " << tPartIter->mass << endl;
+                    << ", p = " << MomentumOf(*tPartIter) << ", |p| = " << Mag(MomentumOf(*tPartIter))
+                    << ", E = " << EnergyOf(*tPartIter) << ", mass = " << MassOf(*tPartIter) << endl;
             }
 
-            TVector3 tVnew = tPartMom.Mag() / tE * tPartMom.Unit();
-            if (m_FindProblem && (!TMath::Finite(tVnew.Mag()) || tVnew.Mag() >= 1))
+            Vec3<Speed> tVnew = VelocityOf(tPartMom, tE);
+            if (m_FindProblem && (!IsFinite(Mag(tVnew)) || Mag(tVnew) >= 1. * c))
             {
                 cout << "In step " << iStep << " ERROR, wrong velocity eid " << tPartIter->eid << ", pid " << tPartIter->pid << endl;
-                cout << "In step " << iStep << " p = " << tPartMom.X() << " " << tPartMom.Y() << " " << tPartMom.Z() << endl;
-                cout << "In step " << iStep << " v = " << tVnew.X() << " " << tVnew.Y() << " " << tVnew.Z() << endl;
-                cout << "In step " << iStep << " |p| = " << tPartMom.Mag() << ", E = " << tE << endl;
+                cout << "In step " << iStep << " p = " << tPartMom << endl;
+                cout << "In step " << iStep << " v = " << tVnew << endl;
+                cout << "In step " << iStep << " |p| = " << Mag(tPartMom) << ", E = " << tE << endl;
                 for (auto mapping : m_termsCoul->back()) {
-                    if (mapping.first.first == tPartIter->eid && mapping.second.Mag() > m_LargeTerm) {
-                        cout << "possible reason: " << mapping.second.X() << " " << mapping.second.Y() << " " << mapping.second.Z() << endl;
+                    if (mapping.first.first == tPartIter->eid && Mag(mapping.second) > m_LargeTerm) {
+                        cout << "possible reason: " << mapping.second << endl;
                         cout << "other eid: " << mapping.first.second << endl;
-                    } 
+                    }
                 }
             }
         }
@@ -1113,17 +1025,13 @@ void CoulombAfterburner::Apply(Event *tEvent)
         tTotalForcesLast = tTotalForcesNew;
 
         // Calculating total energy, momentum and potentials at time t_{n+1}
-        Double_t tTotalHamil = 0;
-        Double_t tTotalMomMS = 0;
-        Double_t tTotalPx = 0;
-        Double_t tTotalPy = 0;
-        Double_t tTotalPz = 0;
-        Double_t tTotalAx = 0;
-        Double_t tTotalAy = 0;
-        Double_t tTotalAz = 0;
-        Double_t tTotalV = 0;
-        Double_t tTotalPdotA = 0;
-        Double_t tTotalRadPower = 0;
+        CoulombUnits::Energy tTotalHamil = CoulombUnits::Energy::zero();
+        CoulombUnits::Energy tTotalMomMS = CoulombUnits::Energy::zero();
+        Vec3<Momentum> tTotalP;
+        Vec3<CoulombUnits::Energy> tTotalA;
+        CoulombUnits::Energy tTotalV = CoulombUnits::Energy::zero();
+        MomentumTimesEnergy tTotalPdotA = MomentumTimesEnergy::zero();
+        Power tTotalRadPower = Power::zero();
 
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
@@ -1132,94 +1040,93 @@ void CoulombAfterburner::Apply(Event *tEvent)
                 continue;
 
             Int_t tQ = tPartIter->GetParticleType()->GetCharge();
-            TVector3 tPartMom = tPartIter->VecP(); // kinetic momentum
+            Vec3<Momentum> tPartMom = MomentumOf(*tPartIter); // kinetic momentum
 
             auto tPotentials = CalculatePotentials(tPartIter, tParticles, tBestIs, tCurrentTime + m_StepSize, iStep);
-            TVector3 tPotA = tPotentials.first;
-            Double_t tPotV = tPotentials.second;
-            double fM = tPartIter->mass;
-            double tM2 = fM*fM;
+            const Vec3<CoulombUnits::Energy> &tPotA = tPotentials.first;
+            CoulombUnits::Energy tPotV = tPotentials.second;
 
-            Double_t tEkin = TMath::Sqrt(tM2 + tPartMom.Mag2()); // GeV
+            CoulombUnits::Energy tEkin = EnergyOf(MassOf(*tPartIter), tPartMom);
             // Each pair contributes to the potentials of both particles, hence 1/2 in the potential energy
-            Double_t tH = tEkin + 0.5*tQ*tPotV; // GeV
+            CoulombUnits::Energy tH = tEkin + 0.5*tQ*tPotV;
             tTotalHamil += tH;
             tTotalMomMS += tEkin;
-            tTotalPx += tPartIter->Px();
-            tTotalPy += tPartIter->Py();
-            tTotalPz += tPartIter->Pz();
-            tTotalAx += tQ*tPotA.X();
-            tTotalAy += tQ*tPotA.Y();
-            tTotalAz += tQ*tPotA.Z();
-            tTotalV  += 0.5*tQ*tPotV;
-            tTotalPdotA  += 2*tQ*tPartMom.Dot(tPotA);
+            tTotalP += tPartMom;
+            tTotalA += tQ * tPotA;
+            tTotalV += 0.5*tQ*tPotV;
+            tTotalPdotA += 2*tQ*Dot(tPartMom, tPotA);
 
             if (tQ != 0 && m_velocities[tPartIter->eid].size() > 0 && m_accelerations[tPartIter->eid].size() > 0) {
-                TVector3 tV = m_velocities[tPartIter->eid].back();
-                double tBeta2 = tV.Mag2();
-                double tGamma2 = 1/(1-tBeta2);
-                TVector3 tA = m_accelerations[tPartIter->eid].back();
-                double tRadPower = (2./3) * k * tQ * tQ * TMath::Power(tGamma2, 3) * (tA.Mag2() - tV.Cross(tA).Mag2()); // GeV*fm * GeV**2
-                if (tRadPower < 0) {
+                Vec3<Dimensionless> tBeta = m_velocities[tPartIter->eid].back() / c;
+                double tGamma2 = 1 / (1 - Mag2(tBeta)).numerical_value_in(one);
+                const Vec3<Acceleration> &tA = m_accelerations[tPartIter->eid].back();
+                // Lienard's generalisation of the Larmor formula
+                Power tRadPower = (2./3) * kCoulomb * tQ * tQ * TMath::Power(tGamma2, 3) * (Mag2(tA) - Mag2(Cross(tBeta, tA))) / pow<3>(1. * c);
+                if (tRadPower < Power::zero()) {
                     PrintProblem(tPartIter->eid, iStep, "");
                 }
                 tTotalRadPower += tRadPower;
             }
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "at end of step " << iStep << ", eid = " << tPartIter->eid
-                    << ", p = (" << tPartIter->Px() << "," << tPartIter->Py() << "," << tPartIter->Pz() << "), |p| = "
-                    << tPartIter->GetP() << ", E = " << tPartIter->E() << ", mass = " << tPartIter->mass << endl;
+                    << ", p = " << tPartMom << ", |p| = " << Mag(tPartMom) << ", E = " << EnergyOf(*tPartIter)
+                    << ", mass = " << MassOf(*tPartIter) << endl;
             }
         }
-        tRadiatedEnergy += tTotalRadPower / kHbarC * m_StepSize; // GeV*fm * GeV**2 / (GeV*fm) / GeV = GeV
+        tRadiatedEnergy += tTotalRadPower * m_StepSize;
 
         if (iStep == 0) {
             tTotalHamil_0 = tTotalHamil;
             tTotalMomMS_0 = tTotalMomMS;
-            tTotalPx_0 = tTotalPx;
-            tTotalPy_0 = tTotalPy;
-            tTotalPz_0 = tTotalPz;
-            tTotalAx_0 = tTotalAx;
-            tTotalAy_0 = tTotalAy;
-            tTotalAz_0 = tTotalAz;
+            tTotalP_0 = tTotalP;
+            tTotalA_0 = tTotalA;
             tTotalV_0 = tTotalV;
             tTotalPdotA_0 = tTotalPdotA;
             tRadiatedEnergy_0 = tRadiatedEnergy;
         } else {
-            m_hTotalHamil->SetBinContent(iStep+1, tTotalHamil);
-            m_hTotalMomMS->SetBinContent(iStep+1, tTotalMomMS);
-            m_hTotalPx->SetBinContent(iStep+1, tTotalPx);
-            m_hTotalPy->SetBinContent(iStep+1, tTotalPy);
-            m_hTotalPz->SetBinContent(iStep+1, tTotalPz);
-            m_hTotalAx->SetBinContent(iStep+1, tTotalAx);
-            m_hTotalAy->SetBinContent(iStep+1, tTotalAy);
-            m_hTotalAz->SetBinContent(iStep+1, tTotalAz);
-            m_hTotalV->SetBinContent(iStep+1, tTotalV);
+            // Histograms: energies and potentials in GeV, momenta in GeV/c, p.A in GeV^2/c, time axis in GeV^-1
+            const double tT = ((iStep + 0.1) * m_StepSize).numerical_value_in(inverse_gev_time);
+            const double tHamil = tTotalHamil.numerical_value_in(GeV), tHamil_0 = tTotalHamil_0.numerical_value_in(GeV);
+            const double tMomMS = tTotalMomMS.numerical_value_in(GeV), tMomMS_0 = tTotalMomMS_0.numerical_value_in(GeV);
+            const Vec3<Momentum> tDP = tTotalP - tTotalP_0;
+            const Vec3<CoulombUnits::Energy> tDA = tTotalA - tTotalA_0;
+            const double tDV = (tTotalV - tTotalV_0).numerical_value_in(GeV);
+            const double tDPdotA = (tTotalPdotA - tTotalPdotA_0).numerical_value_in(GeV / c * GeV);
+            const double tRadiated = (tRadiatedEnergy - tRadiatedEnergy_0).numerical_value_in(GeV);
+            m_hTotalHamil->SetBinContent(iStep+1, tHamil);
+            m_hTotalMomMS->SetBinContent(iStep+1, tMomMS);
+            m_hTotalPx->SetBinContent(iStep+1, tTotalP.x.numerical_value_in(GeV / c));
+            m_hTotalPy->SetBinContent(iStep+1, tTotalP.y.numerical_value_in(GeV / c));
+            m_hTotalPz->SetBinContent(iStep+1, tTotalP.z.numerical_value_in(GeV / c));
+            m_hTotalAx->SetBinContent(iStep+1, tTotalA.x.numerical_value_in(GeV));
+            m_hTotalAy->SetBinContent(iStep+1, tTotalA.y.numerical_value_in(GeV));
+            m_hTotalAz->SetBinContent(iStep+1, tTotalA.z.numerical_value_in(GeV));
+            m_hTotalV->SetBinContent(iStep+1, tTotalV.numerical_value_in(GeV));
             // RadPower histograms contain the energy radiated since the first step
-            m_hTotalRadPower->SetBinContent(iStep+1, tRadiatedEnergy - tRadiatedEnergy_0);
-            m_hTotalPdotA->SetBinContent(iStep+1, tTotalPdotA);
-            m_pTotalHamil->Fill((iStep+0.1)*m_StepSize, tTotalHamil-tTotalHamil_0);
-            m_pTotalMomMS->Fill((iStep+0.1)*m_StepSize, tTotalMomMS-tTotalMomMS_0);
-            m_pTotalPx->Fill((iStep+0.1)*m_StepSize, tTotalPx-tTotalPx_0);
-            m_pTotalPy->Fill((iStep+0.1)*m_StepSize, tTotalPy-tTotalPy_0);
-            m_pTotalPz->Fill((iStep+0.1)*m_StepSize, tTotalPz-tTotalPz_0);
-            m_pTotalAx->Fill((iStep+0.1)*m_StepSize, tTotalAx-tTotalAx_0);
-            m_pTotalAy->Fill((iStep+0.1)*m_StepSize, tTotalAy-tTotalAy_0);
-            m_pTotalAz->Fill((iStep+0.1)*m_StepSize, tTotalAz-tTotalAz_0);
-            m_pTotalV->Fill((iStep+0.1)*m_StepSize, tTotalV-tTotalV_0);
-            m_pTotalRadPower->Fill((iStep+0.1)*m_StepSize, tRadiatedEnergy - tRadiatedEnergy_0);
-            m_pTotalPdotA->Fill((iStep+0.1)*m_StepSize, tTotalPdotA-tTotalPdotA_0);
-            m_h2TotalHamil->Fill((iStep+0.1)*m_StepSize, tTotalHamil-tTotalHamil_0);
-            m_h2TotalMomMS->Fill((iStep+0.1)*m_StepSize, tTotalMomMS-tTotalMomMS_0);
-            m_h2TotalPx->Fill((iStep+0.1)*m_StepSize, tTotalPx-tTotalPx_0);
-            m_h2TotalPy->Fill((iStep+0.1)*m_StepSize, tTotalPy-tTotalPy_0);
-            m_h2TotalPz->Fill((iStep+0.1)*m_StepSize, tTotalPz-tTotalPz_0);
-            m_h2TotalAx->Fill((iStep+0.1)*m_StepSize, tTotalAx-tTotalAx_0);
-            m_h2TotalAy->Fill((iStep+0.1)*m_StepSize, tTotalAy-tTotalAy_0);
-            m_h2TotalAz->Fill((iStep+0.1)*m_StepSize, tTotalAz-tTotalAz_0);
-            m_h2TotalV->Fill((iStep+0.1)*m_StepSize, tTotalV-tTotalV_0);
-            m_h2TotalRadPower->Fill((iStep+0.1)*m_StepSize, tRadiatedEnergy - tRadiatedEnergy_0);
-            m_h2TotalPdotA->Fill((iStep+0.1)*m_StepSize, tTotalPdotA-tTotalPdotA_0);
+            m_hTotalRadPower->SetBinContent(iStep+1, tRadiated);
+            m_hTotalPdotA->SetBinContent(iStep+1, tTotalPdotA.numerical_value_in(GeV / c * GeV));
+            m_pTotalHamil->Fill(tT, tHamil-tHamil_0);
+            m_pTotalMomMS->Fill(tT, tMomMS-tMomMS_0);
+            m_pTotalPx->Fill(tT, tDP.x.numerical_value_in(GeV / c));
+            m_pTotalPy->Fill(tT, tDP.y.numerical_value_in(GeV / c));
+            m_pTotalPz->Fill(tT, tDP.z.numerical_value_in(GeV / c));
+            m_pTotalAx->Fill(tT, tDA.x.numerical_value_in(GeV));
+            m_pTotalAy->Fill(tT, tDA.y.numerical_value_in(GeV));
+            m_pTotalAz->Fill(tT, tDA.z.numerical_value_in(GeV));
+            m_pTotalV->Fill(tT, tDV);
+            m_pTotalRadPower->Fill(tT, tRadiated);
+            m_pTotalPdotA->Fill(tT, tDPdotA);
+            m_h2TotalHamil->Fill(tT, tHamil-tHamil_0);
+            m_h2TotalMomMS->Fill(tT, tMomMS-tMomMS_0);
+            m_h2TotalPx->Fill(tT, tDP.x.numerical_value_in(GeV / c));
+            m_h2TotalPy->Fill(tT, tDP.y.numerical_value_in(GeV / c));
+            m_h2TotalPz->Fill(tT, tDP.z.numerical_value_in(GeV / c));
+            m_h2TotalAx->Fill(tT, tDA.x.numerical_value_in(GeV));
+            m_h2TotalAy->Fill(tT, tDA.y.numerical_value_in(GeV));
+            m_h2TotalAz->Fill(tT, tDA.z.numerical_value_in(GeV));
+            m_h2TotalV->Fill(tT, tDV);
+            m_h2TotalRadPower->Fill(tT, tRadiated);
+            m_h2TotalPdotA->Fill(tT, tDPdotA);
         }
         if (tTotalForces != NULL) {
             delete [] tTotalForces;
@@ -1255,8 +1162,6 @@ void CoulombAfterburner::Apply(Event *tEvent)
     delete[] tOriginalCoordinates;
     delete m_pids;
 
-    //tParticles->remove_if([](Particle &p) { return TString(p.GetParticleType()->GetName()).Contains("Spectator"); });
-    //delete tSpectatorType;
     cout << "Before saving event" << endl;
     if (mEventSaver != nullptr) {
         mEventSaver->Save(tEvent,NULL,tEvent->GetEventID());
@@ -1277,24 +1182,23 @@ void CoulombAfterburner::PrintProblem(Int_t eid, Int_t step, TString indent, Int
         cout << indent.Data() << "problem in step " << step << ", eid = " << eid << ": particle does not exist at this step" << endl;
         return;
     }
-    TVector3 tV = m_velocities[eid].at(index);
-    double tBeta2 = tV.Mag2();
-    double tGamma2 = 1/(1-tBeta2);
-    TVector3 tA = m_accelerations[eid].at(index);
-    TLorentzVector tPartFourMom = m_fourmomenta[eid].at(index);
+    Vec3<Dimensionless> tBeta = m_velocities[eid].at(index) / c;
+    double tGamma2 = 1 / (1 - Mag2(tBeta)).numerical_value_in(one);
+    const Vec3<Acceleration> &tA = m_accelerations[eid].at(index);
+    const FourMomentum &tPartFourMom = m_fourmomenta[eid].at(index);
     cout << indent.Data() << "problem in step " << step << ", pid = " << (*m_pids)[eid] << ", eid = " << eid
         << ", gamma^2 = " << tGamma2
-        << ", |a| = " << tA.Mag() << ", |v| = (" << tV.Mag() << ", a^2 - (v x a)^2 = "
-        << tA.Mag2() - tV.Cross(tA).Mag2() << endl;
-    cout << indent.Data() << "|p| = " << tPartFourMom.Vect().Mag() << ", E = " << tPartFourMom.E() << endl;
-    for (int is = 0; is < m_termsCoul->size(); ++is) {
+        << ", |a| = " << Mag(tA) << ", |v|/c = " << Mag(tBeta) << ", a^2 - (v/c x a)^2 = "
+        << Mag2(tA) - Mag2(Cross(tBeta, tA)) << endl;
+    cout << indent.Data() << "|p| = " << Mag(tPartFourMom.p) << ", E = " << tPartFourMom.e << endl;
+    for (int is = 0; is < (int)m_termsCoul->size(); ++is) {
         for (auto mapping : m_termsCoul->at(is)) {
-            if (mapping.first.first == eid && mapping.second.Mag() > m_LargeTerm) {
-                cout << indent.Data() << "possible reason: " << mapping.second.X() << " " << mapping.second.Y() << " " << mapping.second.Z() << endl;
+            if (mapping.first.first == eid && Mag(mapping.second) > m_LargeTerm) {
+                cout << indent.Data() << "possible reason: " << mapping.second << endl;
                 cout << indent.Data() << "step number " << is << ", other eid: " << mapping.first.second << endl;
-                cout << indent.Data() << "R: " << m_Rs->at(is)[std::make_pair(mapping.first.first, mapping.first.second)].Mag() << endl;
-                cout << indent.Data() << "u: " << m_us->at(is)[std::make_pair(mapping.first.first, mapping.first.second)].Mag() << endl;
-                cout << indent.Data() << "v: " << m_vs->at(is)[std::make_pair(mapping.first.first, mapping.first.second)].Mag() << endl;
+                cout << indent.Data() << "R: " << Mag(m_Rs->at(is)[std::make_pair(mapping.first.first, mapping.first.second)]) << endl;
+                cout << indent.Data() << "u: " << Mag(m_us->at(is)[std::make_pair(mapping.first.first, mapping.first.second)]) << endl;
+                cout << indent.Data() << "v: " << Mag(m_vs->at(is)[std::make_pair(mapping.first.first, mapping.first.second)]) << endl;
                 PrintProblem(mapping.first.second, is, indent + "**** ", depth + 1);
             }
         }

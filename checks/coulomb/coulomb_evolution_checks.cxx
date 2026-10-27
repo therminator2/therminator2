@@ -40,6 +40,7 @@
 #include "AbstractAfterburner.h"
 #include "AbstractEventSaver.h"
 #include "Configurator.h"
+#include "CoulombUnits.h"
 #include "Event.h"
 #include "Particle.h"
 #include "ParticleDB.h"
@@ -600,22 +601,23 @@ int main(int argc, char **argv)
 
             CoulombAfterburner tCoulomb(1, tStep, 0., nullptr, &tDB);
             tCoulomb.Init();
-            tCoulomb.m_coordinates = new std::vector<TLorentzVector>[2];
-            tCoulomb.m_velocities = new std::vector<TVector3>[2];
-            tCoulomb.m_accelerations = new std::vector<TVector3>[2];
+            // The internal state of the afterburner has units (CoulombUnits.h)
+            using namespace CoulombUnits;
+            tCoulomb.m_coordinates = new std::vector<CoulombAfterburner::SpaceTimePoint>[2];
+            tCoulomb.m_velocities = new std::vector<Vec3<Speed> >[2];
+            tCoulomb.m_accelerations = new std::vector<Vec3<Acceleration> >[2];
             tCoulomb.m_FirstStepExists = new unsigned int[2]{0, 0};
             tCoulomb.m_LastStepExists = new unsigned int[2]{tNPoints - 1, tNPoints - 1};
-            tCoulomb.m_CreationTimes = new double[2]{tT0 / kHbarC, tT0 / kHbarC};
-            tCoulomb.m_DecayTimes = new double[2]{std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
-            for (auto *tTerms : {tCoulomb.m_termsCoul, tCoulomb.m_termsVelo, tCoulomb.m_termsAcce, tCoulomb.m_termsMagn,
-                                 tCoulomb.m_Rs, tCoulomb.m_us, tCoulomb.m_vs})
-                tTerms->push_back(std::map<std::pair<int, int>, TVector3>());
+            tCoulomb.m_CreationTimes = new Time[2]{tT0 * fm_c, tT0 * fm_c};
+            tCoulomb.m_DecayTimes = new Time[2]{std::numeric_limits<double>::infinity() * fm_c, std::numeric_limits<double>::infinity() * fm_c};
+            tCoulomb.m_termsCoul->emplace_back(); tCoulomb.m_termsVelo->emplace_back(); tCoulomb.m_termsAcce->emplace_back();
+            tCoulomb.m_termsMagn->emplace_back(); tCoulomb.m_Rs->emplace_back(); tCoulomb.m_us->emplace_back(); tCoulomb.m_vs->emplace_back();
             for (unsigned int n = 0; n < tNPoints; ++n) {
                 double t = tT0 + n * tStep;
-                tCoulomb.m_coordinates[1].push_back(TLorentzVector(0, 0, tSourceZ(t) / kHbarC, t / kHbarC));
-                tCoulomb.m_velocities[1].push_back(TVector3(0, 0, tSourceV(t)));
-                tCoulomb.m_accelerations[1].push_back(n == 0 ? TVector3()
-                    : (kHbarC / tStep) * (tCoulomb.m_velocities[1][n] - tCoulomb.m_velocities[1][n - 1])); // GeV
+                tCoulomb.m_coordinates[1].push_back(CoulombAfterburner::SpaceTimePoint{t * fm_c, Vec3<Length>(0 * fm, 0 * fm, tSourceZ(t) * fm)});
+                tCoulomb.m_velocities[1].push_back(Vec3<Speed>(0 * c, 0 * c, tSourceV(t) * c));
+                tCoulomb.m_accelerations[1].push_back(n == 0 ? Vec3<Acceleration>()
+                    : Vec3<Acceleration>((tCoulomb.m_velocities[1][n] - tCoulomb.m_velocities[1][n - 1]) / (tStep * fm_c)));
             }
             Particle::ZeroEID();
             std::list<Particle> tList;
@@ -632,10 +634,13 @@ int main(int argc, char **argv)
             std::vector<double> tTObs, tAccX[2], tAccZ[2], tVelX[2], tVelZ[2], tTRet;
             for (double t = 15; t <= 45 + 1e-9; t += 0.25) {
                 tObserver->SetTXYZ(t / kHbarC, tX.X() / kHbarC, tX.Y() / kHbarC, tX.Z() / kHbarC);
-                TVector3 tFull = tCoulomb.CalculateTotalForce(tObserver, &tList, tBestIs, t / kHbarC, tNPoints - 1);
-                std::vector<TVector3> tSaved(tNPoints);
+                auto tInGeVPerFm = [](const Vec3<Force> &aF) {
+                    return TVector3(aF.x.numerical_value_in(GeV / fm), aF.y.numerical_value_in(GeV / fm), aF.z.numerical_value_in(GeV / fm));
+                };
+                TVector3 tFull = tInGeVPerFm(tCoulomb.CalculateTotalForce(tObserver, &tList, tBestIs, t * fm_c, tNPoints - 1));
+                std::vector<Vec3<Acceleration> > tSaved(tNPoints);
                 tSaved.swap(tCoulomb.m_accelerations[1]); // now zero accelerations
-                TVector3 tVel = tCoulomb.CalculateTotalForce(tObserver, &tList, tBestIs, t / kHbarC, tNPoints - 1);
+                TVector3 tVel = tInGeVPerFm(tCoulomb.CalculateTotalForce(tObserver, &tList, tBestIs, t * fm_c, tNPoints - 1));
                 tSaved.swap(tCoulomb.m_accelerations[1]);
                 TVector3 tAcc = tFull - tVel;
                 // Exact retarded time: (t - t') = |x - z(t')|, the left minus right side decreases with t'
@@ -957,7 +962,8 @@ int main(int argc, char **argv)
         const std::vector<double> tFormerConstants = {1, 1, 1, 1, 1.0, -2, -2, -2};
         auto tSettings = [](const CoulombAfterburner &aCoulomb) {
             return std::vector<double>{(double)aCoulomb.m_UseSpectators, (double)aCoulomb.m_ExtrapolateSpectators,
-                                       (double)aCoulomb.m_ExtrapolateFireball, (double)aCoulomb.m_FindProblem, aCoulomb.m_LargeTerm,
+                                       (double)aCoulomb.m_ExtrapolateFireball, (double)aCoulomb.m_FindProblem,
+                                       aCoulomb.m_LargeTerm.numerical_value_in(CoulombUnits::GeV / CoulombUnits::fm),
                                        (double)aCoulomb.m_DebugStep, (double)aCoulomb.m_DebugEid, (double)aCoulomb.m_DebugOtherEid};
         };
         // Number of settings different from the expected values, printing them
