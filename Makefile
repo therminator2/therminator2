@@ -174,10 +174,25 @@ $(DIR_OBJ)therm2_test: $(OBJ_TEST)
 	echo "Linking:   $@ ($(LD))"
 	$(LD) $^ -o $@ $(LFLAGS)
 
-$(DIR_OBJ)%.o: %.cxx
+# Each object depends on the headers it includes: the compiler writes them to a dependency file next to the object
+# (-MMD; -MP adds empty rules for the headers, so that a removed header is not an error), and the dependency files
+# are included below. Without this, a changed header (e.g. a new data member of a class) does not rebuild the
+# objects that include it, and objects compiled with different layouts of the same class crash at run time.
+# The dependency file is written to a temporary file and renamed after a successful compilation, and the object is
+# touched, so that it is never older than its dependency file. An object without a dependency file (e.g. compiled
+# by an older version of this Makefile) is rebuilt.
+$(DIR_OBJ)%.o: %.cxx $(DIR_OBJ)%.d
 	@[ -d $(DIR_OBJ) ] || mkdir -p $(DIR_OBJ)
 	echo "Compiling: $< ($(CXX))"
-	$(CXX) -c $< -o $@ $(CXXFLAGS)
+	$(CXX) -c $< -o $@ $(CXXFLAGS) -MMD -MP -MT $@ -MF $(DIR_OBJ)$*.Td
+	mv -f $(DIR_OBJ)$*.Td $(DIR_OBJ)$*.d && touch $@
+
+# The dependency files are listed explicitly (not as a pattern), else make would treat a missing one as an
+# intermediate file and not rebuild its object
+DEP_ALL = $(sort $(OBJ_EVENTS:%.o=%.d) $(OBJ_COULOMB:%.o=%.d) $(OBJ_FEMTO:%.o=%.d) $(OBJ_HBTFIT:%.o=%.d) $(OBJ_TEST:%.o=%.d))
+$(DEP_ALL):
+
+-include $(wildcard $(DEP_ALL))
 
 # The quantities with units (mp-units) of the Coulomb afterburner need optimisation to be fast: without it the
 # afterburner is about 60% slower, with it about 40% faster than with plain numbers. The last -O option counts.
@@ -204,7 +219,7 @@ package: $(F_INCLUDE) $(F_SOURCE) $(F_MACRO) $(F_FOMODEL) $(F_SHARE) $(F_DOXYGEN
 	echo "Package '$(F_PACK)' created."
 
 clean:
-	rm -f $(DIR_OBJ)*.o
+	rm -f $(DIR_OBJ)*.o $(DIR_OBJ)*.d $(DIR_OBJ)*.Td
 	rm -f $(DIR_MACRO)*.d
 	rm -f $(DIR_MACRO)*.so
 	rm -f $(DIR_MACRO)*.pcm
