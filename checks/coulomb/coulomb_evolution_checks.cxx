@@ -12,6 +12,7 @@
 //   E. acceleration (radiation) term        J. random cluster of 20 charges vs instantaneous Coulomb N-body
 //   K. settings of the afterburner from the configuration (events.ini, events_template)
 //   L. a particle with NaN momentum does not affect the others
+//   M. close encounters (impact parameters down to 0.01 fm) with sub-steps, fixed and moving source
 //
 // Besides the pass/fail checks, trajectories of the code and of the exact solutions are written as TGraphs
 // to a ROOT file (first argument, default coulomb_checks.root), one directory per check. The second argument is
@@ -70,8 +71,10 @@ static const double kAlphaHbarC = 1.439964e-3; // GeV fm, alpha * hbar * c (CODA
 
 static int sFailures = 0;
 
-// Configuration of the afterburner in all runs: no spectators
+// Configuration of the afterburner in all runs: no spectators; with sub-steps of close pairs in M
 static Configurator sChecksConfig;
+static Configurator sSubstepConfig;
+static Configurator *sRunConfig = &sChecksConfig;
 
 static void Check(const char *aName, double aGot, double aExpected, double aTolerance, bool aRelative = true)
 {
@@ -159,7 +162,7 @@ static RunResult RunCoulomb(const char *aDir, int aSteps, double aStepFm, const 
     RunResult tResult;
     {
         CoulombAfterburner tCoulomb(aSteps, aStepFm, 0., nullptr, aDB);
-        tCoulomb.ReadParameters(&sChecksConfig);
+        tCoulomb.ReadParameters(sRunConfig);
         tCoulomb.SetKeepTrajectories(true);
         tCoulomb.Init();
         Event tEvent; // resets the eid counter
@@ -348,12 +351,27 @@ static double ConfigurationS(const std::vector<TVector3> &aVertices, double &aSi
 
 // ---------------------------------------------------------------------------------------------
 
+// Asymptotic deflection angle of the exact relativistic Coulomb orbit (see ExactOrbit) of a particle with energy aE
+// (at infinite distance) and impact parameter aB: the orbit sweeps 2 phi_inf between the asymptotes, u = 0 at
+// cos(g phi_inf) = C / A. Positive away from a repulsive source.
+static double AsymptoticDeflection(double aMass, double aKappa, double aE, double aB)
+{
+    double tP = std::sqrt(aE * aE - aMass * aMass), tL = aB * tP;
+    double tG2 = 1 - aKappa * aKappa / (tL * tL), tG = std::sqrt(tG2);
+    double tC = aE * aKappa / (tL * tL * tG2);
+    double tA = std::sqrt(tC * tC + tP * tP / (tL * tL * tG2));
+    return TMath::Pi() - 2 * std::acos(tC / tA) / tG;
+}
+
 int main(int argc, char **argv)
 {
     const char *tOutputFile = argc > 1 ? argv[1] : "coulomb_checks.root";
     const char *tTopDir = argc > 2 ? argv[2] : nullptr;
     Parameter tNoSpectators{"CoulombUseSpectators", "0"};
     sChecksConfig.AddParameter(&tNoSpectators);
+    Parameter tSubsteps{"CoulombSubsteps", "1"};
+    sSubstepConfig.AddParameter(&tNoSpectators);
+    sSubstepConfig.AddParameter(&tSubsteps);
 
     ParticleDB tDB;
     ParticleType tTypes[] = {
@@ -367,6 +385,7 @@ int main(int argc, char **argv)
         MakeType("clusterQ1", 9004, 20.0, 1),
         MakeType("movingZ10", 9010, 1.0e5, 10),
         MakeType("movingZ10daughter", 9011, 1.0e5, 10),
+        MakeType("probeQm1", 9005, 1.0e5, -1),        // practically fixed negative probe
     };
     for (ParticleType &tType : tTypes) tDB.AddParticleType(&tType);
     // pointers into the database are valid only after all types are added
@@ -375,6 +394,7 @@ int main(int argc, char **argv)
     ParticleType *tSlow = tDB.FindByPID(9001), *tProbe = tDB.FindByPID(9002);
     ParticleType *tPlatonic = tDB.FindByPID(9003), *tClusterType = tDB.FindByPID(9004);
     ParticleType *tMoving = tDB.FindByPID(9010), *tMovingDaughter = tDB.FindByPID(9011);
+    ParticleType *tProbeNegative = tDB.FindByPID(9005);
     char tBuf[300];
 
     // ----- A. No interaction: one charged and one neutral particle
@@ -951,6 +971,103 @@ int main(int argc, char **argv)
         Check("L: positions and times restored (1 = yes)", tRun.restored, 1, 0, false);
     }
 
+    // ----- M. Close encounters, integrated with sub-steps (CoulombSubsteps = 1)
+    // A proton passes a unit charge at impact parameters down to 0.01 fm, where the encounter lasts a fraction of the
+    // time step of 0.1 fm/c. Reference: the exact relativistic Coulomb orbit in the rest frame of the source.
+    // Without sub-steps (shown as INFO) the time step cannot follow the encounter.
+    Info("M. close encounters of a proton with a unit charge, with sub-steps: exact relativistic orbits");
+    {
+        const double tM = tProton->GetMass(), tBeta = 0.6;
+        const double tP0 = tM * tBeta / std::sqrt(1 - tBeta * tBeta);
+        const double tZ0 = 5.0;
+        // M1: fixed source; proton from (b, 0, -z0) along z, until it is back at the distance r0 (as in B)
+        auto tFixedSource = [&](const char *aDir, double aB, ParticleType *aSource, double aStep, bool aSubsteps) {
+            std::vector<PartInit> tInit = {{tProton, TVector3(aB, 0, -tZ0), TVector3(0, 0, tP0)},
+                                           {aSource, TVector3(0, 0, 0), TVector3(0, 0, 0)}};
+            int tSteps = (int)std::lround(2 * tZ0 / tBeta / aStep);
+            sRunConfig = aSubsteps ? &sSubstepConfig : &sChecksConfig;
+            RunResult tRun = RunCoulomb(aDir, tSteps, aStep, tInit, &tDB);
+            sRunConfig = &sChecksConfig;
+            return tRun;
+        };
+        struct FixedCase { const char *dir; double b; ParticleType *source; double kappa; const char *what; };
+        for (const FixedCase &tCase : {FixedCase{"M1_fixed_b0.3", 0.3, tProbe, kAlphaHbarC, "repulsive, b = 0.3 fm"},
+                                       FixedCase{"M1_fixed_b0.01", 0.01, tProbe, kAlphaHbarC, "repulsive, b = 0.01 fm"},
+                                       FixedCase{"M1_fixed_b0.01_attractive", 0.01, tProbeNegative, -kAlphaHbarC, "attractive, b = 0.01 fm"}}) {
+            const double tR0 = std::hypot(tCase.b, tZ0);
+            const ExactOrbit tOrbit(tM, tCase.kappa, tR0, tP0, tCase.b);
+            const double tTheta = tOrbit.DeflectionAtDistance(tR0);
+            RunResult tOff = tFixedSource((std::string(tCase.dir) + "_nosubsteps").c_str(), tCase.b, tCase.source, 0.1, false);
+            RunResult tRun = tFixedSource(tCase.dir, tCase.b, tCase.source, 0.1, true);
+            double tThetaOff = TVector3(0, 0, 1).Angle(tOff.finalMomenta[0]);
+            double tThetaCode = TVector3(0, 0, 1).Angle(tRun.finalMomenta[0]);
+            snprintf(tBuf, sizeof(tBuf), "M1 %s: exact deflection %.5f rad; without sub-steps %.5f rad, |p| = %.5f GeV (initial %.5f)",
+                     tCase.what, tTheta, tThetaOff, tOff.finalMomenta[0].Mag(), tP0);
+            Info(tBuf);
+            std::string tWhat = std::string("M1: ") + tCase.what + ", ";
+            Check((tWhat + "deflection vs exact orbit [rad]").c_str(), tThetaCode, tTheta, 5e-4);
+            Check((tWhat + "|p| vs initial |p| [GeV]").c_str(), tRun.finalMomenta[0].Mag(), tP0, 3e-5);
+            Check((tWhat + "positions and times restored (1 = yes)").c_str(), tRun.restored, 1, 0, false);
+            // Distance from the source vs the exact orbit at the same polar angle (as in B)
+            const double tPsiPeri = std::atan2(tCase.b, -tZ0) - tOrbit.Phi(tR0);
+            std::vector<double> tT, tRCode, tRExact;
+            for (const TLorentzVector &tX : tRun.trajectory[0]) {
+                tT.push_back(tX.T());
+                tRCode.push_back(std::hypot(tX.X(), tX.Z()));
+                tRExact.push_back(tOrbit.R(tPsiPeri - std::atan2(tX.X(), tX.Z())));
+            }
+            AddCodeExact(tCase.dir, "r", "distance from the source, exact = orbit at the same polar angle", "r (fm)", tT, tRCode, tRExact);
+        }
+
+        // M2: like a spectator, a source moving with beta_s = 0.63 passes a proton at rest at b = 0.02 fm.
+        // In the rest frame of the source, the proton comes in with -beta_s: exact orbit there, boosted to the lab.
+        const double tBetaS = 0.63, tGammaS = 1 / std::sqrt(1 - tBetaS * tBetaS), tBS = 0.02, tZS = 10.0;
+        const double tMSource = tProbe->GetMass();
+        const double tERest = tGammaS * tM, tPRest = tGammaS * tBetaS * tM; // proton in the rest frame of the source
+        const double tThetaS = AsymptoticDeflection(tM, kAlphaHbarC, tERest, tBS);
+        // Rest frame: from -z, deflected to +x; lab: boost with +beta_s
+        const TVector3 tPExact(tPRest * std::sin(tThetaS), 0, tGammaS * (-tPRest * std::cos(tThetaS) + tBetaS * tERest));
+        auto tMovingSource = [&](const char *aDir, double aStep, bool aSubsteps) {
+            std::vector<PartInit> tInit = {{tProton, TVector3(tBS, 0, 0), TVector3(0, 0, 0)},
+                                           {tProbe, TVector3(0, 0, -tZS), TVector3(0, 0, tMSource * tGammaS * tBetaS)}};
+            // until the source is at +z0: in the rest frame the proton is then as far away as at the start
+            int tSteps = (int)std::lround(2 * tZS / tBetaS / aStep);
+            sRunConfig = aSubsteps ? &sSubstepConfig : &sChecksConfig;
+            RunResult tRun = RunCoulomb(aDir, tSteps, aStep, tInit, &tDB);
+            sRunConfig = &sChecksConfig;
+            return tRun;
+        };
+        // Deflection in the rest frame of the source, from the final momentum in the lab
+        auto tRestFrameDeflection = [&](const TVector3 &aP) {
+            double tE = std::sqrt(tM * tM + aP.Mag2());
+            TVector3 tPRestFinal(aP.X(), aP.Y(), tGammaS * (aP.Z() - tBetaS * tE));
+            return TVector3(0, 0, -1).Angle(tPRestFinal);
+        };
+        RunResult tOff = tMovingSource("M2_moving_nosubsteps", 0.1, false);
+        RunResult tRun = tMovingSource("M2_moving", 0.1, true);
+        snprintf(tBuf, sizeof(tBuf), "M2: exact p = (%.5f, 0, %.5f) GeV; without sub-steps (%.5f, %.5f, %.5f) GeV",
+                 tPExact.X(), tPExact.Z(), tOff.finalMomenta[0].X(), tOff.finalMomenta[0].Y(), tOff.finalMomenta[0].Z());
+        Info(tBuf);
+        Check("M2: rest-frame deflection vs exact orbit [rad]", tRestFrameDeflection(tRun.finalMomenta[0]), tThetaS, 3e-4);
+        Check("M2: lab |p - p(exact)| / |p(exact)|", (tRun.finalMomenta[0] - tPExact).Mag() / tPExact.Mag(), 0, 3e-4, false);
+        Check("M2: positions and times restored (1 = yes)", tRun.restored, 1, 0, false);
+        // M3: the result must not depend on the time step
+        for (double tStep : {0.05, 0.2}) {
+            snprintf(tBuf, sizeof(tBuf), "M2_moving_step%.2f", tStep);
+            RunResult tRunStep = tMovingSource(tBuf, tStep, true);
+            snprintf(tBuf, sizeof(tBuf), "M3: step %.2f fm/c, |p - p(step 0.1)| / |p|", tStep);
+            Check(tBuf, (tRunStep.finalMomenta[0] - tRun.finalMomenta[0]).Mag() / tRun.finalMomenta[0].Mag(), 0, 2e-4, false);
+        }
+        std::vector<double> tT, tXCode, tXOff;
+        for (size_t n = 0; n < tRun.trajectory[0].size(); ++n) {
+            tT.push_back(tRun.trajectory[0][n].T());
+            tXCode.push_back(tRun.fourMomenta[0][n].Px());
+            tXOff.push_back(tOff.fourMomenta[0][n].Px());
+        }
+        AddCodeExact("M2_moving", "px_substeps_vs_none", "p_{x} of the proton with sub-steps (code) and without (exact)", "p_{x} (GeV)",
+                     tT, tXCode, tXOff);
+    }
+
     // ----- K. Settings of the afterburner from the configuration
     // The defaults must be the values of the former constants, events.ini and events_template must contain all keys
     // with these values, all keys must be read, and missing keys must keep the defaults.
@@ -958,13 +1075,17 @@ int main(int argc, char **argv)
     {
         const std::vector<std::string> tKeys = {"CoulombUseSpectators", "CoulombExtrapolateSpectators", "CoulombExtrapolateFireball",
                                                 "CoulombFindProblem", "CoulombLargeTerm", "CoulombDebugStep", "CoulombDebugEid",
-                                                "CoulombDebugOtherEid"};
-        const std::vector<double> tFormerConstants = {1, 1, 1, 1, 1.0, -2, -2, -2};
+                                                "CoulombDebugOtherEid", "CoulombSubsteps", "CoulombSubstepAccuracy",
+                                                "CoulombSubstepMax", "CoulombSubstepDistance"};
+        // The former constants, and the defaults of the later settings (sub-steps off)
+        const std::vector<double> tFormerConstants = {1, 1, 1, 1, 1.0, -2, -2, -2, 0, 0.05, 1024, 1.0};
         auto tSettings = [](const CoulombAfterburner &aCoulomb) {
             return std::vector<double>{(double)aCoulomb.m_UseSpectators, (double)aCoulomb.m_ExtrapolateSpectators,
                                        (double)aCoulomb.m_ExtrapolateFireball, (double)aCoulomb.m_FindProblem,
                                        aCoulomb.m_LargeTerm.numerical_value_in(CoulombUnits::GeV / CoulombUnits::fm),
-                                       (double)aCoulomb.m_DebugStep, (double)aCoulomb.m_DebugEid, (double)aCoulomb.m_DebugOtherEid};
+                                       (double)aCoulomb.m_DebugStep, (double)aCoulomb.m_DebugEid, (double)aCoulomb.m_DebugOtherEid,
+                                       (double)aCoulomb.m_Substeps, aCoulomb.m_SubstepAccuracy, (double)aCoulomb.m_SubstepMax,
+                                       aCoulomb.m_SubstepDistance.numerical_value_in(CoulombUnits::fm)};
         };
         // Number of settings different from the expected values, printing them
         auto tMismatches = [&](const char *aWhat, const std::vector<double> &aGot, const std::vector<double> &aExpected) {
@@ -1004,7 +1125,7 @@ int main(int argc, char **argv)
             Info("K: no repository directory given, events.ini and events_template not checked");
         }
         {
-            const std::vector<std::string> tValues = {"0", "0", "0", "0", "2.5", "7", "11", "13"};
+            const std::vector<std::string> tValues = {"0", "0", "0", "0", "2.5", "7", "11", "13", "1", "0.02", "64", "0.5"};
             Configurator tConfig;
             for (size_t i = 0; i < tKeys.size(); ++i) {
                 Parameter tPar{tKeys[i].c_str(), tValues[i].c_str()};
@@ -1013,7 +1134,7 @@ int main(int argc, char **argv)
             CoulombAfterburner tCoulomb(1, 0.1, 0., nullptr, &tDB);
             tCoulomb.ReadParameters(&tConfig);
             Check("K: settings not taken from a configuration with all keys",
-                  tMismatches("all keys", tSettings(tCoulomb), {0, 0, 0, 0, 2.5, 7, 11, 13}), 0, 0, false);
+                  tMismatches("all keys", tSettings(tCoulomb), {0, 0, 0, 0, 2.5, 7, 11, 13, 1, 0.02, 64, 0.5}), 0, 0, false);
         }
         {
             Configurator tConfig;
