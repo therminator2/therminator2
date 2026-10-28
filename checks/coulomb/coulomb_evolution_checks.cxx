@@ -386,6 +386,7 @@ int main(int argc, char **argv)
         MakeType("movingZ10", 9010, 1.0e5, 10),
         MakeType("movingZ10daughter", 9011, 1.0e5, 10),
         MakeType("probeQm1", 9005, 1.0e5, -1),        // practically fixed negative probe
+        MakeType("lightQ1", 9006, 0.2, 1),            // light unit charge, for the magnetic force in D
     };
     for (ParticleType &tType : tTypes) tDB.AddParticleType(&tType);
     // pointers into the database are valid only after all types are added
@@ -394,7 +395,7 @@ int main(int argc, char **argv)
     ParticleType *tSlow = tDB.FindByPID(9001), *tProbe = tDB.FindByPID(9002);
     ParticleType *tPlatonic = tDB.FindByPID(9003), *tClusterType = tDB.FindByPID(9004);
     ParticleType *tMoving = tDB.FindByPID(9010), *tMovingDaughter = tDB.FindByPID(9011);
-    ParticleType *tProbeNegative = tDB.FindByPID(9005);
+    ParticleType *tProbeNegative = tDB.FindByPID(9005), *tLight = tDB.FindByPID(9006);
     char tBuf[300];
 
     // ----- A. No interaction: one charged and one neutral particle
@@ -563,7 +564,8 @@ int main(int argc, char **argv)
     }
 
     // ----- D. The same pair moving with beta = 0.9 along z (Lorentz covariance)
-    Info("D. pair of C boosted to beta = 0.9 along z, lab step = gamma x 0.1 fm/c: p_T(lab, t) = p_T(rest, t/gamma)");
+    Info("D. pair of C boosted to beta = 0.9 along z, lab step = gamma x 0.1 fm/c: p_T(lab, t) = p_T(rest, t/gamma);"
+         " the same with m = 0.2 GeV: p_z(lab)");
     {
         const char *tDir = "D_boosted";
         double tBeta = 0.9, tGamma = 1 / std::sqrt(1 - tBeta * tBeta);
@@ -576,11 +578,9 @@ int main(int argc, char **argv)
         Check("D: p_x(lab) vs p_x(rest frame run C) [GeV]", tP[1].X(), tPRest[1].X(), 1e-5);
         Check("D: p_x(lab) vs non-relativistic solution in rest frame [GeV]", tP[1].X(),
               NonRelRepulsionMomentum(tMSlow / 2, tKappa1, 1.0, tStepsC * tStepC), 5e-4);
-        // p_z(lab) = gamma beta E'(rest): the kinetic energy gained in the rest frame shows up in p_z. This is sensitive
-        // to the acceleration term. The change, 4.6e-4 GeV, is small compared to p_z = 20.6 GeV stored as Float_t.
-        double tDPzExpected = tGamma * tBeta * (std::sqrt(tMSlow * tMSlow + tPRest[1].Mag2()) - tMSlow);
-        Check("D: change of p_z(lab) vs gamma beta x kinetic energy(rest) [GeV]", tP[1].Z() - tPz, tDPzExpected, 3e-3);
         Check("D: p_x of particle 1 = -p_x of particle 2 [GeV]", tP[0].X(), -tP[1].X(), 1e-5);
+        // The change of p_z(lab) is checked with the light pair below: here it is 4.6e-4 GeV, about 8e-7 GeV per step,
+        // less than half of the spacing of Float_t numbers at p_z = 20.6 GeV (1.9e-6 GeV), so it is lost in rounding.
 
         // Lorentz transformation of the rest frame motion (t', x', z' = 0): t = gamma t', x = x'(t/gamma), z = beta t.
         // Step n of the lab run corresponds to step n of the rest frame run C (same proper time).
@@ -600,6 +600,29 @@ int main(int argc, char **argv)
         AddCodeExact(tDir, "p2_x_covariance", "x of particle 2 (lab), exact = run C at t/#gamma", "x (fm)", tT, tX2, tX2RunC);
         AddCodeExact(tDir, "p2_z", "z of particle 2 (lab), exact = #beta t", "z (fm)", tT, tZ2, tZ2Exact);
         AddCodeExact(tDir, "p2_px_covariance", "p_{x} of particle 2 (lab), exact = run C at t/#gamma", "p_{x} (GeV)", tT, tPx2, tPx2RunC);
+    }
+
+    // p_z(lab) = gamma beta E'(rest): the kinetic energy gained in the rest frame shows up in p_z. In the lab, p_z
+    // changes through the magnetic force v_x B_y, with the velocity v_x that the pair gains: sensitive to the velocity
+    // used in the magnetic force (first order in the step if it lags one step behind) and to the acceleration term.
+    // Light charges, so that p_z = 0.41 GeV is stored as Float_t with a precision much better than the change.
+    {
+        const char *tDir = "D_boosted_light";
+        double tBeta = 0.9, tGamma = 1 / std::sqrt(1 - tBeta * tBeta);
+        double tMLight = tLight->GetMass();
+        double tPz = tGamma * tMLight * tBeta;
+        std::vector<PartInit> tInitRest = {{tLight, TVector3(-0.5, 0, 0), TVector3()},
+                                           {tLight, TVector3(0.5, 0, 0), TVector3()}};
+        std::vector<PartInit> tInit = {{tLight, TVector3(-0.5, 0, 0), TVector3(0, 0, tPz)},
+                                       {tLight, TVector3(0.5, 0, 0), TVector3(0, 0, tPz)}};
+        RunResult tRunLightRest = RunCoulomb("D_light_rest", tStepsC, tStepC, tInitRest, &tDB);
+        RunResult tRun = RunCoulomb(tDir, tStepsC, tGamma * tStepC, tInit, &tDB);
+        const std::vector<TVector3> &tP = tRun.finalMomenta;
+        const std::vector<TVector3> &tPRest = tRunLightRest.finalMomenta;
+        Check("D: m = 0.2 GeV, p_x(lab) vs p_x(rest frame) [GeV]", tP[1].X(), tPRest[1].X(), 1e-5);
+        double tDPzExpected = tGamma * tBeta * (std::sqrt(tMLight * tMLight + tPRest[1].Mag2()) - tMLight);
+        Check("D: m = 0.2 GeV, change of p_z(lab) vs gamma beta x kinetic energy(rest) [GeV]", tP[1].Z() - tPz,
+              tDPzExpected, 1e-3);
     }
 
     // ----- E. Acceleration (radiation) term in isolation
