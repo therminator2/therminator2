@@ -13,6 +13,7 @@
 //   K. settings of the afterburner from the configuration (events.ini, events_template)
 //   L. a particle with NaN momentum does not affect the others
 //   M. close encounters (impact parameters down to 0.01 fm) with sub-steps, fixed and moving source
+//   N. short-distance cut-off of the interaction between decay products of the same father
 //
 // Besides the pass/fail checks, trajectories of the code and of the exact solutions are written as TGraphs
 // to a ROOT file (first argument, default coulomb_checks.root), one directory per check. The second argument is
@@ -1091,6 +1092,55 @@ int main(int argc, char **argv)
                      tT, tXCode, tXOff);
     }
 
+    // ----- N. Short-distance cut-off between decay products
+    // A neutral father at rest decays at t = 1 fm/c into two unit charges (m = 10 GeV) flying apart with p = 0.25 GeV
+    // along x. They do not interact until their distance (in the rest frame of the source) reaches the cut-off d, then
+    // they repel: each gains (k / 2) (1/d - 1/r) of kinetic energy up to the distance r, with corrections of order
+    // v^2 = 6e-4 (retardation, magnetic force) and from switching the force on at a time step (first order in the
+    // step: 1.6e-3 with 0.05 fm/c, 6e-4 with 0.01 fm/c). The run ends at r = 11 fm: further away, the momentum change
+    // in a step gets smaller than the precision of Float_t momenta and is lost.
+    Info("N. neutral father decays into two unit charges (m = 10 GeV, v = 0.025) at rest: no interaction below the cut-off");
+    {
+        const double tPD = 0.25, tTD = 1.0, tStep = 0.05;
+        const int tSteps = 4000;
+        std::vector<PartInit> tInit = {{tNeutron, TVector3(0, 0, 0), TVector3(0, 0, 0), 0., -1, true},
+                                       {tSlow, TVector3(0, 0, 0), TVector3(-tPD, 0, 0), tTD, 0},
+                                       {tSlow, TVector3(0, 0, 0), TVector3(tPD, 0, 0), tTD, 0}};
+        double tE0 = std::sqrt(tMSlow * tMSlow + tPD * tPD);
+        Parameter tNoSpectatorsN{"CoulombUseSpectators", "0"};
+        for (const char *tCut : {"default", "2.0", "0"}) {
+            Configurator tConfig;
+            tConfig.AddParameter(&tNoSpectatorsN);
+            Parameter tCutPar{"CoulombSiblingMinDistance", tCut};
+            if (std::string(tCut) != "default") tConfig.AddParameter(&tCutPar);
+            sRunConfig = &tConfig;
+            std::string tSub = std::string("N_siblings_") + tCut;
+            RunResult tRun = RunCoulomb(tSub.c_str(), tSteps, tStep, tInit, &tDB);
+            sRunConfig = &sChecksConfig;
+            double tD = std::string(tCut) == "default" ? 1.0 : atof(tCut);
+            double tRFinal = (tRun.trajectory[2].back().Vect() - tRun.trajectory[1].back().Vect()).Mag();
+            double tGain1 = std::sqrt(tMSlow * tMSlow + tRun.finalMomenta[1].Mag2()) - tE0;
+            double tGain2 = std::sqrt(tMSlow * tMSlow + tRun.finalMomenta[2].Mag2()) - tE0;
+            std::string tWhat = Form("N (cut-off %s fm): ", tCut);
+            if (tD > 0) {
+                double tExpected = 0.5 * tKappa1 * (1 / tD - 1 / tRFinal);
+                Check((tWhat + "kinetic energy gained by daughter 2 vs (k/2)(1/d - 1/r) [GeV]").c_str(), tGain2, tExpected, 3e-3);
+                Check((tWhat + "gains of the daughters equal").c_str(), tGain1, tGain2, 1e-4);
+            } else {
+                snprintf(tBuf, sizeof(tBuf), "%sno cut-off, only the creation step skipped: gain %.3g MeV, "
+                         "(k/2)(1/(2 v dt) - 1/r) = %.3g MeV", tWhat.c_str(), 1e3 * tGain2,
+                         1e3 * 0.5 * tKappa1 * (1 / (2 * tPD / tE0 * tStep) - 1 / tRFinal));
+                Info(tBuf);
+            }
+            std::vector<double> tT, tPx;
+            for (size_t n = 0; n < tRun.fourMomenta[2].size(); ++n) {
+                tT.push_back(tRun.trajectory[2][n].T());
+                tPx.push_back(tRun.fourMomenta[2][n].Px());
+            }
+            AddGraph(tSub.c_str(), "p2_px", Form("p_{x} of daughter 2, cut-off %s fm;t (fm/c);p_{x} (GeV)", tCut), tT, tPx);
+        }
+    }
+
     // ----- K. Settings of the afterburner from the configuration
     // The defaults must be the values of the former constants, events.ini and events_template must contain all keys
     // with these values, all keys must be read, and missing keys must keep the defaults.
@@ -1099,16 +1149,17 @@ int main(int argc, char **argv)
         const std::vector<std::string> tKeys = {"CoulombUseSpectators", "CoulombExtrapolateSpectators", "CoulombExtrapolateFireball",
                                                 "CoulombFindProblem", "CoulombLargeTerm", "CoulombDebugStep", "CoulombDebugEid",
                                                 "CoulombDebugOtherEid", "CoulombSubsteps", "CoulombSubstepAccuracy",
-                                                "CoulombSubstepMax", "CoulombSubstepDistance"};
-        // The former constants, and the defaults of the later settings (sub-steps off)
-        const std::vector<double> tFormerConstants = {1, 1, 1, 1, 1.0, -2, -2, -2, 0, 0.05, 1024, 1.0};
+                                                "CoulombSubstepMax", "CoulombSubstepDistance", "CoulombSiblingMinDistance"};
+        // The former constants, and the defaults of the later settings (sub-steps off, sibling cut-off 1 fm)
+        const std::vector<double> tFormerConstants = {1, 1, 1, 1, 1.0, -2, -2, -2, 0, 0.05, 1024, 1.0, 1.0};
         auto tSettings = [](const CoulombAfterburner &aCoulomb) {
             return std::vector<double>{(double)aCoulomb.m_UseSpectators, (double)aCoulomb.m_ExtrapolateSpectators,
                                        (double)aCoulomb.m_ExtrapolateFireball, (double)aCoulomb.m_FindProblem,
                                        aCoulomb.m_LargeTerm.numerical_value_in(CoulombUnits::GeV / CoulombUnits::fm),
                                        (double)aCoulomb.m_DebugStep, (double)aCoulomb.m_DebugEid, (double)aCoulomb.m_DebugOtherEid,
                                        (double)aCoulomb.m_Substeps, aCoulomb.m_SubstepAccuracy, (double)aCoulomb.m_SubstepMax,
-                                       aCoulomb.m_SubstepDistance.numerical_value_in(CoulombUnits::fm)};
+                                       aCoulomb.m_SubstepDistance.numerical_value_in(CoulombUnits::fm),
+                                       aCoulomb.m_SiblingMinDistance.numerical_value_in(CoulombUnits::fm)};
         };
         // Number of settings different from the expected values, printing them
         auto tMismatches = [&](const char *aWhat, const std::vector<double> &aGot, const std::vector<double> &aExpected) {
@@ -1148,7 +1199,7 @@ int main(int argc, char **argv)
             Info("K: no repository directory given, events.ini and events_template not checked");
         }
         {
-            const std::vector<std::string> tValues = {"0", "0", "0", "0", "2.5", "7", "11", "13", "1", "0.02", "64", "0.5"};
+            const std::vector<std::string> tValues = {"0", "0", "0", "0", "2.5", "7", "11", "13", "1", "0.02", "64", "0.5", "1.5"};
             Configurator tConfig;
             for (size_t i = 0; i < tKeys.size(); ++i) {
                 Parameter tPar{tKeys[i].c_str(), tValues[i].c_str()};
@@ -1157,7 +1208,7 @@ int main(int argc, char **argv)
             CoulombAfterburner tCoulomb(1, 0.1, 0., nullptr, &tDB);
             tCoulomb.ReadParameters(&tConfig);
             Check("K: settings not taken from a configuration with all keys",
-                  tMismatches("all keys", tSettings(tCoulomb), {0, 0, 0, 0, 2.5, 7, 11, 13, 1, 0.02, 64, 0.5}), 0, 0, false);
+                  tMismatches("all keys", tSettings(tCoulomb), {0, 0, 0, 0, 2.5, 7, 11, 13, 1, 0.02, 64, 0.5, 1.5}), 0, 0, false);
         }
         {
             Configurator tConfig;
