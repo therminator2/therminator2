@@ -13,6 +13,8 @@
 #include "TGraph.h"
 #include "TProfile.h"
 
+#include <set>
+
 // Quantities with units (CoulombUnits.h) are used throughout; numbers without units only where the class exchanges
 // data with the rest of THERMINATOR, which uses GeV^-1 for positions and times, and GeV for energies and momenta.
 class CoulombAfterburner : public AbstractAfterburner {
@@ -64,6 +66,22 @@ class CoulombAfterburner : public AbstractAfterburner {
             const CoulombUnits::Vec3<CoulombUnits::Length> &tPos, CoulombUnits::Time tTime, int **tBestIs, Int_t iStep,
             CoulombUnits::Vec3<CoulombUnits::Length> &tOtherPos, CoulombUnits::Vec3<CoulombUnits::Speed> &tOtherVel,
             CoulombUnits::Vec3<CoulombUnits::Acceleration> &tOtherAcc, bool debug = false);
+    // Close pairs: pairs of charged particles whose encounter during the current time step is too short for the step
+    // (see FindCloseGroups()). Their mutual force is left out of CalculateTotalForce() and integrated with sub-steps.
+    struct CloseGroup {
+        std::vector<std::list<Particle>::iterator> members;
+        int substeps;
+    };
+    std::vector<CloseGroup> FindCloseGroups(std::list<Particle> *, Int_t iStep);
+    bool IsClosePair(Int_t aEid1, Int_t aEid2) const;
+    // Advances a group over one time step: half kick with the far force at the old positions, sub-steps with the
+    // forces within the group; the half kick with the far force at the new positions follows in Apply()
+    void IntegrateCloseGroup(const CloseGroup &, const CoulombUnits::Vec3<CoulombUnits::Force> *tFarForces,
+            CoulombUnits::Time tCurrentTime);
+    // Force on a charge moving with aTestVelocity from a source moving uniformly with aSourceVelocity, at the
+    // simultaneous relative position aR = x(test) - x(source); aCharges = q(test) q(source)
+    static CoulombUnits::Vec3<CoulombUnits::Force> UniformMotionForce(Int_t aCharges, const CoulombUnits::Vec3<CoulombUnits::Length> &aR,
+            const CoulombUnits::Vec3<CoulombUnits::Speed> &aSourceVelocity, const CoulombUnits::Vec3<CoulombUnits::Speed> &aTestVelocity);
     static bool IsSpectator(std::list<Particle>::iterator &);
     static bool HasFiniteKinematics(const Particle &);
     // Minkowski interval c^2 (t1 - t2)^2 - |x1 - x2|^2
@@ -179,6 +197,13 @@ class CoulombAfterburner : public AbstractAfterburner {
   int m_DebugStep;              // time step, eid and eid of the other particle for detailed debugging printouts
   int m_DebugEid;
   int m_DebugOtherEid;
+  bool m_Substeps;              // integrate the forces within close pairs with sub-steps of the time step
+  double m_SubstepAccuracy;     // a sub-step is this fraction of the encounter time of a close pair
+  int m_SubstepMax;             // maximum number of sub-steps in a time step
+  CoulombUnits::Length m_SubstepDistance; // pairs further apart than this during the time step are not close pairs
+
+  // Close pairs of the current time step, (smaller eid, larger eid)
+  std::set<std::pair<Int_t, Int_t> > m_ClosePairs;
 
 };
 

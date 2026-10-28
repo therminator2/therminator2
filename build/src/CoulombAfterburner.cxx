@@ -3,7 +3,9 @@
 #include "Parser.h"
 #include "TVector3.h"
 #include "TMath.h"
+#include <functional>
 #include <limits>
+#include <map>
 #include <iostream>
 #include "THGlobal.h"
 
@@ -80,6 +82,11 @@ Vec3<Force> CoulombAfterburner::CalculateTotalForce(
 
         // Skip interaction between decay products at the step when they were created
         if (tPartIter->fathereid != -1 && tPartIter->fathereid == tPartOtherIter->fathereid && iStep == (Int_t)m_FirstStepExists[tPartOtherIter->eid]) {
+            continue;
+        }
+
+        // The force within a close pair is integrated with sub-steps, see IntegrateCloseGroup()
+        if (IsClosePair(tPartIter->eid, tPartOtherIter->eid)) {
             continue;
         }
 
@@ -367,7 +374,8 @@ bool CoulombAfterburner::RetardedSource(std::list<Particle>::iterator &tPartIter
 CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize, Double_t aR, AbstractEventSaver *aEventSaver, ParticleDB *tPartDB)
     : m_nSteps(aSteps), m_StepSize(aStepSize * fm_c), mR(aR), mEventSaver(aEventSaver), m_hNpartImpB(nullptr), mKeepTrajectories(false),
       m_UseSpectators(true), m_ExtrapolateSpectators(true), m_ExtrapolateFireball(true),
-      m_FindProblem(true), m_LargeTerm(1.0 * GeV / fm), m_DebugStep(-2), m_DebugEid(-2), m_DebugOtherEid(-2)
+      m_FindProblem(true), m_LargeTerm(1.0 * GeV / fm), m_DebugStep(-2), m_DebugEid(-2), m_DebugOtherEid(-2),
+      m_Substeps(false), m_SubstepAccuracy(0.05), m_SubstepMax(1024), m_SubstepDistance(1.0 * fm)
 {
     if (!CheckInternalUnits()) {
         cout << "<CoulombAfterburner::CoulombAfterburner>\tCoulombUnits::inverse_gev_length is not kHbarC fm" << endl;
@@ -419,6 +427,18 @@ void CoulombAfterburner::ReadParameters(Configurator *aMainConfig)
     }
     if (aMainConfig->HasParameter("CoulombDebugOtherEid")) {
         m_DebugOtherEid = aMainConfig->GetParameter("CoulombDebugOtherEid").Atoi();
+    }
+    if (aMainConfig->HasParameter("CoulombSubsteps")) {
+        m_Substeps = aMainConfig->GetParameter("CoulombSubsteps").Atoi() != 0;
+    }
+    if (aMainConfig->HasParameter("CoulombSubstepAccuracy")) {
+        m_SubstepAccuracy = aMainConfig->GetParameter("CoulombSubstepAccuracy").Atof();
+    }
+    if (aMainConfig->HasParameter("CoulombSubstepMax")) {
+        m_SubstepMax = TMath::Max(1, aMainConfig->GetParameter("CoulombSubstepMax").Atoi());
+    }
+    if (aMainConfig->HasParameter("CoulombSubstepDistance")) {
+        m_SubstepDistance = aMainConfig->GetParameter("CoulombSubstepDistance").Atof() * fm;
     }
 }
 void CoulombAfterburner::Init() {
@@ -755,6 +775,196 @@ Int_t CoulombAfterburner::AddSpectators(std::list<Particle> *tParticles, Time tE
     return tNspec;
 }
 
+bool CoulombAfterburner::IsClosePair(Int_t aEid1, Int_t aEid2) const
+{
+    if (m_ClosePairs.empty()) return false;
+    return m_ClosePairs.count(std::make_pair(TMath::Min(aEid1, aEid2), TMath::Max(aEid1, aEid2))) > 0;
+}
+
+Vec3<Force> CoulombAfterburner::UniformMotionForce(Int_t aCharges, const Vec3<Length> &aR, const Vec3<Speed> &aSourceVelocity,
+        const Vec3<Speed> &aTestVelocity)
+{
+    // Field of a uniformly moving charge at its present position (the Lienard-Wiechert field without acceleration):
+    // E = k q' (1 - beta^2) R / (R^2 - |beta x R|^2)^(3/2), c B = beta x E, force q E + q v x B
+    Vec3<Dimensionless> tBetaSource = aSourceVelocity / c;
+    Vec3<Dimensionless> tBetaTest = aTestVelocity / c;
+    Length tD = Length(sqrt(Mag2(aR) - Mag2(Cross(tBetaSource, aR))));
+    Vec3<Force> tE = kCoulomb * aCharges * (1 - Mag2(tBetaSource)) * aR / pow<3>(tD);
+    // Using BAC-CAB rule for beta_test x (beta_source x E)
+    return tE + tBetaSource * Dot(tBetaTest, tE) - tE * Dot(tBetaTest, tBetaSource);
+}
+
+// Finds the pairs of charged particles whose encounter during the time step [t_n, t_n + dt] is too short to be
+// followed with the time step, and joins pairs with common particles into groups. All particles are at t_n.
+// The encounter time is the shorter of the passage time d/|w| (closest distance d of the straight-line trajectories
+// during the step, relative velocity w) and the time sqrt(d^3 mu / k|q q'|) in which the Coulomb force alone changes
+// the distance by about d (reduced mass mu, with E/c^2 as the mass; the mass of the particle for a spectator, which
+// does not recoil). A pair is close if the step is longer than the encounter time by more than 1/m_SubstepAccuracy;
+// the number of sub-steps is then dt / (m_SubstepAccuracy * encounter time), rounded up to a power of 2.
+std::vector<CoulombAfterburner::CloseGroup> CoulombAfterburner::FindCloseGroups(std::list<Particle> *tParticles, Int_t iStep)
+{
+    m_ClosePairs.clear();
+    std::vector<CloseGroup> tGroups;
+    if (!m_Substeps) {
+        return tGroups;
+    }
+    std::vector<std::list<Particle>::iterator> tCharged;
+    for (auto tPartIter = tParticles->begin(); tPartIter != tParticles->end(); ++tPartIter) {
+        if (tPartIter->GetParticleType()->GetCharge() != 0
+            && iStep >= (Int_t)m_FirstStepExists[tPartIter->eid] && iStep <= (Int_t)m_LastStepExists[tPartIter->eid]) {
+            tCharged.push_back(tPartIter);
+        }
+    }
+    // Groups by union-find over the indices in tCharged
+    std::vector<size_t> tParent(tCharged.size());
+    for (size_t i = 0; i < tParent.size(); ++i) tParent[i] = i;
+    std::function<size_t(size_t)> tRoot = [&](size_t i) { return tParent[i] == i ? i : (tParent[i] = tRoot(tParent[i])); };
+    struct ClosePair { size_t a, b; int substeps; };
+    std::vector<ClosePair> tPairs;
+
+    for (size_t a = 0; a < tCharged.size(); ++a) {
+        for (size_t b = a + 1; b < tCharged.size(); ++b) {
+            std::list<Particle>::iterator tA = tCharged[a], tB = tCharged[b];
+            bool tSpectatorA = IsSpectator(tA), tSpectatorB = IsSpectator(tB);
+            if (tSpectatorA && tSpectatorB) continue;
+            // Pairs without interaction in CalculateTotalForce stay without it
+            if (tA->eid == tB->fathereid || tB->eid == tA->fathereid) continue;
+            if (tA->fathereid != -1 && tA->fathereid == tB->fathereid
+                && (iStep == (Int_t)m_FirstStepExists[tA->eid] || iStep == (Int_t)m_FirstStepExists[tB->eid])) continue;
+
+            Vec3<Length> tD = PositionOf(*tA) - PositionOf(*tB);
+            Vec3<Speed> tW = VelocityOf(*tA) - VelocityOf(*tB);
+            auto tW2 = Mag2(tW);
+            Time tS = Time::zero();
+            if (tW2 > decltype(tW2)::zero()) {
+                tS = Time(-Dot(tD, tW) / tW2);
+                if (tS < Time::zero()) tS = Time::zero();
+                if (tS > m_StepSize) tS = m_StepSize;
+            }
+            Length tDMin = Mag(tD + tW * tS);
+            if (tDMin > m_SubstepDistance) continue;
+
+            CoulombUnits::Energy tEA = EnergyOf(*tA), tEB = EnergyOf(*tB);
+            Mass tMu = tSpectatorA ? Mass(tEB / square(c)) : tSpectatorB ? Mass(tEA / square(c)) : Mass(tEA * tEB / ((tEA + tEB) * square(c)));
+            Int_t tCharges = TMath::Abs(tA->GetParticleType()->GetCharge() * tB->GetParticleType()->GetCharge());
+            Time tEncounter = Time(sqrt(pow<3>(tDMin) * tMu / (kCoulomb * tCharges)));
+            if (tW2 > decltype(tW2)::zero()) {
+                Time tPassage = Time(tDMin / Mag(tW));
+                if (tPassage < tEncounter) tEncounter = tPassage;
+            }
+            double tSubsteps = (m_StepSize / (m_SubstepAccuracy * tEncounter)).numerical_value_in(one);
+            if (!(tSubsteps > 1)) continue;
+            int tN = 1;
+            while (tN < tSubsteps && tN < m_SubstepMax) tN *= 2;
+            tN = TMath::Min(tN, m_SubstepMax);
+
+            tPairs.push_back(ClosePair{a, b, tN});
+            m_ClosePairs.insert(std::make_pair(TMath::Min(tA->eid, tB->eid), TMath::Max(tA->eid, tB->eid)));
+            tParent[tRoot(a)] = tRoot(b);
+        }
+    }
+
+    std::map<size_t, size_t> tGroupOfRoot;
+    std::vector<bool> tAdded(tCharged.size(), false);
+    for (const ClosePair &tPair : tPairs) {
+        size_t tR = tRoot(tPair.a);
+        if (tGroupOfRoot.find(tR) == tGroupOfRoot.end()) {
+            tGroupOfRoot[tR] = tGroups.size();
+            tGroups.push_back(CloseGroup{{}, 1});
+        }
+        CloseGroup &tGroup = tGroups[tGroupOfRoot[tR]];
+        tGroup.substeps = TMath::Max(tGroup.substeps, tPair.substeps);
+        for (size_t i : {tPair.a, tPair.b}) {
+            if (!tAdded[i]) {
+                tGroup.members.push_back(tCharged[i]);
+                tAdded[i] = true;
+            }
+        }
+    }
+    return tGroups;
+}
+
+// Velocity Verlet with the force split into the far part (all particles outside the close pairs, retarded, computed
+// with the time step) and the close part (within the close pairs of the group, computed at every sub-step):
+// p += F_far(t_n) dt/2; sub-steps of velocity Verlet with F_close; and p += F_far(t_n + dt) dt/2 in Apply().
+// The close part uses the field of uniform motion at the simultaneous position of the partner: the light travel
+// time over the distances of close pairs is short, and the acceleration term is negligible there.
+// Spectators move uniformly, they are only sources of the field.
+void CoulombAfterburner::IntegrateCloseGroup(const CloseGroup &aGroup, const Vec3<Force> *tFarForces, Time tCurrentTime)
+{
+    const size_t tN = aGroup.members.size();
+    std::vector<Vec3<Length> > tX(tN);
+    std::vector<Vec3<Momentum> > tP(tN);
+    std::vector<Vec3<Speed> > tV(tN);
+    std::vector<Vec3<Force> > tF(tN);
+    std::vector<Mass> tM(tN);
+    std::vector<Int_t> tQ(tN), tEid(tN);
+    std::vector<bool> tSpectator(tN);
+    for (size_t i = 0; i < tN; ++i) {
+        std::list<Particle>::iterator tPartIter = aGroup.members[i];
+        tX[i] = PositionOf(*tPartIter);
+        tP[i] = MomentumOf(*tPartIter);
+        tM[i] = MassOf(*tPartIter);
+        tQ[i] = tPartIter->GetParticleType()->GetCharge();
+        tEid[i] = tPartIter->eid;
+        tSpectator[i] = IsSpectator(tPartIter);
+        tV[i] = VelocityOf(*tPartIter);
+        if (!tSpectator[i]) {
+            tP[i] += 0.5 * tFarForces[tEid[i]] * m_StepSize;
+        }
+    }
+    auto tUpdateVelocities = [&]() {
+        for (size_t i = 0; i < tN; ++i) {
+            if (!tSpectator[i]) tV[i] = VelocityOf(tP[i], EnergyOf(tM[i], tP[i]));
+        }
+    };
+    auto tCloseForces = [&]() {
+        for (size_t i = 0; i < tN; ++i) {
+            tF[i] = Vec3<Force>();
+            if (tSpectator[i]) continue;
+            for (size_t j = 0; j < tN; ++j) {
+                if (j != i && IsClosePair(tEid[i], tEid[j])) {
+                    tF[i] += UniformMotionForce(tQ[i] * tQ[j], tX[i] - tX[j], tV[j], tV[i]);
+                }
+            }
+        }
+    };
+
+    const Time tH = m_StepSize / aGroup.substeps;
+    tUpdateVelocities();
+    tCloseForces();
+    for (int k = 0; k < aGroup.substeps; ++k) {
+        for (size_t i = 0; i < tN; ++i) {
+            if (!tSpectator[i]) tP[i] += 0.5 * tF[i] * tH;
+        }
+        tUpdateVelocities();
+        for (size_t i = 0; i < tN; ++i) {
+            tX[i] += tV[i] * tH;
+        }
+        // The magnetic part depends on the velocities at the end of the sub-step: evaluate the force once with the
+        // velocities after the first half kick, and again with the velocities predicted from it (second order)
+        tCloseForces();
+        std::vector<Vec3<Momentum> > tPHalf = tP;
+        for (size_t i = 0; i < tN; ++i) {
+            if (!tSpectator[i]) tP[i] = tPHalf[i] + 0.5 * tF[i] * tH;
+        }
+        tUpdateVelocities();
+        tCloseForces();
+        for (size_t i = 0; i < tN; ++i) {
+            if (!tSpectator[i]) tP[i] = tPHalf[i] + 0.5 * tF[i] * tH;
+        }
+        tUpdateVelocities();
+    }
+
+    for (size_t i = 0; i < tN; ++i) {
+        std::list<Particle>::iterator tPartIter = aGroup.members[i];
+        SetSpaceTime(*tPartIter, tCurrentTime + m_StepSize, tX[i]);
+        if (!tSpectator[i]) {
+            SetFourMomentum(*tPartIter, EnergyOf(tM[i], tP[i]), tP[i]);
+        }
+    }
+}
+
 void CoulombAfterburner::Apply(Event *tEvent)
 {
     if (m_nSteps <= 0) return;
@@ -871,6 +1081,10 @@ void CoulombAfterburner::Apply(Event *tEvent)
     CoulombUnits::Energy tRadiatedEnergy_0 = CoulombUnits::Energy::zero();
 
     Vec3<Force> *tTotalForcesLast = NULL;
+    // Particles in close pairs in the previous step, whose force from that step lacks the close pairs
+    std::vector<char> tCloseLast(N, 0);
+    long tNClosePairSteps = 0;
+    int tMaxSubsteps = 0;
     for (unsigned int iStep = 0; iStep < m_nSteps; ++iStep)
     {
         m_termsCoul->emplace_back();
@@ -915,6 +1129,17 @@ void CoulombAfterburner::Apply(Event *tEvent)
                 }
             }
         }
+        // Close pairs of this step: their mutual force is left out of the force below and integrated with sub-steps
+        std::vector<CloseGroup> tCloseGroups = FindCloseGroups(tParticles, iStep);
+        std::vector<char> tClose(N, 0);
+        for (const CloseGroup &tGroup : tCloseGroups) {
+            for (const std::list<Particle>::iterator &tMember : tGroup.members) {
+                tClose[tMember->eid] = 1;
+            }
+            tMaxSubsteps = TMath::Max(tMaxSubsteps, tGroup.substeps);
+        }
+        tNClosePairSteps += m_ClosePairs.size();
+
         // Calculate force at old position
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
@@ -922,11 +1147,13 @@ void CoulombAfterburner::Apply(Event *tEvent)
 
             Vec3<Force> tForceTotal;
             // For spectator nucleons, the force stays zero
-            // Reuse the force at the new position from the previous step, unless the particle has just been created
+            // Reuse the force at the new position from the previous step, unless the particle has just been created,
+            // or it is in a close pair in this or the previous step (the close pairs left out of the force differ)
             Int_t tQ = tPartIter->GetParticleType()->GetCharge();
             if (tQ != 0 && iStep >= m_FirstStepExists[tPartIter->eid] && iStep <= m_LastStepExists[tPartIter->eid])
             {
-                if (tTotalForcesLast != NULL && iStep != m_FirstStepExists[tPartIter->eid]) {
+                if (tTotalForcesLast != NULL && iStep != m_FirstStepExists[tPartIter->eid]
+                    && !tClose[tPartIter->eid] && !tCloseLast[tPartIter->eid]) {
                     tForceTotal = tTotalForcesLast[tPartIter->eid];
                 } else {
                     tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime, iStep);
@@ -943,6 +1170,9 @@ void CoulombAfterburner::Apply(Event *tEvent)
         {
             if (iStep < m_FirstStepExists[tPartIter->eid] || iStep > m_LastStepExists[tPartIter->eid])
                 continue;
+            // Particles in close groups are advanced below
+            if (tClose[tPartIter->eid])
+                continue;
 
             const Vec3<Force> &tForceTotal = tTotalForces[tPartIter->eid];
             Vec3<Speed> tV = VelocityOf(*tPartIter);
@@ -956,6 +1186,9 @@ void CoulombAfterburner::Apply(Event *tEvent)
             }
 
             SetSpaceTime(*tPartIter, tCurrentTime + m_StepSize, tPartPos);
+        }
+        for (const CloseGroup &tGroup : tCloseGroups) {
+            IntegrateCloseGroup(tGroup, tTotalForces, tCurrentTime);
         }
 
         // Calculate force at new position x_{n+1} and time t_{n+1}
@@ -983,6 +1216,11 @@ void CoulombAfterburner::Apply(Event *tEvent)
                 continue;
 
             Vec3<Force> tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesNew[tPartIter->eid]);
+            if (tClose[tPartIter->eid]) {
+                // The half kick with the force at the old position and the forces within the group are already
+                // in the momentum (IntegrateCloseGroup)
+                tForceTotal = 0.5 * tTotalForcesNew[tPartIter->eid];
+            }
             Vec3<Momentum> tImpulse = tForceTotal * m_StepSize;
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "total force " << iStep << ", eid = " << tPartIter->eid << ", F = " << tForceTotal << endl;
@@ -1023,6 +1261,7 @@ void CoulombAfterburner::Apply(Event *tEvent)
             delete [] tTotalForcesLast;
         }
         tTotalForcesLast = tTotalForcesNew;
+        tCloseLast.swap(tClose);
 
         // Calculating total energy, momentum and potentials at time t_{n+1}
         CoulombUnits::Energy tTotalHamil = CoulombUnits::Energy::zero();
@@ -1134,6 +1373,11 @@ void CoulombAfterburner::Apply(Event *tEvent)
     }
     if (tTotalForcesLast != NULL) {
         delete [] tTotalForcesLast;
+    }
+    m_ClosePairs.clear();
+    if (m_Substeps) {
+        cout << "<CoulombAfterburner::Apply>\tClose pairs integrated with sub-steps: " << tNClosePairSteps
+            << " pair-steps, at most " << tMaxSubsteps << " sub-steps in a step" << endl;
     }
     // Writing back to particles' objects original position, to not change HBT radii
     for (auto tPartIter = tParticles->begin(); tPartIter != tParticles->end(); ++tPartIter)
