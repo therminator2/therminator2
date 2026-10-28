@@ -8,5 +8,7 @@ Source: https://github.com/mpusz/mp-units/archive/refs/tags/v2.5.0.tar.gz
         sha256 a6bd48bee699f11f0ed5b04b8c5006d15f76e6d898e058db3880554d2e47a400
 
 Used without CMake: the Makefile adds both include directories and -DMP_UNITS_API_CONTRACTS=1 (no contract
-checking, so that gsl-lite is not needed); std::format support is detected automatically. Needs a C++20
-compiler (gcc 12 or newer, clang 16 or newer except 19).
+checking, so that gsl-lite is not needed). Needs a C++20 compiler (gcc 12 or newer, clang 16 or newer except 19)
+and a formatting library: std::format of the standard library (libstdc++ of gcc 13 or newer), or else {fmt},
+which is detected automatically through __has_include(<fmt/format.h>); the Makefile adds external/fmt for this
+(gcc 12, e.g. Debian 12 at GSI).

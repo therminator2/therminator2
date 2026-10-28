@@ -25,9 +25,10 @@ if ! command -v root-config >/dev/null; then
 fi
 export LD_LIBRARY_PATH="$(root-config --libdir):${LD_LIBRARY_PATH:-}"
 
-# As in the Makefile: C++20 for mp-units after the flags of root-config
+# As in the Makefile: C++20 for mp-units after the flags of root-config, {fmt} for mp-units with gcc 12
 CXXFLAGS="-O2 -g -Wno-deprecated -I $TOP/build/include -D_DEBUG_LEVEL_=0 $(root-config --cflags) -std=c++20 \
-          -I $TOP/external/mp-units/core/include -I $TOP/external/mp-units/systems/include -DMP_UNITS_API_CONTRACTS=1"
+          -I $TOP/external/mp-units/core/include -I $TOP/external/mp-units/systems/include -DMP_UNITS_API_CONTRACTS=1 \
+          -I $TOP/external/fmt/include -DFMT_HEADER_ONLY"
 
 echo "Building in $WORK"
 OBJS=()
