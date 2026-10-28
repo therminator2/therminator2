@@ -51,8 +51,11 @@ std::vector<TLorentzVector> CoulombAfterburner::GetFourMomenta(Int_t aEid) const
 
 Vec3<Force> CoulombAfterburner::CalculateTotalForce(
         std::list<Particle>::iterator &tPartIter, std::list<Particle> *tParticles, int **tBestIs, Time tCurrentTime,
-        Int_t iStep)
+        Int_t iStep, Vec3<Force> *aMagneticForce)
 {
+    if (aMagneticForce != nullptr) {
+        *aMagneticForce = Vec3<Force>();
+    }
     if (IsSpectator(tPartIter)) {
         return Vec3<Force>();
     }
@@ -170,6 +173,9 @@ Vec3<Force> CoulombAfterburner::CalculateTotalForce(
         tTermVeloTotal += tTermVelo;
         tTermAcceTotal += tTermAcce;
         tTermMagnTotal += tTermMagn;
+        if (aMagneticForce != nullptr) {
+            *aMagneticForce += Cross(hatR, tE);
+        }
         if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep) {
             cout << " --- TermCoulTotal = " << tTermCoulTotal << endl;
             cout << " --- TermVeloTotal = " << tTermVeloTotal << endl;
@@ -1191,8 +1197,10 @@ void CoulombAfterburner::Apply(Event *tEvent)
             IntegrateCloseGroup(tGroup, tTotalForces, tCurrentTime);
         }
 
-        // Calculate force at new position x_{n+1} and time t_{n+1}
+        // Calculate force at new position x_{n+1} and time t_{n+1}, still with the old velocity; the magnetic force
+        // with the new velocity is calculated below, from q c B
         Vec3<Force> *tTotalForcesNew = new Vec3<Force>[N];
+        std::vector<Vec3<Force> > tMagneticForcesNew(N);
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
@@ -1201,32 +1209,39 @@ void CoulombAfterburner::Apply(Event *tEvent)
             Int_t tQ = tPartIter->GetParticleType()->GetCharge();
             if (tQ != 0 && iStep >= m_FirstStepExists[tPartIter->eid] && iStep <= m_LastStepExists[tPartIter->eid])
             {
-                tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime + m_StepSize, iStep);
+                tForceTotal = CalculateTotalForce(tPartIter, tParticles, tBestIs, tCurrentTime + m_StepSize, iStep,
+                                                  &tMagneticForcesNew[tPartIter->eid]);
             }
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "total force at new pos, step " << iStep << ", eid = " << tPartIter->eid << ", F = " << tForceTotal << endl;
             }
             tTotalForcesNew[tPartIter->eid] = tForceTotal;
         }
-        // Update momenta p_{n+1} = p_n + (F_n + F_{n+1}) dt / 2, using average force from old and new position
+        // Update momenta p_{n+1} = p_n + (F_n + F_{n+1}) dt / 2, using average force from old and new position.
+        // F_{n+1} contains the magnetic force with v_{n+1}, which depends on p_{n+1}: it is calculated with the
+        // velocity predicted with v_n in F_{n+1}, which makes the error of the magnetic force second order.
         tPartIter = tParticles->begin();
         for (; tPartIter != tParticles->end(); ++tPartIter)
         {
             if (iStep < m_FirstStepExists[tPartIter->eid] || iStep > m_LastStepExists[tPartIter->eid])
                 continue;
 
-            Vec3<Force> tForceTotal = 0.5 * (tTotalForces[tPartIter->eid] + tTotalForcesNew[tPartIter->eid]);
-            if (tClose[tPartIter->eid]) {
-                // The half kick with the force at the old position and the forces within the group are already
-                // in the momentum (IntegrateCloseGroup)
-                tForceTotal = 0.5 * tTotalForcesNew[tPartIter->eid];
+            // Momentum after the half kick with the force at the old position. For close groups, this kick and the
+            // forces within the group are already in the momentum (IntegrateCloseGroup)
+            Vec3<Momentum> tPartMomHalf = MomentumOf(*tPartIter);
+            if (!tClose[tPartIter->eid]) {
+                tPartMomHalf += 0.5 * tTotalForces[tPartIter->eid] * m_StepSize;
             }
-            Vec3<Momentum> tImpulse = tForceTotal * m_StepSize;
+            Vec3<Force> &tForceNew = tTotalForcesNew[tPartIter->eid];
+            Vec3<Momentum> tPartMomPred = tPartMomHalf + 0.5 * tForceNew * m_StepSize;
+            Vec3<Speed> tVPred = VelocityOf(tPartMomPred, EnergyOf(MassOf(*tPartIter), tPartMomPred));
+            tForceNew += Cross((tVPred - VelocityOf(*tPartIter)) / c, tMagneticForcesNew[tPartIter->eid]);
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
-                cout << "total force " << iStep << ", eid = " << tPartIter->eid << ", F = " << tForceTotal << endl;
+                cout << "total force " << iStep << ", eid = " << tPartIter->eid << ", F = "
+                    << (tClose[tPartIter->eid] ? 0.5 * tForceNew : 0.5 * (tTotalForces[tPartIter->eid] + tForceNew)) << endl;
             }
 
-            Vec3<Momentum> tPartMom = MomentumOf(*tPartIter) + tImpulse;
+            Vec3<Momentum> tPartMom = tPartMomHalf + 0.5 * tForceNew * m_StepSize;
             CoulombUnits::Energy tE = EnergyOf(MassOf(*tPartIter), tPartMom);
             if (m_FindProblem && tPartIter->eid == m_DebugEid) {
                 cout << "before updating momenta " << iStep << ", eid = " << tPartIter->eid

@@ -57,8 +57,11 @@ class CoulombAfterburner : public AbstractAfterburner {
     CoulombUnits::Time NearestPreFreezeoutIntervalTime(const CoulombUnits::Vec3<CoulombUnits::Length> &tX0,
             const CoulombUnits::Vec3<CoulombUnits::Speed> &tV, const CoulombUnits::Vec3<CoulombUnits::Length> &tY,
             CoulombUnits::Time tT0, CoulombUnits::Time tU, bool debug = false);
+    // Force q E + q v x B on the particle, with its current velocity v. If aMagneticForce is given, it is set to
+    // q c B (a force), so that the force for another velocity v' is the result + (v' - v) / c x q c B.
     CoulombUnits::Vec3<CoulombUnits::Force> CalculateTotalForce(std::list<Particle>::iterator &, std::list<Particle> *,
-            int ** tBestIs, CoulombUnits::Time tCurrentTime, Int_t iStep);
+            int ** tBestIs, CoulombUnits::Time tCurrentTime, Int_t iStep,
+            CoulombUnits::Vec3<CoulombUnits::Force> *aMagneticForce = nullptr);
     // Vector potential (as phi v / c, an energy, like phi) and scalar potential of unit charges, at the particle
     std::pair<CoulombUnits::Vec3<CoulombUnits::Energy>, CoulombUnits::Energy> CalculatePotentials(std::list<Particle>::iterator &,
             std::list<Particle> *, int ** tBestIs, CoulombUnits::Time tCurrentTime, Int_t iStep);
