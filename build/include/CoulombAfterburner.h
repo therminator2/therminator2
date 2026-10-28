@@ -77,6 +77,8 @@ class CoulombAfterburner : public AbstractAfterburner {
     };
     std::vector<CloseGroup> FindCloseGroups(std::list<Particle> *, Int_t iStep);
     bool IsClosePair(Int_t aEid1, Int_t aEid2) const;
+    // Decay products of the same father
+    static bool AreSiblings(const Particle &, const Particle &);
     // Advances a group over one time step: half kick with the far force at the old positions, sub-steps with the
     // forces within the group; the half kick with the far force at the new positions follows in Apply()
     void IntegrateCloseGroup(const CloseGroup &, const CoulombUnits::Vec3<CoulombUnits::Force> *tFarForces,
@@ -204,6 +206,8 @@ class CoulombAfterburner : public AbstractAfterburner {
   double m_SubstepAccuracy;     // a sub-step is this fraction of the encounter time of a close pair
   int m_SubstepMax;             // maximum number of sub-steps in a time step
   CoulombUnits::Length m_SubstepDistance; // pairs further apart than this during the time step are not close pairs
+  CoulombUnits::Length m_SiblingMinDistance; // decay products of the same father do not interact while they are
+                                             // closer than this (distance in the rest frame of the source)
 
   // Close pairs of the current time step, (smaller eid, larger eid)
   std::set<std::pair<Int_t, Int_t> > m_ClosePairs;

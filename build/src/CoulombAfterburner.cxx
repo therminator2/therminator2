@@ -84,7 +84,7 @@ Vec3<Force> CoulombAfterburner::CalculateTotalForce(
         }
 
         // Skip interaction between decay products at the step when they were created
-        if (tPartIter->fathereid != -1 && tPartIter->fathereid == tPartOtherIter->fathereid && iStep == (Int_t)m_FirstStepExists[tPartOtherIter->eid]) {
+        if (AreSiblings(*tPartIter, *tPartOtherIter) && iStep == (Int_t)m_FirstStepExists[tPartOtherIter->eid]) {
             continue;
         }
 
@@ -115,6 +115,12 @@ Vec3<Force> CoulombAfterburner::CalculateTotalForce(
         Length Rdotu = Dot(vecR, u);
         Dimensionless Rdota = Dot(vecR, tPartOtherAcc) / square(c);
         Dimensionless v2 = Mag2(v);
+
+        // Short-distance cut-off between decay products of the same father. The distance is the one in the rest frame
+        // of the source, gamma (R - R.v/c), the same for both of them.
+        if (AreSiblings(*tPartIter, *tPartOtherIter) && Rdotu / sqrt(1 - v2) < m_SiblingMinDistance) {
+            continue;
+        }
 
         if (m_FindProblem && tPartIter->eid == m_DebugEid && iStep == m_DebugStep/* && tPartOtherIter->eid == m_DebugOtherEid*/)
         {
@@ -381,7 +387,8 @@ CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize, Double_t aR
     : m_nSteps(aSteps), m_StepSize(aStepSize * fm_c), mR(aR), mEventSaver(aEventSaver), m_hNpartImpB(nullptr), mKeepTrajectories(false),
       m_UseSpectators(true), m_ExtrapolateSpectators(true), m_ExtrapolateFireball(true),
       m_FindProblem(true), m_LargeTerm(1.0 * GeV / fm), m_DebugStep(-2), m_DebugEid(-2), m_DebugOtherEid(-2),
-      m_Substeps(false), m_SubstepAccuracy(0.05), m_SubstepMax(1024), m_SubstepDistance(1.0 * fm)
+      m_Substeps(false), m_SubstepAccuracy(0.05), m_SubstepMax(1024), m_SubstepDistance(1.0 * fm),
+      m_SiblingMinDistance(1.0 * fm)
 {
     if (!CheckInternalUnits()) {
         cout << "<CoulombAfterburner::CoulombAfterburner>\tCoulombUnits::inverse_gev_length is not kHbarC fm" << endl;
@@ -445,6 +452,9 @@ void CoulombAfterburner::ReadParameters(Configurator *aMainConfig)
     }
     if (aMainConfig->HasParameter("CoulombSubstepDistance")) {
         m_SubstepDistance = aMainConfig->GetParameter("CoulombSubstepDistance").Atof() * fm;
+    }
+    if (aMainConfig->HasParameter("CoulombSiblingMinDistance")) {
+        m_SiblingMinDistance = aMainConfig->GetParameter("CoulombSiblingMinDistance").Atof() * fm;
     }
 }
 void CoulombAfterburner::Init() {
@@ -781,6 +791,12 @@ Int_t CoulombAfterburner::AddSpectators(std::list<Particle> *tParticles, Time tE
     return tNspec;
 }
 
+bool CoulombAfterburner::AreSiblings(const Particle &aParticle1, const Particle &aParticle2)
+{
+    // Primary particles and spectators have fathereid -1
+    return aParticle1.fathereid != -1 && aParticle1.fathereid == aParticle2.fathereid;
+}
+
 bool CoulombAfterburner::IsClosePair(Int_t aEid1, Int_t aEid2) const
 {
     if (m_ClosePairs.empty()) return false;
@@ -835,7 +851,7 @@ std::vector<CoulombAfterburner::CloseGroup> CoulombAfterburner::FindCloseGroups(
             if (tSpectatorA && tSpectatorB) continue;
             // Pairs without interaction in CalculateTotalForce stay without it
             if (tA->eid == tB->fathereid || tB->eid == tA->fathereid) continue;
-            if (tA->fathereid != -1 && tA->fathereid == tB->fathereid
+            if (AreSiblings(*tA, *tB)
                 && (iStep == (Int_t)m_FirstStepExists[tA->eid] || iStep == (Int_t)m_FirstStepExists[tB->eid])) continue;
 
             Vec3<Length> tD = PositionOf(*tA) - PositionOf(*tB);
@@ -848,6 +864,12 @@ std::vector<CoulombAfterburner::CloseGroup> CoulombAfterburner::FindCloseGroups(
                 if (tS > m_StepSize) tS = m_StepSize;
             }
             Length tDMin = Mag(tD + tW * tS);
+            if (AreSiblings(*tA, *tB)) {
+                // Decay products interact only beyond m_SiblingMinDistance: not close if they stay within it during
+                // the whole step (the distance is largest at the ends of the step), else not closer than it
+                if (Mag(tD) < m_SiblingMinDistance && Mag(tD + tW * m_StepSize) < m_SiblingMinDistance) continue;
+                if (tDMin < m_SiblingMinDistance) tDMin = m_SiblingMinDistance;
+            }
             if (tDMin > m_SubstepDistance) continue;
 
             CoulombUnits::Energy tEA = EnergyOf(*tA), tEB = EnergyOf(*tB);
@@ -905,6 +927,7 @@ void CoulombAfterburner::IntegrateCloseGroup(const CloseGroup &aGroup, const Vec
     std::vector<Vec3<Force> > tF(tN);
     std::vector<Mass> tM(tN);
     std::vector<Int_t> tQ(tN), tEid(tN);
+    std::vector<std::vector<bool> > tSiblings(tN, std::vector<bool>(tN));
     std::vector<bool> tSpectator(tN);
     for (size_t i = 0; i < tN; ++i) {
         std::list<Particle>::iterator tPartIter = aGroup.members[i];
@@ -918,6 +941,9 @@ void CoulombAfterburner::IntegrateCloseGroup(const CloseGroup &aGroup, const Vec
         if (!tSpectator[i]) {
             tP[i] += 0.5 * tFarForces[tEid[i]] * m_StepSize;
         }
+        for (size_t j = 0; j < i; ++j) {
+            tSiblings[i][j] = tSiblings[j][i] = AreSiblings(*tPartIter, *aGroup.members[j]);
+        }
     }
     auto tUpdateVelocities = [&]() {
         for (size_t i = 0; i < tN; ++i) {
@@ -929,9 +955,15 @@ void CoulombAfterburner::IntegrateCloseGroup(const CloseGroup &aGroup, const Vec
             tF[i] = Vec3<Force>();
             if (tSpectator[i]) continue;
             for (size_t j = 0; j < tN; ++j) {
-                if (j != i && IsClosePair(tEid[i], tEid[j])) {
-                    tF[i] += UniformMotionForce(tQ[i] * tQ[j], tX[i] - tX[j], tV[j], tV[i]);
+                if (j == i || !IsClosePair(tEid[i], tEid[j])) continue;
+                // Short-distance cut-off between decay products, with the distance in the rest frame of the source,
+                // gamma sqrt(R^2 - |v/c x R|^2) for the simultaneous R
+                if (tSiblings[i][j]) {
+                    Vec3<Length> tR = tX[i] - tX[j];
+                    Vec3<Dimensionless> tBeta = tV[j] / c;
+                    if (Mag2(tR) - Mag2(Cross(tBeta, tR)) < (1 - Mag2(tBeta)) * pow<2>(m_SiblingMinDistance)) continue;
                 }
+                tF[i] += UniformMotionForce(tQ[i] * tQ[j], tX[i] - tX[j], tV[j], tV[i]);
             }
         }
     };

@@ -179,3 +179,10 @@ CoulombSubstepMax = 1024
 # Pairs further apart than this (fm) during the time step are not close
 # default:	1.0
 CoulombSubstepDistance = 1.0
+
+# Short-distance cut-off (fm) of the interaction between decay products of
+# the same father: they do not interact while they are closer than this
+# (distance in the rest frame of the source). Classical point charges
+# created at the same point would otherwise get arbitrarily large kicks.
+# default:	1.0
+CoulombSiblingMinDistance = 1.0
