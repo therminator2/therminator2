@@ -6,8 +6,9 @@ import string
 from shutil import copytree, copy, rmtree, move
 
 #----------------set input/output dirs here--------------#
-unigendir="/lustre/hades/user/harabasz/unigen_new/UniGen-2.3/set.sh"
-scriptdir = "/cvmfs/hadessoft.gsi.de/install/debian10/root-6.24.02/bin/thisroot.sh"
+unigendir="/lustre/hades/user/harabasz/unigen_new/UniGen-2.3_debian12/set.sh"
+# full path of thisroot.sh itself; jobScript_SL.sh sources it as given
+scriptdir = "/cvmfs/hadessoft.gsi.de/install/debian12/root-6.36.02/bin/thisroot.sh"
 
 #whatsin="HubbDeltCaseA_0steps10_fixedPositionUpdate_Spectator_fm_32_JK_noRescale"
 ####whatsin="HubbDeltCaseB_50steps10_fixedPositionUpdate_spectatorAtRfixedIsospin_specExtrapolationTret_fm_32_JK_protons_req_110.9_Tf_0_manyspec_a"
@@ -168,9 +169,11 @@ try:
 except Exception as e:
     print(e)
 
-command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/wrap.sh {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
-#command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
-#command="sbatch --array=1-{3} --mem=2000 --time=0-2:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem+1)
+# wrap.sh starts the Debian 10 container; at GSI, jobs submitted from the Debian 12
+# container already run in that image, so the job script is started directly
+#command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/wrap.sh {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem)
+command="sbatch --array=1-{3} --mem=2000 --time=0-48:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem)
+#command="sbatch --array=1-{3} --mem=2000 --time=0-2:00:00 --partition=long -D {0}  --output={1}/out/slurm-%A_%a.out -- {0}/jobScript_SL.sh {0}/jobarray.dat {1} {2}".format(submissiondir,outputdir,scriptdir,arrElem)
 print(command)
 os.system(command)
 

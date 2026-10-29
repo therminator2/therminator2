@@ -158,24 +158,25 @@ esac
   . $par2
   ldd therm2_events
   ./therm2_events
+  status=$?    # exit code of therm2_events, taken before any other command
   cd ..
-
-  status=$?
 
 
 
     echo "------------------------------------"
     echo "OUTPUT:"
 
-    outfile=$par4
+    outdir=$pathoutputlog
     inputfile=${par3}  # single file or comma separated list
 
-    outfile_wo_path=$(basename $outfile)
+    outfile_wo_path=$(basename $par3)   # job directory, e.g. H225_E0_D4_file10
 
     if [ $status -ne 0 ]
     then
-      echo "JOB: $JOB_ID CRASHED ON HOST: $host WITH OUTFILE $outfile_wo_path"
-      echo "JOB: $JOB_ID CRASHED ON HOST: $host WITH OUTFILE $outfile_wo_path" > ${outdir}/crash/${outfile_wo_path}_crash.txt
+      jobid="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+      echo "JOB: $jobid CRASHED ON HOST: $host WITH STATUS $status IN $outfile_wo_path"
+      mkdir -p ${outdir}/crash
+      echo "JOB: $jobid CRASHED ON HOST: $host WITH STATUS $status IN $outfile_wo_path" > ${outdir}/crash/${outfile_wo_path}_crash.txt
     fi
 
 
@@ -227,3 +228,4 @@ esac
 
 #    mv ${pathoutputlog}/slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out ${pathoutputlog}/${outfile}.log
 
+exit $status
