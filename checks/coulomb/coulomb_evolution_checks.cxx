@@ -14,6 +14,8 @@
 //   L. a particle with NaN momentum does not affect the others
 //   M. close encounters (impact parameters down to 0.01 fm) with sub-steps, fixed and moving source
 //   N. short-distance cut-off of the interaction between decay products of the same father
+//   O. charges as uniformly charged spheres (CoulombMinDistance): fall through an opposite charge, field of a
+//      moving sphere
 //
 // Besides the pass/fail checks, trajectories of the code and of the exact solutions are written as TGraphs
 // to a ROOT file (first argument, default coulomb_checks.root), one directory per check. The second argument is
@@ -72,7 +74,8 @@ static const double kAlphaHbarC = 1.439964e-3; // GeV fm, alpha * hbar * c (CODA
 
 static int sFailures = 0;
 
-// Configuration of the afterburner in all runs: no spectators; with sub-steps of close pairs in M
+// Configuration of the afterburner in all runs: no spectators, point charges (the exact solutions are those of point
+// charges, M has impact parameters down to 0.01 fm); with sub-steps of close pairs in M
 static Configurator sChecksConfig;
 static Configurator sSubstepConfig;
 static Configurator *sRunConfig = &sChecksConfig;
@@ -369,9 +372,12 @@ int main(int argc, char **argv)
     const char *tOutputFile = argc > 1 ? argv[1] : "coulomb_checks.root";
     const char *tTopDir = argc > 2 ? argv[2] : nullptr;
     Parameter tNoSpectators{"CoulombUseSpectators", "0"};
+    Parameter tPointCharges{"CoulombMinDistance", "0"};
     sChecksConfig.AddParameter(&tNoSpectators);
+    sChecksConfig.AddParameter(&tPointCharges);
     Parameter tSubsteps{"CoulombSubsteps", "1"};
     sSubstepConfig.AddParameter(&tNoSpectators);
+    sSubstepConfig.AddParameter(&tPointCharges);
     sSubstepConfig.AddParameter(&tSubsteps);
 
     ParticleDB tDB;
@@ -1111,6 +1117,7 @@ int main(int argc, char **argv)
         for (const char *tCut : {"default", "2.0", "0"}) {
             Configurator tConfig;
             tConfig.AddParameter(&tNoSpectatorsN);
+            tConfig.AddParameter(&tPointCharges);
             Parameter tCutPar{"CoulombSiblingMinDistance", tCut};
             if (std::string(tCut) != "default") tConfig.AddParameter(&tCutPar);
             sRunConfig = &tConfig;
@@ -1141,6 +1148,122 @@ int main(int argc, char **argv)
         }
     }
 
+    // ----- O. Charges as uniformly charged spheres of radius d (CoulombMinDistance)
+    // A light unit charge (m = 0.2 GeV) starts at rest at r0 = 2 fm from a practically fixed opposite charge. Point
+    // charges would fall into each other; with spheres, the force falls linearly to zero below d, and the charge passes
+    // through the centre and comes to rest at r0 on the other side. The source is static, so E_kin + q phi is
+    // conserved exactly: the kinetic energy at the centre is k (3/(2d) - 1/r0). With and without sub-steps.
+    Info("O. unit charge (m = 0.2 GeV) from rest at 2 fm falls through a fixed opposite charge, charges as spheres of radius d");
+    {
+        const double tR0 = 2.0, tStep = 0.1;
+        const int tSteps = 1500;
+        std::vector<PartInit> tInit = {{tProbeNegative, TVector3(0, 0, 0), TVector3(0, 0, 0)},
+                                       {tLight, TVector3(tR0, 0, 0), TVector3(0, 0, 0)}};
+        Parameter tNoSpectatorsO{"CoulombUseSpectators", "0"};
+        Parameter tSubstepsO{"CoulombSubsteps", "1"};
+        for (const char *tD : {"default", "0.5"}) {
+            for (bool aSubsteps : {false, true}) {
+                Configurator tConfig;
+                tConfig.AddParameter(&tNoSpectatorsO);
+                Parameter tDPar{"CoulombMinDistance", tD};
+                if (std::string(tD) != "default") tConfig.AddParameter(&tDPar);
+                if (aSubsteps) tConfig.AddParameter(&tSubstepsO);
+                sRunConfig = &tConfig;
+                std::string tSub = std::string("O_sphere_") + tD + (aSubsteps ? "_substeps" : "");
+                RunResult tRun = RunCoulomb(tSub.c_str(), tSteps, tStep, tInit, &tDB);
+                sRunConfig = &sChecksConfig;
+                double tDValue = std::string(tD) == "default" ? 1.0 : atof(tD);
+                double tMLight = tLight->GetMass();
+                double tKinMax = 0, tXMin = tR0;
+                std::vector<double> tT, tX, tKin;
+                for (size_t n = 0; n < tRun.fourMomenta[1].size(); ++n) {
+                    tT.push_back(tRun.trajectory[1][n].T());
+                    tX.push_back(tRun.trajectory[1][n].X());
+                    tKin.push_back(tRun.fourMomenta[1][n].E() - tMLight);
+                    tKinMax = std::max(tKinMax, tKin.back());
+                    tXMin = std::min(tXMin, tX.back());
+                }
+                std::string tWhat = Form("O (d = %s fm%s): ", tD, aSubsteps ? ", sub-steps" : "");
+                Check((tWhat + "kinetic energy at the centre vs k (3/(2d) - 1/r0) [GeV]").c_str(), tKinMax,
+                      tKappa1 * (1.5 / tDValue - 1 / tR0), 2e-3);
+                Check((tWhat + "turning point on the other side vs -r0 [fm]").c_str(), tXMin, -tR0, 2e-3);
+                AddGraph(tSub.c_str(), "x", Form("x of the falling charge, d = %s fm;t (fm/c);x (fm)", tD), tT, tX);
+                AddGraph(tSub.c_str(), "ekin", Form("kinetic energy of the falling charge, d = %s fm;t (fm/c);E_{kin} (GeV)", tD), tT, tKin);
+            }
+        }
+    }
+    // The field of a sphere moving with beta = 0.9 along z, inside the sphere: in its rest frame k q r'/d^3, boosted
+    // E = k q gamma R / d^3 at the simultaneous relative position R. Both for the field of uniform motion
+    // (UniformMotionForce, close pairs) and for the retarded field (CalculateTotalForce) of a source recorded on the
+    // time grid; outside the sphere, the field of a point charge. The tolerance covers the difference of 3.7e-7
+    // between kCoulomb of the code and alpha hbar c (CODATA) used here.
+    Info("O. field of a unit charge as a sphere of 1 fm moving with beta = 0.9, inside and outside the sphere");
+    {
+        using namespace CoulombUnits;
+        const double tBeta = 0.9, tGamma = 1 / std::sqrt(1 - tBeta * tBeta), tStep = 0.1, tT0 = -40.0;
+        const unsigned int tNPoints = 801;
+        // Observers at rest-frame distances 0.55 fm (inside) and 2.3 fm (outside), at the source position t = 0
+        for (const TVector3 &tRel : {TVector3(0.3, 0, 0.2), TVector3(1.2, 0, -0.85)}) {
+            double tRho = std::sqrt(tRel.X() * tRel.X() + tRel.Y() * tRel.Y() + tGamma * tGamma * tRel.Z() * tRel.Z());
+            bool tInside = tRho < 1.0;
+            TVector3 tExpected = tInside ? kAlphaHbarC * tGamma * tRel
+                                         : kAlphaHbarC * tGamma * tRel * (1 / std::pow(tRho, 3));
+            const char *tWhere = tInside ? "inside" : "outside";
+            Vec3<Force> tF = CoulombAfterburner::UniformMotionForce(1, Vec3<Length>(tRel.X() * fm, tRel.Y() * fm, tRel.Z() * fm),
+                Vec3<Speed>(0 * c, 0 * c, tBeta * c), Vec3<Speed>(), 1.0 * fm);
+            Check(Form("O: uniform motion, %s the sphere: F_x [GeV/fm]", tWhere), tF.x.numerical_value_in(GeV / fm), tExpected.X(), 1e-6);
+            Check(Form("O: uniform motion, %s the sphere: F_z [GeV/fm]", tWhere), tF.z.numerical_value_in(GeV / fm), tExpected.Z(), 1e-6);
+
+            const char *tDir = "O_moving_sphere";
+            mkdir(tDir, 0755);
+            if (chdir(tDir) != 0) { perror(tDir); exit(2); }
+            {
+                CoulombAfterburner tCoulomb(1, tStep, 0., nullptr, &tDB);
+                tCoulomb.Init();
+                tCoulomb.m_coordinates = new std::vector<CoulombAfterburner::SpaceTimePoint>[2];
+                tCoulomb.m_velocities = new std::vector<Vec3<Speed> >[2];
+                tCoulomb.m_accelerations = new std::vector<Vec3<Acceleration> >[2];
+                tCoulomb.m_FirstStepExists = new unsigned int[2]{0, 0};
+                tCoulomb.m_LastStepExists = new unsigned int[2]{tNPoints - 1, tNPoints - 1};
+                tCoulomb.m_CreationTimes = new Time[2]{tT0 * fm_c, tT0 * fm_c};
+                tCoulomb.m_DecayTimes = new Time[2]{std::numeric_limits<double>::infinity() * fm_c, std::numeric_limits<double>::infinity() * fm_c};
+                tCoulomb.m_termsCoul->emplace_back(); tCoulomb.m_termsVelo->emplace_back(); tCoulomb.m_termsAcce->emplace_back();
+                tCoulomb.m_termsMagn->emplace_back(); tCoulomb.m_Rs->emplace_back(); tCoulomb.m_us->emplace_back(); tCoulomb.m_vs->emplace_back();
+                for (unsigned int n = 0; n < tNPoints; ++n) {
+                    double t = tT0 + n * tStep;
+                    tCoulomb.m_coordinates[1].push_back(CoulombAfterburner::SpaceTimePoint{t * fm_c, Vec3<Length>(0 * fm, 0 * fm, tBeta * t * fm)});
+                    tCoulomb.m_velocities[1].push_back(Vec3<Speed>(0 * c, 0 * c, tBeta * c));
+                    tCoulomb.m_accelerations[1].push_back(Vec3<Acceleration>());
+                }
+                Particle::ZeroEID();
+                std::list<Particle> tList;
+                for (int i = 0; i < 2; ++i) {
+                    Particle tParticle(tProton);
+                    tParticle.SetParticlePX(tProton->GetMass(), 0, 0, 0, tT0 / kHbarC, 0, 0, tBeta * tT0 / kHbarC);
+                    tList.push_back(tParticle);
+                }
+                auto tObserver = tList.begin();
+                int **tBestIs = new int *[2];
+                for (int i = 0; i < 2; ++i) tBestIs[i] = new int[2]{-1, -1};
+                tObserver->SetTXYZ(0, tRel.X() / kHbarC, tRel.Y() / kHbarC, tRel.Z() / kHbarC);
+                Vec3<Force> tFRet = tCoulomb.CalculateTotalForce(tObserver, &tList, tBestIs, 0 * fm_c, tNPoints - 1);
+                Check(Form("O: retarded field, %s the sphere: F_x [GeV/fm]", tWhere), tFRet.x.numerical_value_in(GeV / fm), tExpected.X(), 1e-6);
+                Check(Form("O: retarded field, %s the sphere: F_z [GeV/fm]", tWhere), tFRet.z.numerical_value_in(GeV / fm), tExpected.Z(), 1e-6);
+                for (int i = 0; i < 2; ++i) delete[] tBestIs[i];
+                delete[] tBestIs;
+                delete[] tCoulomb.m_coordinates;
+                delete[] tCoulomb.m_velocities;
+                delete[] tCoulomb.m_accelerations;
+                delete[] tCoulomb.m_FirstStepExists;
+                delete[] tCoulomb.m_LastStepExists;
+                delete[] tCoulomb.m_CreationTimes;
+                delete[] tCoulomb.m_DecayTimes;
+                tCoulomb.Finalize();
+            }
+            if (chdir("..") != 0) { perror(".."); exit(2); }
+        }
+    }
+
     // ----- K. Settings of the afterburner from the configuration
     // The defaults must be the values of the former constants, events.ini and events_template must contain all keys
     // with these values, all keys must be read, and missing keys must keep the defaults.
@@ -1149,9 +1272,11 @@ int main(int argc, char **argv)
         const std::vector<std::string> tKeys = {"CoulombUseSpectators", "CoulombExtrapolateSpectators", "CoulombExtrapolateFireball",
                                                 "CoulombFindProblem", "CoulombLargeTerm", "CoulombDebugStep", "CoulombDebugEid",
                                                 "CoulombDebugOtherEid", "CoulombSubsteps", "CoulombSubstepAccuracy",
-                                                "CoulombSubstepMax", "CoulombSubstepDistance", "CoulombSiblingMinDistance"};
-        // The former constants, and the defaults of the later settings (sub-steps off, sibling cut-off 1 fm)
-        const std::vector<double> tFormerConstants = {1, 1, 1, 1, 1.0, -2, -2, -2, 0, 0.05, 1024, 1.0, 1.0};
+                                                "CoulombSubstepMax", "CoulombSubstepDistance", "CoulombSiblingMinDistance",
+                                                "CoulombMinDistance"};
+        // The former constants, and the defaults of the later settings (sub-steps off, sibling cut-off 1 fm, charges
+        // as spheres of 1 fm)
+        const std::vector<double> tFormerConstants = {1, 1, 1, 1, 1.0, -2, -2, -2, 0, 0.05, 1024, 1.0, 1.0, 1.0};
         auto tSettings = [](const CoulombAfterburner &aCoulomb) {
             return std::vector<double>{(double)aCoulomb.m_UseSpectators, (double)aCoulomb.m_ExtrapolateSpectators,
                                        (double)aCoulomb.m_ExtrapolateFireball, (double)aCoulomb.m_FindProblem,
@@ -1159,7 +1284,8 @@ int main(int argc, char **argv)
                                        (double)aCoulomb.m_DebugStep, (double)aCoulomb.m_DebugEid, (double)aCoulomb.m_DebugOtherEid,
                                        (double)aCoulomb.m_Substeps, aCoulomb.m_SubstepAccuracy, (double)aCoulomb.m_SubstepMax,
                                        aCoulomb.m_SubstepDistance.numerical_value_in(CoulombUnits::fm),
-                                       aCoulomb.m_SiblingMinDistance.numerical_value_in(CoulombUnits::fm)};
+                                       aCoulomb.m_SiblingMinDistance.numerical_value_in(CoulombUnits::fm),
+                                       aCoulomb.m_MinDistance.numerical_value_in(CoulombUnits::fm)};
         };
         // Number of settings different from the expected values, printing them
         auto tMismatches = [&](const char *aWhat, const std::vector<double> &aGot, const std::vector<double> &aExpected) {
@@ -1199,7 +1325,7 @@ int main(int argc, char **argv)
             Info("K: no repository directory given, events.ini and events_template not checked");
         }
         {
-            const std::vector<std::string> tValues = {"0", "0", "0", "0", "2.5", "7", "11", "13", "1", "0.02", "64", "0.5", "1.5"};
+            const std::vector<std::string> tValues = {"0", "0", "0", "0", "2.5", "7", "11", "13", "1", "0.02", "64", "0.5", "1.5", "0.7"};
             Configurator tConfig;
             for (size_t i = 0; i < tKeys.size(); ++i) {
                 Parameter tPar{tKeys[i].c_str(), tValues[i].c_str()};
@@ -1208,7 +1334,7 @@ int main(int argc, char **argv)
             CoulombAfterburner tCoulomb(1, 0.1, 0., nullptr, &tDB);
             tCoulomb.ReadParameters(&tConfig);
             Check("K: settings not taken from a configuration with all keys",
-                  tMismatches("all keys", tSettings(tCoulomb), {0, 0, 0, 0, 2.5, 7, 11, 13, 1, 0.02, 64, 0.5, 1.5}), 0, 0, false);
+                  tMismatches("all keys", tSettings(tCoulomb), {0, 0, 0, 0, 2.5, 7, 11, 13, 1, 0.02, 64, 0.5, 1.5, 0.7}), 0, 0, false);
         }
         {
             Configurator tConfig;
