@@ -84,9 +84,16 @@ class CoulombAfterburner : public AbstractAfterburner {
     void IntegrateCloseGroup(const CloseGroup &, const CoulombUnits::Vec3<CoulombUnits::Force> *tFarForces,
             CoulombUnits::Time tCurrentTime);
     // Force on a charge moving with aTestVelocity from a source moving uniformly with aSourceVelocity, at the
-    // simultaneous relative position aR = x(test) - x(source); aCharges = q(test) q(source)
+    // simultaneous relative position aR = x(test) - x(source); aCharges = q(test) q(source). The source is a uniformly
+    // charged sphere of radius aMinDistance in its rest frame (see FieldFactor)
     static CoulombUnits::Vec3<CoulombUnits::Force> UniformMotionForce(Int_t aCharges, const CoulombUnits::Vec3<CoulombUnits::Length> &aR,
-            const CoulombUnits::Vec3<CoulombUnits::Speed> &aSourceVelocity, const CoulombUnits::Vec3<CoulombUnits::Speed> &aTestVelocity);
+            const CoulombUnits::Vec3<CoulombUnits::Speed> &aSourceVelocity, const CoulombUnits::Vec3<CoulombUnits::Speed> &aTestVelocity,
+            CoulombUnits::Length aMinDistance);
+    // Field and potential of a uniformly charged sphere of radius aMinDistance relative to those of a point charge, at
+    // the distance aRho from the centre in the rest frame of the source: (rho/d)^3 and (rho/d) (3 - (rho/d)^2) / 2
+    // inside the sphere, 1 outside and for aMinDistance = 0
+    static double FieldFactor(CoulombUnits::Length aRho, CoulombUnits::Length aMinDistance);
+    static double PotentialFactor(CoulombUnits::Length aRho, CoulombUnits::Length aMinDistance);
     static bool IsSpectator(std::list<Particle>::iterator &);
     static bool HasFiniteKinematics(const Particle &);
     // Minkowski interval c^2 (t1 - t2)^2 - |x1 - x2|^2
@@ -208,6 +215,8 @@ class CoulombAfterburner : public AbstractAfterburner {
   CoulombUnits::Length m_SubstepDistance; // pairs further apart than this during the time step are not close pairs
   CoulombUnits::Length m_SiblingMinDistance; // decay products of the same father do not interact while they are
                                              // closer than this (distance in the rest frame of the source)
+  CoulombUnits::Length m_MinDistance; // charges are uniformly charged spheres of this radius: below it the force
+                                      // falls linearly to zero instead of growing like 1/r^2
 
   // Close pairs of the current time step, (smaller eid, larger eid)
   std::set<std::pair<Int_t, Int_t> > m_ClosePairs;

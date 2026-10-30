@@ -29,6 +29,20 @@ Area CoulombAfterburner::Interval(const Vec3<Length> &tX1, Time tT1, const Space
     return Interval(tX1, tT1, tPoint.x, tPoint.t, debug);
 }
 
+double CoulombAfterburner::FieldFactor(Length aRho, Length aMinDistance)
+{
+    if (!(aRho < aMinDistance)) return 1.;
+    double tX = (aRho / aMinDistance).numerical_value_in(one);
+    return tX * tX * tX;
+}
+
+double CoulombAfterburner::PotentialFactor(Length aRho, Length aMinDistance)
+{
+    if (!(aRho < aMinDistance)) return 1.;
+    double tX = (aRho / aMinDistance).numerical_value_in(one);
+    return 0.5 * tX * (3 - tX * tX);
+}
+
 std::vector<TLorentzVector> CoulombAfterburner::GetTrajectory(Int_t aEid) const
 {
     std::vector<TLorentzVector> tResult;
@@ -146,8 +160,10 @@ Vec3<Force> CoulombAfterburner::CalculateTotalForce(
                 }
             }
         }
-        // E = k q' R / (R.u)^3 [(1 - v^2) u + (R.a) u / c^2 - (R.u) a / c^2], force q E + q v x B with c B = hatR x E
-        Force tPrefactor = kCoulomb * tQ * tOtherQ * R / pow<3>(Rdotu);
+        // E = k q' R / (R.u)^3 [(1 - v^2) u + (R.a) u / c^2 - (R.u) a / c^2], force q E + q v x B with c B = hatR x E.
+        // Within m_MinDistance of the source (in its rest frame), the field of a uniformly charged sphere: exact for
+        // the uniformly moving source, and applied to the acceleration part as well
+        Force tPrefactor = kCoulomb * tQ * tOtherQ * R / pow<3>(Rdotu) * FieldFactor(Rdotu / sqrt(1 - v2), m_MinDistance);
         Vec3<Force> tTermCoul = tPrefactor * (1 - v2) * u;
         Vec3<Force> tTermVelo = tPrefactor * Rdota * u;
         Vec3<Force> tTermAcce = tPrefactor * (-Rdotu) * tPartOtherAcc / square(c);
@@ -227,8 +243,10 @@ std::pair<Vec3<CoulombUnits::Energy>, CoulombUnits::Energy> CoulombAfterburner::
         Vec3<Length> vecR = tPartPos - tPartOtherPos;
         Length R = Mag(vecR);
 
-        // Lienard-Wiechert potentials of a unit charge: phi = k q' / (R - R.v/c), A c = phi v / c
-        CoulombUnits::Energy tTermScalar = kCoulomb * tOtherQ / (R - Dot(vecR, v));
+        // Lienard-Wiechert potentials of a unit charge: phi = k q' / (R - R.v/c), A c = phi v / c; within
+        // m_MinDistance those of a uniformly charged sphere, with the distance gamma (R - R.v/c) in the rest frame
+        Length tRdotu = R - Dot(vecR, v);
+        CoulombUnits::Energy tTermScalar = kCoulomb * tOtherQ / tRdotu * PotentialFactor(tRdotu / sqrt(1 - Mag2(v)), m_MinDistance);
         Vec3<CoulombUnits::Energy> tTermVector = tTermScalar * v;
         tTermScalarTotal += tTermScalar;
         tTermVectorTotal += tTermVector;
@@ -388,7 +406,7 @@ CoulombAfterburner::CoulombAfterburner(int aSteps, double aStepSize, Double_t aR
       m_UseSpectators(true), m_ExtrapolateSpectators(true), m_ExtrapolateFireball(true),
       m_FindProblem(true), m_LargeTerm(1.0 * GeV / fm), m_DebugStep(-2), m_DebugEid(-2), m_DebugOtherEid(-2),
       m_Substeps(false), m_SubstepAccuracy(0.05), m_SubstepMax(1024), m_SubstepDistance(1.0 * fm),
-      m_SiblingMinDistance(1.0 * fm)
+      m_SiblingMinDistance(1.0 * fm), m_MinDistance(1.0 * fm)
 {
     if (!CheckInternalUnits()) {
         cout << "<CoulombAfterburner::CoulombAfterburner>\tCoulombUnits::inverse_gev_length is not kHbarC fm" << endl;
@@ -455,6 +473,9 @@ void CoulombAfterburner::ReadParameters(Configurator *aMainConfig)
     }
     if (aMainConfig->HasParameter("CoulombSiblingMinDistance")) {
         m_SiblingMinDistance = aMainConfig->GetParameter("CoulombSiblingMinDistance").Atof() * fm;
+    }
+    if (aMainConfig->HasParameter("CoulombMinDistance")) {
+        m_MinDistance = aMainConfig->GetParameter("CoulombMinDistance").Atof() * fm;
     }
 }
 void CoulombAfterburner::Init() {
@@ -804,14 +825,16 @@ bool CoulombAfterburner::IsClosePair(Int_t aEid1, Int_t aEid2) const
 }
 
 Vec3<Force> CoulombAfterburner::UniformMotionForce(Int_t aCharges, const Vec3<Length> &aR, const Vec3<Speed> &aSourceVelocity,
-        const Vec3<Speed> &aTestVelocity)
+        const Vec3<Speed> &aTestVelocity, Length aMinDistance)
 {
     // Field of a uniformly moving charge at its present position (the Lienard-Wiechert field without acceleration):
-    // E = k q' (1 - beta^2) R / (R^2 - |beta x R|^2)^(3/2), c B = beta x E, force q E + q v x B
+    // E = k q' (1 - beta^2) R / (R^2 - |beta x R|^2)^(3/2), c B = beta x E, force q E + q v x B. The distance in the
+    // rest frame of the source is gamma sqrt(R^2 - |beta x R|^2)
     Vec3<Dimensionless> tBetaSource = aSourceVelocity / c;
     Vec3<Dimensionless> tBetaTest = aTestVelocity / c;
     Length tD = Length(sqrt(Mag2(aR) - Mag2(Cross(tBetaSource, aR))));
-    Vec3<Force> tE = kCoulomb * aCharges * (1 - Mag2(tBetaSource)) * aR / pow<3>(tD);
+    Vec3<Force> tE = kCoulomb * aCharges * (1 - Mag2(tBetaSource)) * aR / pow<3>(tD)
+        * FieldFactor(tD / sqrt(1 - Mag2(tBetaSource)), aMinDistance);
     // Using BAC-CAB rule for beta_test x (beta_source x E)
     return tE + tBetaSource * Dot(tBetaTest, tE) - tE * Dot(tBetaTest, tBetaSource);
 }
@@ -822,7 +845,8 @@ Vec3<Force> CoulombAfterburner::UniformMotionForce(Int_t aCharges, const Vec3<Le
 // during the step, relative velocity w) and the time sqrt(d^3 mu / k|q q'|) in which the Coulomb force alone changes
 // the distance by about d (reduced mass mu, with E/c^2 as the mass; the mass of the particle for a spectator, which
 // does not recoil). A pair is close if the step is longer than the encounter time by more than 1/m_SubstepAccuracy;
-// the number of sub-steps is then dt / (m_SubstepAccuracy * encounter time), rounded up to a power of 2.
+// the number of sub-steps is then dt / (m_SubstepAccuracy * encounter time), rounded up to a power of 2. The closest
+// distance used is at least m_MinDistance, below which the force is that of a uniformly charged sphere.
 std::vector<CoulombAfterburner::CloseGroup> CoulombAfterburner::FindCloseGroups(std::list<Particle> *tParticles, Int_t iStep)
 {
     m_ClosePairs.clear();
@@ -870,6 +894,8 @@ std::vector<CoulombAfterburner::CloseGroup> CoulombAfterburner::FindCloseGroups(
                 if (Mag(tD) < m_SiblingMinDistance && Mag(tD + tW * m_StepSize) < m_SiblingMinDistance) continue;
                 if (tDMin < m_SiblingMinDistance) tDMin = m_SiblingMinDistance;
             }
+            // Below m_MinDistance the force does not grow any more: the encounter is not shorter than at that distance
+            if (tDMin < m_MinDistance) tDMin = m_MinDistance;
             if (tDMin > m_SubstepDistance) continue;
 
             CoulombUnits::Energy tEA = EnergyOf(*tA), tEB = EnergyOf(*tB);
@@ -963,7 +989,7 @@ void CoulombAfterburner::IntegrateCloseGroup(const CloseGroup &aGroup, const Vec
                     Vec3<Dimensionless> tBeta = tV[j] / c;
                     if (Mag2(tR) - Mag2(Cross(tBeta, tR)) < (1 - Mag2(tBeta)) * pow<2>(m_SiblingMinDistance)) continue;
                 }
-                tF[i] += UniformMotionForce(tQ[i] * tQ[j], tX[i] - tX[j], tV[j], tV[i]);
+                tF[i] += UniformMotionForce(tQ[i] * tQ[j], tX[i] - tX[j], tV[j], tV[i], m_MinDistance);
             }
         }
     };
