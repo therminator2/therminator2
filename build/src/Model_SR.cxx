@@ -313,18 +313,37 @@ std::pair<double, double> Model_SR::GetIntegrand(ParticleType* aPartType, bool f
             tParser->ReadXML(tLib);
             delete tParser;
             Vector3D *tVectorR = tLib->GetXMLTag("VECTOR3D", "name","R")->GetXMLVector3D();
-            if (
-                    mH < tVectorR->GetXMin() || mH > tVectorR->GetXMax() ||
-                    mEps < tVectorR->GetYMin() || mEps > tVectorR->GetYMax() ||
-                    mDel < tVectorR->GetZMin() || mDel > tVectorR->GetZMax()
-               ) {
-                cout << "The values of (H, epsilon, delta) = (" << mH << "," << mEps << "," << mDel << ") outside of the grid (" 
-                    << tVectorR->GetXMin() << ":" << tVectorR->GetXMax() << "," 
-                    << tVectorR->GetYMin() << ":" << tVectorR->GetYMax() << "," 
-                    << tVectorR->GetZMin() << ":" << tVectorR->GetZMax() << ")"
-                    << endl;
-                exit(_ERROR_CONFIG_PARAMETER_NOT_FOUND_);
+            if (mH < tVectorR->GetXMin()) {
+                Warning("Model_SR::ReadParameters", "The value of H = %f outside of the range (%f, %f), using %f",
+                    mH, tVectorR->GetXMin(), tVectorR->GetXMax(), tVectorR->GetXMin());
+                mH = tVectorR->GetXMin();
             }
+            if (mH > tVectorR->GetXMax()) {
+                Warning("Model_SR::ReadParameters", "The value of H = %f outside of the range (%f, %f), using %f",
+                    mH, tVectorR->GetXMin(), tVectorR->GetXMax(), tVectorR->GetXMax());
+                mH = tVectorR->GetXMax();
+            }
+            if (mEps < tVectorR->GetYMin()) {
+                Warning("Model_SR::ReadParameters", "The value of epsilon = %f outside of the range (%f, %f), using %f",
+                    mEps, tVectorR->GetYMin(), tVectorR->GetYMax(), tVectorR->GetYMin());
+                mEps = tVectorR->GetYMin();
+            }
+            if (mEps > tVectorR->GetYMax()) {
+                Warning("Model_SR::ReadParameters", "The value of epsilon = %f outside of the range (%f, %f), using %f",
+                    mEps, tVectorR->GetYMin(), tVectorR->GetYMax(), tVectorR->GetYMax());
+                mEps = tVectorR->GetYMax();
+            }
+            if (mDel < tVectorR->GetXMin()) {
+                Warning("Model_SR::ReadParameters", "The value of delta = %f outside of the range (%f, %f), using %f",
+                    mDel, tVectorR->GetZMin(), tVectorR->GetZMax(), tVectorR->GetZMin());
+                mDel = tVectorR->GetZMin();
+            }
+            if (mDel > tVectorR->GetZMax()) {
+                Warning("Model_SR::ReadParameters", "The value of delta = %f outside of the range (%f, %f), using %f",
+                    mDel, tVectorR->GetZMin(), tVectorR->GetZMax(), tVectorR->GetZMax());
+                mDel = tVectorR->GetZMax();
+            }
+
             unsigned int tI,tJ,tK;
             if (PointInGrid(tVectorR, mH, mEps, mDel, tI, tJ, tK)) {
                 cout << "(i,j,k) = (" << tI << "," << tJ << "," << tK << ")" << endl;
