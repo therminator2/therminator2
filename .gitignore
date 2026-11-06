@@ -18,3 +18,7 @@ events_sr*
 .vscode
 event_01.txt
 jobarray.dat
+cout
+cerr
+stdour
+stderr
