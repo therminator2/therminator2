@@ -4,6 +4,7 @@ import os
 import random
 import string
 from shutil import copytree, copy, rmtree, move
+from pathlib import Path
 
 #----------------set input/output dirs here--------------#
 unigendir="/lustre/hades/user/harabasz/unigen_new/UniGen-2.3_debian12/set.sh"
