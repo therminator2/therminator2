@@ -162,7 +162,16 @@ os.system(chmod_command)
 
 arrElem = NoFiles * len(HubbList) * len(epsilonList) * len(deltalist)
 print("Moving from the temporary folder to the output...")
-move(tmpdir, outputbase)
+
+basepath = Path(outputbase)
+if basepath.is_dir():
+    print("Base path exists and is a directory!")
+    for file_path in Path(tmpdir).glob("*"):
+        move(file_path, outputbase+whatsin )
+else:
+    print("Base path does not exist (or is a file).")
+    move(tmpdir, outputbase)
+
 print("Done")
 try:
     os.makedirs(outputdir+"/out", exist_ok=True)
